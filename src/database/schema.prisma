@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  discordId String     @id
+  username  String
+  character Character?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Character {
+  id            Int            @id @default(autoincrement())
+  userId        String         @unique
+  user          User           @relation(fields: [userId], references: [discordId], onDelete: Cascade)
+  name          String
+  class         String
+  level         Int            @default(1)
+  xp            Int            @default(0)
+  hp            Int            @default(100)
+  maxHp         Int            @default(100)
+  attack        Int            @default(10)
+  defense       Int            @default(5)
+  gold          Int            @default(0)
+  combatSession CombatSession?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model CombatSession {
+  id              String    @id @default(cuid())
+  characterId     Int       @unique
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  zone            String
+  monsterName     String
+  monsterHp       Int
+  monsterMaxHp    Int
+  monsterAttack   Int
+  monsterDefense  Int
+  monsterXpReward Int
+  monsterGoldMin  Int
+  monsterGoldMax  Int
+  playerHp        Int
+  playerDefending Boolean   @default(false)
+  potionsRemaining Int      @default(3)
+  turn            Int       @default(1)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
