@@ -224,6 +224,7 @@ function buildVictoryDescription({
   battleLog,
   rewards,
   levelUpDetails,
+  droppedEquipment,
 }) {
   const playerHpBar = createHPBar(session.playerHp, character.maxHp, 10);
   const currentMana = character.mana ?? 0;
@@ -244,7 +245,30 @@ function buildVictoryDescription({
   lines.push('🎁 보상');
   lines.push(`✨ 경험치 +${rewards?.xpReward ?? 0}`);
   lines.push(`💰 골드 +${rewards?.goldReward ?? 0}G`);
-  lines.push('🎲 아이템 드롭 확인 중...');
+
+  if (droppedEquipment) {
+    const { RARITIES, EQUIPMENT_TYPES } = require('./equipment');
+    const rarityData = RARITIES[droppedEquipment.rarity];
+    const typeData = EQUIPMENT_TYPES[droppedEquipment.type];
+    lines.push('');
+    lines.push('🎊 장비 드롭!');
+    lines.push(
+      `${rarityData.emoji} ${typeData.emoji} **${droppedEquipment.name}** (${rarityData.name})`,
+    );
+
+    const stats = [];
+    if (droppedEquipment.attack > 0) stats.push(`공격 +${droppedEquipment.attack}`);
+    if (droppedEquipment.defense > 0) stats.push(`방어 +${droppedEquipment.defense}`);
+    if (droppedEquipment.hp > 0) stats.push(`HP +${droppedEquipment.hp}`);
+    if (droppedEquipment.mana > 0) stats.push(`MP +${droppedEquipment.mana}`);
+    lines.push(`   ${stats.join(', ')}`);
+
+    if (droppedEquipment.effect) {
+      const { EFFECTS } = require('./equipment');
+      const effectData = EFFECTS[droppedEquipment.effect];
+      lines.push(`   ✨ ${effectData.emoji} ${effectData.name}`);
+    }
+  }
 
   if (levelUpDetails) {
     const hpGain = levelUpDetails.after.maxHp - levelUpDetails.before.maxHp;
@@ -353,6 +377,7 @@ function createCombatEmbed({
   status = 'ongoing',
   rewards = null,
   levelUpDetails = null,
+  droppedEquipment = null,
 }) {
   const resolvedTitle = title ?? combatResultTitle(status, session.monsterName);
 
@@ -369,6 +394,7 @@ function createCombatEmbed({
       battleLog,
       rewards,
       levelUpDetails,
+      droppedEquipment,
     });
   }
 
@@ -830,6 +856,7 @@ async function handleCombatButton({ interaction, prisma }) {
     status: outcome.status,
     rewards: outcome.rewards,
     levelUpDetails,
+    droppedEquipment: outcome.droppedEquipment,
   });
 
   const components = ended
