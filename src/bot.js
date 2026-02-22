@@ -33,6 +33,7 @@ const { SHOP_BUTTON_PREFIX } = require('./commands/shop');
 const { PRODUCTION_BUTTON_PREFIX } = require('./commands/production');
 const { GATHER_BUTTON_PREFIX } = require('./commands/gather');
 const { CRAFT_BUTTON_PREFIX } = require('./commands/craft');
+const { PSKILL_BUTTON_PREFIX } = require('./commands/production_skills');
 const { cleanupAllOldSessions } = require('./game/session-cleanup');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
@@ -484,6 +485,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 isGathering ? '📦 채집 - 자원을 수집합니다' : '',
                 isCrafting ? '⚒️ 제작 - 아이템을 만듭니다' : '',
                 '📊 자원 - 보유 자원을 확인합니다',
+                '✨ 스킬 - 생산 스킬을 배웁니다',
                 '👤 프로필 - 돌아가기',
                 '',
               ]
@@ -521,6 +523,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
               .setLabel('자원')
               .setEmoji('📊')
               .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId('production_menu_skills')
+              .setLabel('스킬')
+              .setEmoji('✨')
+              .setStyle(ButtonStyle.Success),
           );
         }
 
@@ -635,6 +642,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const resourcesCommand = client.commands.get('resources');
         if (resourcesCommand) {
           await resourcesCommand.execute(interaction, { prisma });
+        }
+        return;
+      }
+
+      if (interaction.customId === 'production_menu_skills') {
+        const pskillCommand = client.commands.get('production_skills');
+        if (pskillCommand) {
+          await pskillCommand.execute(interaction, { prisma });
         }
         return;
       }
@@ -842,6 +857,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         const handled = await craftCommand.handleCraftButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      // 생산 스킬 버튼
+      if (interaction.customId.startsWith(PSKILL_BUTTON_PREFIX)) {
+        const pskillCommand = client.commands.get('production_skills');
+
+        if (!pskillCommand) {
+          await interaction.reply({
+            content: '생산 스킬 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await pskillCommand.handleProductionSkillButton(interaction, { prisma });
 
         if (handled) {
           return;

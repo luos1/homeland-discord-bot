@@ -12,6 +12,7 @@ const {
   PRODUCTION_CLASSES,
   RESOURCES,
 } = require('../game/production-classes');
+const { canCraftRecipe } = require('../game/production-skills');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
 
 const CRAFT_BUTTON_PREFIX = 'craft:';
@@ -98,6 +99,7 @@ module.exports = {
       include: {
         craftingSessions: true,
         resources: true,
+        skills: true,
       },
     });
 
@@ -259,11 +261,14 @@ module.exports = {
     }
 
     // 새로운 제작 시작
-    const recipes = getCraftableRecipes(character.productionClass, character.productionLevel);
+    const allRecipes = getCraftableRecipes(character.productionClass, character.productionLevel);
+    
+    // 스킬 필터링
+    const recipes = allRecipes.filter((recipe) => canCraftRecipe(recipe, character));
 
     if (recipes.length === 0) {
       await interaction.reply({
-        content: '제작 가능한 레시피가 없습니다.',
+        content: '제작 가능한 레시피가 없습니다. 생산 스킬을 배워 더 많은 레시피를 잠금 해제하세요!',
         ephemeral: true,
       });
 
@@ -295,6 +300,7 @@ module.exports = {
       include: {
         craftingSessions: true,
         resources: true,
+        skills: true,
       },
     });
 

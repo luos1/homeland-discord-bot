@@ -225,7 +225,7 @@ const RECIPES = {
     },
   },
 
-  // T3 (희귀) - 대장장이 전용
+  // T3 (희귀) - 대장장이 전용 (스킬 필요)
   silver_blade: {
     key: 'silver_blade',
     name: '은빛 검',
@@ -234,6 +234,7 @@ const RECIPES = {
     craftClass: 'blacksmith',
     craftTime: 5400, // 90분
     requiredLevel: 5,
+    requiredSkill: 'advanced_smithing',
     materials: {
       silver_ore: 12,
       rare_wood: 5,
@@ -256,6 +257,7 @@ const RECIPES = {
     craftClass: 'blacksmith',
     craftTime: 6000, // 100분
     requiredLevel: 6,
+    requiredSkill: 'advanced_smithing',
     materials: {
       silver_ore: 15,
       iron_ore: 20,
@@ -272,7 +274,7 @@ const RECIPES = {
     },
   },
 
-  // T4 (영웅) - 대장장이 전용
+  // T4 (영웅) - 대장장이 전용 (마스터 스킬 필요)
   dragon_slayer: {
     key: 'dragon_slayer',
     name: '드래곤 슬레이어',
@@ -281,6 +283,7 @@ const RECIPES = {
     craftClass: 'blacksmith',
     craftTime: 7200, // 120분
     requiredLevel: 10,
+    requiredSkill: 'master_smithing',
     materials: {
       gold_ore: 20,
       gem: 10,
@@ -305,6 +308,7 @@ const RECIPES = {
     craftClass: 'blacksmith',
     craftTime: 7200, // 120분
     requiredLevel: 12,
+    requiredSkill: 'master_smithing',
     materials: {
       gold_ore: 25,
       silver_ore: 30,
