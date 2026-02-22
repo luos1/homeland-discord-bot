@@ -138,7 +138,7 @@ async function handleBossList(interaction, { prisma }) {
         '',
         createDivider(),
         '',
-        '💡 `/boss challenge [보스]`로 도전할 수 있습니다',
+        '💡 아래 버튼으로 보스에 도전할 수 있습니다',
         '⏰ 보스는 처치 후 일정 시간 후 리스폰됩니다',
       ].join('\n'),
     )
@@ -146,8 +146,41 @@ async function handleBossList(interaction, { prisma }) {
       text: '필드 보스 시스템',
     });
 
+  // 도전 가능한 보스 버튼 생성
+  const challengeButtons = bosses
+    .filter((boss) => {
+      const encounter = encounterMap[boss.id];
+      return !encounter || !encounter.respawnAt || encounter.respawnAt <= now;
+    })
+    .map((boss) =>
+      new ButtonBuilder()
+        .setCustomId(`boss_quick_challenge:${boss.id}`)
+        .setLabel(`${boss.emoji} ${boss.name}`)
+        .setStyle(ButtonStyle.Danger),
+    );
+
+  const rows = [];
+
+  if (challengeButtons.length > 0) {
+    // 최대 5개씩 나눠서 행 추가
+    for (let i = 0; i < challengeButtons.length; i += 5) {
+      const rowButtons = challengeButtons.slice(i, i + 5);
+      rows.push(new ActionRowBuilder().addComponents(rowButtons));
+    }
+  }
+
+  // 프로필로 돌아가기 버튼
+  const backButton = new ButtonBuilder()
+    .setCustomId('back_to_profile')
+    .setLabel('프로필로')
+    .setEmoji('👤')
+    .setStyle(ButtonStyle.Secondary);
+
+  rows.push(new ActionRowBuilder().addComponents(backButton));
+
   await interaction.reply({
     embeds: [embed],
+    components: rows,
   });
 }
 

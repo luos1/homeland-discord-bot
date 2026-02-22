@@ -175,6 +175,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      // 빠른 보스 도전 버튼
+      if (interaction.customId.startsWith('boss_quick_challenge:')) {
+        const bossId = interaction.customId.split(':')[1];
+        const bossCommand = client.commands.get('boss');
+        if (bossCommand) {
+          await bossCommand.execute(
+            {
+              ...interaction,
+              options: {
+                getSubcommand: () => 'challenge',
+                getString: (name) => (name === 'boss' ? bossId : null),
+              },
+              reply: (payload) => interaction.reply(payload),
+            },
+            { prisma },
+          );
+        }
+        return;
+      }
+
       if (isCombatEndButton(interaction.customId)) {
         const combatEndAction = parseCombatEndCustomId(interaction.customId);
 
@@ -376,8 +396,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         await interaction.update({
           embeds: [createProfileEmbed(character)],
-          components: [createProfileActionRow({ character })],
+          components: createProfileActionRow({ character }),
         });
+
+        return;
+      }
+
+      if (interaction.customId === PROFILE_BUTTON_IDS.boss) {
+        const bossCommand = client.commands.get('boss');
+
+        if (!bossCommand) {
+          await interaction.reply({
+            content: '보스 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        await bossCommand.execute(
+          {
+            user: interaction.user,
+            options: {
+              getSubcommand: () => 'list',
+            },
+            reply: interaction.reply.bind(interaction),
+          },
+          { prisma },
+        );
 
         return;
       }

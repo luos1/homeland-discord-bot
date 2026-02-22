@@ -28,6 +28,7 @@ const PROFILE_BUTTON_IDS = {
   production: 'profile_production',
   stats: 'profile_stats',
   endCombat: 'profile_end_combat',
+  boss: 'profile_boss',
 };
 
 async function getProfileCharacter(prisma, userId) {
@@ -151,12 +152,18 @@ function createProfileActionRow(options = {}) {
   const character = options.character ?? null;
   const hasCombat = character?.combatSession ?? false;
 
-  const buttons = [
+  const row1Buttons = [
     new ButtonBuilder()
       .setCustomId(PROFILE_BUTTON_IDS.explore)
       .setLabel('탐험')
       .setEmoji('⚔️')
       .setStyle(ButtonStyle.Primary)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId(PROFILE_BUTTON_IDS.boss)
+      .setLabel('보스')
+      .setEmoji('🐉')
+      .setStyle(ButtonStyle.Danger)
       .setDisabled(disabled),
     new ButtonBuilder()
       .setCustomId(PROFILE_BUTTON_IDS.production)
@@ -176,6 +183,9 @@ function createProfileActionRow(options = {}) {
       .setEmoji('🏪')
       .setStyle(ButtonStyle.Success)
       .setDisabled(disabled),
+  ];
+
+  const row2Buttons = [
     new ButtonBuilder()
       .setCustomId(PROFILE_BUTTON_IDS.stats)
       .setLabel('새로고침')
@@ -186,7 +196,7 @@ function createProfileActionRow(options = {}) {
 
   // 전투 중이면 전투 종료 버튼 추가
   if (hasCombat) {
-    buttons.push(
+    row2Buttons.push(
       new ButtonBuilder()
         .setCustomId(PROFILE_BUTTON_IDS.endCombat)
         .setLabel('전투 종료')
@@ -196,7 +206,10 @@ function createProfileActionRow(options = {}) {
     );
   }
 
-  return new ActionRowBuilder().addComponents(buttons);
+  return [
+    new ActionRowBuilder().addComponents(row1Buttons),
+    new ActionRowBuilder().addComponents(row2Buttons),
+  ];
 }
 
 module.exports = {
@@ -220,7 +233,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
-      components: [createProfileActionRow({ character })],
+      components: createProfileActionRow({ character }),
     });
   },
   PROFILE_BUTTON_IDS,
