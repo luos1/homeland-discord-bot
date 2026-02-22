@@ -129,6 +129,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
+      // 캐릭터 삭제 확인 버튼
+      if (interaction.customId === 'confirm_delete_character' || interaction.customId === 'cancel_delete_character') {
+        const deleteCommand = client.commands.get('delete_character');
+        if (deleteCommand && deleteCommand.handleButton) {
+          await deleteCommand.handleButton(interaction, { prisma });
+        }
+        return;
+      }
+
       if (isCombatButton(interaction.customId)) {
         await handleCombatButton({ interaction, prisma });
         return;
