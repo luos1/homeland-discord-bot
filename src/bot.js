@@ -29,6 +29,7 @@ const {
 const { getPlayCreateClassChoice } = require('./commands/play');
 const { JOBCHANGE_BUTTON_PREFIX } = require('./commands/jobchange');
 const { INVENTORY_BUTTON_PREFIX } = require('./commands/inventory');
+const { SHOP_BUTTON_PREFIX } = require('./commands/shop');
 const { cleanupAllOldSessions } = require('./game/session-cleanup');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
@@ -332,10 +333,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (interaction.customId === PROFILE_BUTTON_IDS.shop) {
-        await interaction.reply({
-          content: '상점 시스템은 2주차에 구현됩니다.',
-          ephemeral: true,
-        });
+        const shopCommand = client.commands.get('shop');
+
+        if (!shopCommand) {
+          await interaction.reply({
+            content: '상점 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        await shopCommand.execute(
+          {
+            user: interaction.user,
+            reply: interaction.reply.bind(interaction),
+          },
+          { prisma, client },
+        );
 
         return;
       }
@@ -535,6 +550,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         const handled = await jobchangeCommand.handleJobChangeButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      // 상점 버튼
+      if (interaction.customId.startsWith(SHOP_BUTTON_PREFIX)) {
+        const shopCommand = client.commands.get('shop');
+
+        if (!shopCommand) {
+          await interaction.reply({
+            content: '상점 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await shopCommand.handleShopButton(interaction, { prisma });
 
         if (handled) {
           return;

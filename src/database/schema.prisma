@@ -40,20 +40,21 @@ model Character {
 }
 
 model Equipment {
-  id          Int       @id @default(autoincrement())
-  characterId Int
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  name        String
-  type        String
-  rarity      String
-  attack      Int       @default(0)
-  defense     Int       @default(0)
-  hp          Int       @default(0)
-  mana        Int       @default(0)
-  effect      String?
-  equipped    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           Int       @id @default(autoincrement())
+  characterId  Int
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name         String
+  type         String
+  rarity       String
+  attack       Int       @default(0)
+  defense      Int       @default(0)
+  hp           Int       @default(0)
+  mana         Int       @default(0)
+  effect       String?
+  equipped     Boolean   @default(false)
+  upgradeLevel Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([characterId])
   @@index([equipped])
