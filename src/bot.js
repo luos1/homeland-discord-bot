@@ -6,6 +6,7 @@ const path = require('node:path');
 const {
   Client,
   Collection,
+  EmbedBuilder,
   Events,
   GatewayIntentBits,
   REST,
@@ -332,7 +333,79 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         await interaction.update({
           embeds: [createProfileEmbed(character)],
-          components: [createProfileActionRow()],
+          components: [createProfileActionRow({ character })],
+        });
+
+        return;
+      }
+
+      if (interaction.customId === PROFILE_BUTTON_IDS.endCombat) {
+        const character = await prisma.character.findUnique({
+          where: {
+            userId: interaction.user.id,
+          },
+          include: {
+            combatSession: true,
+          },
+        });
+
+        if (!character) {
+          await interaction.reply({
+            content: '캐릭터가 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        if (!character.combatSession) {
+          await interaction.reply({
+            content: '진행 중인 전투가 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        // 전투 세션 강제 종료 + 체력/마나 완전 회복
+        await prisma.$transaction(async (tx) => {
+          await tx.combatSession.delete({
+            where: {
+              id: character.combatSession.id,
+            },
+          });
+
+          await tx.character.update({
+            where: {
+              id: character.id,
+            },
+            data: {
+              hp: character.maxHp,
+              mana: character.maxMana || 0,
+            },
+          });
+        });
+
+        // 최신 상태 다시 불러오기
+        const refreshedCharacter = await getProfileCharacter(prisma, interaction.user.id);
+
+        const { EMBED_COLORS } = require('./utils/ui');
+        const successEmbed = new EmbedBuilder()
+          .setColor(EMBED_COLORS.warning)
+          .setTitle('🔄 전투 종료 완료')
+          .setDescription(
+            [
+              '✅ 진행 중이던 전투를 종료했습니다.',
+              '💊 체력과 마나가 완전히 회복되었습니다.',
+              '',
+              `❤️ HP: ${character.maxHp}/${character.maxHp}`,
+              `🔷 MP: ${character.maxMana || 0}/${character.maxMana || 0}`,
+            ].join('\n'),
+          );
+
+        await interaction.update({
+          embeds: [successEmbed],
+          components: [createProfileActionRow({ character: refreshedCharacter })],
         });
 
         return;

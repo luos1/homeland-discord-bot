@@ -26,6 +26,7 @@ const PROFILE_BUTTON_IDS = {
   inventory: 'profile_inventory',
   shop: 'profile_shop',
   stats: 'profile_stats',
+  endCombat: 'profile_end_combat',
 };
 
 async function getProfileCharacter(prisma, userId) {
@@ -133,8 +134,10 @@ function createProfileEmbed(character) {
 
 function createProfileActionRow(options = {}) {
   const disabled = options.disabled ?? false;
+  const character = options.character ?? null;
+  const hasCombat = character?.combatSession ?? false;
 
-  return new ActionRowBuilder().addComponents(
+  const buttons = [
     new ButtonBuilder()
       .setCustomId(PROFILE_BUTTON_IDS.explore)
       .setLabel('탐험')
@@ -159,7 +162,21 @@ function createProfileActionRow(options = {}) {
       .setEmoji('📈')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
-  );
+  ];
+
+  // 전투 중이면 전투 종료 버튼 추가
+  if (hasCombat) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(PROFILE_BUTTON_IDS.endCombat)
+        .setLabel('전투 종료')
+        .setEmoji('🔄')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(disabled),
+    );
+  }
+
+  return new ActionRowBuilder().addComponents(buttons);
 }
 
 module.exports = {
@@ -183,7 +200,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
-      components: [createProfileActionRow()],
+      components: [createProfileActionRow({ character })],
     });
   },
   PROFILE_BUTTON_IDS,
