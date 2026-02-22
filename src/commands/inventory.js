@@ -222,12 +222,15 @@ function createInventoryActionRow(equipmentList) {
 function createSkillActionRow(skills) {
   const equipped = skills.filter((s) => s.equipped);
   const unequipped = skills.filter((s) => !s.equipped);
-  const buttons = [];
+  const rows = [];
 
-  // 미장착 스킬 장착 버튼 (최대 3개 슬롯)
-  if (equipped.length < 3) {
-    unequipped.slice(0, 3).forEach((skill, index) => {
-      buttons.push(
+  // 첫 번째 행: 장착/해제 버튼 (최대 5개)
+  const actionButtons = [];
+
+  if (equipped.length < 3 && unequipped.length > 0) {
+    // 미장착 스킬 장착 버튼 (최대 3개)
+    unequipped.slice(0, Math.min(3, 3 - equipped.length)).forEach((skill, index) => {
+      actionButtons.push(
         new ButtonBuilder()
           .setCustomId(`${INVENTORY_BUTTON_PREFIX}${INVENTORY_ACTION.equipSkill}:${skill.id}`)
           .setLabel(`${index + 1}. 장착`)
@@ -237,8 +240,25 @@ function createSkillActionRow(skills) {
     });
   }
 
-  // 탭 전환 버튼
-  buttons.push(
+  if (equipped.length > 0) {
+    // 장착된 스킬 해제 버튼 (최대 3개)
+    equipped.slice(0, Math.min(3, 5 - actionButtons.length)).forEach((skill, index) => {
+      actionButtons.push(
+        new ButtonBuilder()
+          .setCustomId(`${INVENTORY_BUTTON_PREFIX}${INVENTORY_ACTION.unequipSkill}:${skill.id}`)
+          .setLabel(`${index + 1}. 해제`)
+          .setEmoji('❌')
+          .setStyle(ButtonStyle.Danger)
+      );
+    });
+  }
+
+  if (actionButtons.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(actionButtons));
+  }
+
+  // 두 번째 행: 탭 전환 버튼
+  const navButtons = [
     new ButtonBuilder()
       .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:equipment`)
       .setLabel('장비')
@@ -253,10 +273,12 @@ function createSkillActionRow(skills) {
       .setCustomId('back_to_profile')
       .setLabel('프로필로')
       .setEmoji('👤')
-      .setStyle(ButtonStyle.Secondary)
-  );
+      .setStyle(ButtonStyle.Secondary),
+  ];
 
-  return new ActionRowBuilder().addComponents(buttons);
+  rows.push(new ActionRowBuilder().addComponents(navButtons));
+
+  return rows;
 }
 
 function createConsumableActionRow(consumables) {
@@ -459,7 +481,7 @@ module.exports = {
       if (param === INVENTORY_TAB.skill) {
         await interaction.update({
           embeds: [createSkillInventoryEmbed(character, character.skills || [])],
-          components: [createSkillActionRow(character.skills || [])],
+          components: createSkillActionRow(character.skills || []),
         });
 
         return true;
