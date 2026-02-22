@@ -53,15 +53,22 @@ function createPlayCreateEmbed() {
 }
 
 function createPlayCreateActionRow() {
-  const classButtons = PLAY_CREATE_CLASS_KEYS.map((classKey) =>
-    new ButtonBuilder()
+  const classButtons = PLAY_CREATE_CLASS_KEYS.map((classKey) => {
+    const button = new ButtonBuilder()
       .setCustomId(`${PLAY_CREATE_BUTTON_PREFIX}${classKey}`)
       .setLabel(CLASS_PRESETS[classKey].label)
-      .setEmoji(PLAY_CREATE_BUTTON_EMOJIS[classKey])
-      .setStyle(PLAY_CREATE_BUTTON_STYLES[classKey] ?? ButtonStyle.Secondary),
-  );
+      .setStyle(PLAY_CREATE_BUTTON_STYLES[classKey] ?? ButtonStyle.Secondary);
+    
+    // Emoji는 선택적으로 추가
+    const emoji = PLAY_CREATE_BUTTON_EMOJIS[classKey];
+    if (emoji) {
+      button.setEmoji(emoji);
+    }
+    
+    return button;
+  });
 
-  return new ActionRowBuilder().addComponents(classButtons);
+  return new ActionRowBuilder().addComponents(...classButtons);
 }
 
 function getPlayCreateClassChoice(customId) {
