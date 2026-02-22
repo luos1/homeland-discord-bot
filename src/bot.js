@@ -30,6 +30,8 @@ const { getPlayCreateClassChoice } = require('./commands/play');
 const { JOBCHANGE_BUTTON_PREFIX } = require('./commands/jobchange');
 const { INVENTORY_BUTTON_PREFIX } = require('./commands/inventory');
 const { SHOP_BUTTON_PREFIX } = require('./commands/shop');
+const { PRODUCTION_BUTTON_PREFIX } = require('./commands/production');
+const { GATHER_BUTTON_PREFIX } = require('./commands/gather');
 const { cleanupAllOldSessions } = require('./game/session-cleanup');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
@@ -570,6 +572,46 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         const handled = await shopCommand.handleShopButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      // 생산 버튼
+      if (interaction.customId.startsWith(PRODUCTION_BUTTON_PREFIX)) {
+        const productionCommand = client.commands.get('production');
+
+        if (!productionCommand) {
+          await interaction.reply({
+            content: '생산 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await productionCommand.handleProductionButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      // 채집 버튼
+      if (interaction.customId.startsWith(GATHER_BUTTON_PREFIX)) {
+        const gatherCommand = client.commands.get('gather');
+
+        if (!gatherCommand) {
+          await interaction.reply({
+            content: '채집 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await gatherCommand.handleGatherButton(interaction, { prisma });
 
         if (handled) {
           return;

@@ -16,28 +16,34 @@ model User {
 }
 
 model Character {
-  id            Int            @id @default(autoincrement())
-  userId        String         @unique
-  user          User           @relation(fields: [userId], references: [discordId], onDelete: Cascade)
-  name          String
-  class         String
-  advancedClass String?
-  level         Int            @default(1)
-  xp            Int            @default(0)
-  hp            Int            @default(100)
-  maxHp         Int            @default(100)
-  mana          Int            @default(40)
-  maxMana       Int            @default(40)
-  attack        Int            @default(10)
-  defense       Int            @default(5)
-  gold          Int            @default(0)
-  winStreak     Int            @default(0)
-  maxWinStreak  Int            @default(0)
-  combatSession CombatSession?
-  equipment     Equipment[]
-  skills        Skill[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id               Int                @id @default(autoincrement())
+  userId           String             @unique
+  user             User               @relation(fields: [userId], references: [discordId], onDelete: Cascade)
+  name             String
+  class            String
+  advancedClass    String?
+  productionClass  String?
+  level            Int                @default(1)
+  xp               Int                @default(0)
+  hp               Int                @default(100)
+  maxHp            Int                @default(100)
+  mana             Int                @default(40)
+  maxMana          Int                @default(40)
+  attack           Int                @default(10)
+  defense          Int                @default(5)
+  gold             Int                @default(0)
+  winStreak        Int                @default(0)
+  maxWinStreak     Int                @default(0)
+  productionLevel  Int                @default(1)
+  productionXp     Int                @default(0)
+  combatSession    CombatSession?
+  equipment        Equipment[]
+  skills           Skill[]
+  resources        Resource[]
+  gatherSessions   GatherSession[]
+  craftingSessions CraftingSession[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 }
 
 model Equipment {
@@ -76,23 +82,61 @@ model Skill {
   @@index([equipped])
 }
 
+model Resource {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  type        String
+  name        String
+  quantity    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, type])
+  @@index([characterId])
+}
+
+model GatherSession {
+  id             String    @id @default(cuid())
+  characterId    Int       @unique
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  resourceType   String
+  startedAt      DateTime  @default(now())
+  completesAt    DateTime
+  quantity       Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model CraftingSession {
+  id          String    @id @default(cuid())
+  characterId Int       @unique
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  recipeKey   String
+  startedAt   DateTime  @default(now())
+  completesAt DateTime
+  quantity    Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model CombatSession {
-  id              String    @id @default(cuid())
-  characterId     Int       @unique
-  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  zone            String
-  monsterName     String
-  monsterHp       Int
-  monsterMaxHp    Int
-  monsterAttack   Int
-  monsterDefense  Int
-  monsterXpReward Int
-  monsterGoldMin  Int
-  monsterGoldMax  Int
-  playerHp        Int
-  playerDefending Boolean   @default(false)
-  potionsRemaining Int      @default(3)
-  turn            Int       @default(1)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  characterId      Int       @unique
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  zone             String
+  monsterName      String
+  monsterHp        Int
+  monsterMaxHp     Int
+  monsterAttack    Int
+  monsterDefense   Int
+  monsterXpReward  Int
+  monsterGoldMin   Int
+  monsterGoldMax   Int
+  playerHp         Int
+  playerDefending  Boolean   @default(false)
+  potionsRemaining Int       @default(3)
+  turn             Int       @default(1)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
