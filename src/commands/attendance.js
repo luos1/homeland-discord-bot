@@ -14,9 +14,14 @@ const {
   createDivider,
   formatNumber,
 } = require('../utils/ui');
+const { resolvePremiumBenefits } = require('../game/premium');
 
-function createRewardLines({ rewardPlan, grantedEquipment }) {
+function createRewardLines({ rewardPlan, grantedEquipment, premiumDailyGems = 0 }) {
   const lines = [`💰 골드 +${formatNumber(rewardPlan.gold)}G`];
+
+  if (premiumDailyGems > 0) {
+    lines.push(`💠 프리미엄 일일 젬 +${formatNumber(premiumDailyGems)}`);
+  }
 
   rewardPlan.consumables.forEach((item) => {
     lines.push(item.displayName);
@@ -144,6 +149,12 @@ module.exports = {
     }
 
     const todayDateKey = getDateKeyInKST();
+    const premiumSubscription = await prisma.premiumSubscription.findUnique({
+      where: {
+        userId: interaction.user.id,
+      },
+    });
+    const premiumBenefits = resolvePremiumBenefits(premiumSubscription);
 
     const latestRecord = await prisma.attendanceRecord.findFirst({
       where: {
@@ -180,6 +191,13 @@ module.exports = {
               gold: {
                 increment: rewardPlan.gold,
               },
+              ...(premiumBenefits.dailyGemBonus > 0
+                ? {
+                    gems: {
+                      increment: premiumBenefits.dailyGemBonus,
+                    },
+                  }
+                : {}),
             },
           });
 
@@ -240,6 +258,7 @@ module.exports = {
         rewardLines = createRewardLines({
           rewardPlan,
           grantedEquipment: claimResult.grantedEquipment,
+          premiumDailyGems: premiumBenefits.dailyGemBonus,
         });
       } catch (error) {
         if (error.code === 'P2002') {

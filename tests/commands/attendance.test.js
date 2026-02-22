@@ -211,4 +211,50 @@ describe('attendance command', () => {
     const payload = interaction.reply.mock.calls[0][0];
     expect(payload.embeds[0].data.description).toContain('다시 시작');
   });
+
+  test('프리미엄 출석: 일일 젬 보너스를 추가 지급한다', async () => {
+    const interaction = createMockInteraction();
+    const character = createCharacter({
+      id: 14,
+      userId: interaction.user.id,
+      level: 10,
+      gems: 3,
+    });
+
+    prisma.character.findUnique.mockResolvedValue(character);
+    prisma.premiumSubscription.findUnique.mockResolvedValue({
+      userId: interaction.user.id,
+      planId: 'premium_monthly_999',
+      startDate: new Date('2026-02-01T00:00:00.000Z'),
+      endDate: new Date('2026-03-10T00:00:00.000Z'),
+    });
+    prisma.attendanceRecord.findFirst.mockResolvedValue(null);
+    prisma.attendanceRecord.findMany.mockResolvedValue([
+      { characterId: character.id, date: '2026-02-22', streak: 1, claimed: true },
+    ]);
+    prisma.attendanceRecord.findUnique.mockResolvedValue({
+      characterId: character.id,
+      date: '2026-02-22',
+      streak: 1,
+      claimed: true,
+    });
+    prisma.attendanceRecord.aggregate.mockResolvedValue({ _max: { streak: 1 } });
+
+    await attendanceCommand.execute(interaction, { prisma });
+
+    expect(tx.character.update).toHaveBeenCalledWith({
+      where: { id: character.id },
+      data: {
+        gold: {
+          increment: 100,
+        },
+        gems: {
+          increment: 10,
+        },
+      },
+    });
+
+    const payload = interaction.reply.mock.calls[0][0];
+    expect(payload.embeds[0].data.description).toContain('프리미엄 일일 젬');
+  });
 });

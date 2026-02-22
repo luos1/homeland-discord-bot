@@ -1,5 +1,6 @@
 const { COMBAT_ACTIONS, resolveCombatTurn } = require('../../src/game/combat');
 const { MONSTERS, ZONE_TYPES, getZone } = require('../../src/game/monsters');
+const { COMBAT_GOLD_SOURCE_MULTIPLIER } = require('../../src/game/economy');
 const { createCharacter } = require('../helpers/factories');
 
 function createZone4Session(overrides = {}) {
@@ -104,10 +105,10 @@ describe('zone4 content and combat', () => {
       Math.floor(baseMonster.xpReward * ZONE_TYPES.yellow.xpMultiplier),
     );
     expect(outcome.rewards.goldReward).toBeGreaterThanOrEqual(
-      Math.floor(baseMonster.goldMin * ZONE_TYPES.yellow.goldMultiplier),
+      Math.floor(baseMonster.goldMin * ZONE_TYPES.yellow.goldMultiplier * COMBAT_GOLD_SOURCE_MULTIPLIER),
     );
     expect(outcome.rewards.goldReward).toBeLessThanOrEqual(
-      Math.floor(baseMonster.goldMax * ZONE_TYPES.yellow.goldMultiplier),
+      Math.floor(baseMonster.goldMax * ZONE_TYPES.yellow.goldMultiplier * COMBAT_GOLD_SOURCE_MULTIPLIER),
     );
   });
 

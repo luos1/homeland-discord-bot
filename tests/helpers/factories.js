@@ -7,6 +7,7 @@ function createCharacter(overrides = {}) {
     level: 1,
     xp: 0,
     gold: 100,
+    gems: 0,
     hp: 120,
     maxHp: 120,
     mana: 36,
@@ -26,6 +27,7 @@ function createCharacter(overrides = {}) {
     skills: [],
     resources: [],
     marketListings: [],
+    premiumSubscription: null,
     ...overrides,
   };
 }
@@ -97,6 +99,7 @@ function createMarketListing(overrides = {}) {
     quantity: 5,
     pricePerUnit: 50,
     totalPrice: 250,
+    itemData: null,
     status: 'active',
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     soldAt: null,

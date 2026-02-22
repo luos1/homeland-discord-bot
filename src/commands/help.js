@@ -9,7 +9,7 @@ const COMMAND_GROUPS = [
   },
   {
     title: '⚔️ 전투/성장',
-    names: ['explore', 'boss', 'jobchange', 'production_jobchange', 'ranking', 'reset', 'cleanup'],
+    names: ['explore', 'boss', 'jobchange', 'production_jobchange', 'ranking', 'reset'],
   },
   {
     title: '🔨 생산',
@@ -17,7 +17,7 @@ const COMMAND_GROUPS = [
   },
   {
     title: '💰 경제/인벤토리',
-    names: ['shop', 'shop_skills', 'market', 'inventory'],
+    names: ['shop', 'shop_skills', 'market', 'gem', 'premium', 'inventory'],
   },
   {
     title: '📅 시즌/이벤트',
@@ -25,7 +25,7 @@ const COMMAND_GROUPS = [
   },
   {
     title: '🛠️ 관리',
-    names: ['delete_character'],
+    names: ['cleanup', 'economy_admin', 'delete_character'],
   },
 ];
 

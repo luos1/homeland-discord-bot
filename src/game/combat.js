@@ -12,6 +12,8 @@ const { shouldDropEquipment, generateEquipment } = require('./equipment');
 const { calculateStreakBonus, updateWinStreak, resetWinStreak } = require('./streak');
 const { getAdvancedSkillByKey } = require('./advanced-skills');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests');
+const { resolvePremiumBenefits } = require('./premium');
+const { calculateCombatGoldReward, applyCombatEconomyAdjustments } = require('./economy');
 const {
   handleOnboardingEvent,
   sendOnboardingFeedback,
@@ -507,7 +509,14 @@ function buildVictoryDescription({
   lines.push('');
   lines.push('🎁 보상');
   lines.push(`✨ 경험치 +${rewards?.xpReward ?? 0}`);
-  lines.push(`💰 골드 +${rewards?.goldReward ?? 0}G`);
+  const goldDelta = rewards?.goldReward ?? 0;
+  lines.push(`💰 골드 ${goldDelta >= 0 ? '+' : ''}${goldDelta}G`);
+
+  if ((rewards?.repairCost || 0) > 0) {
+    lines.push(`🔧 수리비 -${rewards.repairCost}G`);
+    const netGoldReward = rewards?.netGoldReward ?? 0;
+    lines.push(`💵 실수령 ${netGoldReward >= 0 ? '+' : ''}${netGoldReward}G`);
+  }
 
   if (droppedEquipment) {
     const { RARITIES, EQUIPMENT_TYPES } = require('./equipment');
@@ -989,6 +998,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
     // 연승 업데이트
     const streakResult = updateWinStreak(character);
     const streakBonus = calculateStreakBonus(streakResult.newStreak);
+    const premiumBenefits = resolvePremiumBenefits(character.premiumSubscription);
 
     // 존별 보상 배율
     const zoneData = getZoneWithTypeData(session.zone);
@@ -997,13 +1007,30 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
 
     // 연승 + 존 보너스 적용
     let baseXpReward = session.monsterXpReward;
-    let baseGoldReward = randomInt(session.monsterGoldMin, session.monsterGoldMax);
+    const goldRoll = calculateCombatGoldReward({
+      monsterGoldMin: session.monsterGoldMin,
+      monsterGoldMax: session.monsterGoldMax,
+      zoneGoldMultiplier: zoneGoldMult,
+      streakGoldBonus: streakBonus.goldBonus,
+      specialGoldBonus: streakBonus.specialRewards.gold,
+      premiumGoldMultiplier: premiumBenefits.goldMultiplier,
+      randomFn: Math.random,
+    });
 
     const xpReward = Math.floor(
-      baseXpReward * zoneXpMult * (1 + streakBonus.xpBonus) + streakBonus.specialRewards.xp,
+      (baseXpReward * zoneXpMult * (1 + streakBonus.xpBonus) + streakBonus.specialRewards.xp) *
+        premiumBenefits.xpMultiplier,
     );
-    const goldReward = Math.floor(
-      baseGoldReward * zoneGoldMult * (1 + streakBonus.goldBonus) + streakBonus.specialRewards.gold,
+    const economyAdjustment = applyCombatEconomyAdjustments({
+      currentGold: character.gold,
+      grossGoldReward: goldRoll.grossReward,
+      maxHp: character.maxHp,
+      currentHp: playerHp,
+      level: character.level,
+      isDefeat: false,
+    });
+    const netGoldReward = Math.floor(
+      economyAdjustment.nextGold - character.gold,
     );
 
     // 전투 종료 화면에서 레벨업 수치를 즉시 보여주기 위해 XP를 바로 반영한다.
@@ -1017,11 +1044,20 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       ...leveling.characterUpdate,
       ...streakResult.updates,
       mana: recoveredMana,
-      gold: character.gold + goldReward,
+      gold: economyAdjustment.nextGold,
       battleWins: (character.battleWins || 0) + 1,
     };
 
-    battleLog.push(`🎁 경험치 +${xpReward}, 골드 +${goldReward}G 획득!`);
+    battleLog.push(`🎁 경험치 +${xpReward}, 골드 +${goldRoll.grossReward}G 획득!`);
+    if (economyAdjustment.appliedRepair > 0) {
+      battleLog.push(`🔧 장비 수리비 -${economyAdjustment.appliedRepair}G`);
+      battleLog.push(`💰 실수령 ${netGoldReward >= 0 ? '+' : ''}${netGoldReward}G`);
+    }
+    if (premiumBenefits.active) {
+      battleLog.push(
+        `👑 Premium 보너스: 경험치 +${Math.round((premiumBenefits.xpMultiplier - 1) * 100)}%, 골드 +${Math.round((premiumBenefits.goldMultiplier - 1) * 100)}%`,
+      );
+    }
 
     // 연승 메시지 추가
     if (streakResult.messages.length > 0) {
@@ -1099,7 +1135,9 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       characterUpdate,
       rewards: {
         xpReward,
-        goldReward,
+        goldReward: goldRoll.grossReward,
+        netGoldReward,
+        repairCost: economyAdjustment.appliedRepair,
         levelsGained: leveling.levelsGained,
       },
       droppedEquipment,
@@ -1166,6 +1204,23 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       battleLog.push(`💔 ${character.winStreak}연승이 끊어졌습니다...`);
     }
 
+    const defeatEconomy = applyCombatEconomyAdjustments({
+      currentGold: character.gold,
+      grossGoldReward: 0,
+      maxHp: character.maxHp,
+      currentHp: playerHp,
+      level: character.level,
+      isDefeat: true,
+    });
+
+    if (defeatEconomy.appliedRepair > 0) {
+      battleLog.push(`🔧 수리비 -${defeatEconomy.appliedRepair}G`);
+    }
+
+    if (defeatEconomy.appliedDeathPenalty > 0) {
+      battleLog.push(`💀 패배 페널티 -${defeatEconomy.appliedDeathPenalty}G`);
+    }
+
     return {
       status: 'defeat',
       battleLog,
@@ -1178,6 +1233,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       },
       characterUpdate: {
         ...streakReset,
+        gold: defeatEconomy.nextGold,
         hp: character.maxHp,
         mana: maxMana,
       },
@@ -1274,6 +1330,7 @@ async function handleCombatButton({ interaction, prisma }) {
       character: {
         include: {
           skills: true,
+          premiumSubscription: true,
         },
       },
     },

@@ -3,24 +3,302 @@ const {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  ModalBuilder,
   SlashCommandBuilder,
   StringSelectMenuBuilder,
-  ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
 } = require('discord.js');
 
 const { RESOURCES } = require('../game/production-classes');
+const { EQUIPMENT_TYPES, RARITIES } = require('../game/equipment');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('../game/daily-quests');
+const { logTradePricePoint } = require('../game/economy-monitor');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
 const {
   handleOnboardingEvent,
   maybeSendGuideTip,
   sendOnboardingFeedback,
 } = require('../game/onboarding');
+const {
+  MARKET_FEE_RATE,
+  PRICE_LOOKBACK_HOURS,
+  getResourceBasePrice,
+  calculateNpcResourcePrice,
+} = require('../game/economy');
 
 const MARKET_BUTTON_PREFIX = 'market:';
-const MARKET_FEE_RATE = 0.1; // 10% 수수료
+const MAX_PRICE_PER_UNIT = 100000;
+const ORDERBOOK_DEPTH = 5;
+const RECENT_TRADE_LIMIT = 5;
+const MAX_SELECT_OPTIONS = 25;
+const EQUIPMENT_MAX_PRICE = 100000000;
+const EQUIPMENT_RARITY_FILTERS = {
+  all: { label: '전체', emoji: '📋' },
+  common: { label: '일반', emoji: '⚪' },
+  rare: { label: '희귀', emoji: '🔵' },
+  epic: { label: '영웅', emoji: '🟣' },
+  legendary: { label: '전설', emoji: '🟠' },
+};
+const EQUIPMENT_TYPE_FILTERS = {
+  all: { label: '전체', emoji: '📋' },
+  weapon: { label: '무기', emoji: '⚔️' },
+  armor: { label: '방어구', emoji: '🛡️' },
+};
+const NPC_TRADER_ID = 0;
+
+function getResourceInfo(itemKey) {
+  const resource = RESOURCES[itemKey];
+
+  if (!resource) {
+    return {
+      key: itemKey,
+      name: itemKey,
+      emoji: '📦',
+      tier: 0,
+    };
+  }
+
+  return {
+    key: itemKey,
+    name: resource.name,
+    emoji: resource.emoji,
+    tier: resource.tier,
+  };
+}
+
+function formatGold(value) {
+  return `${value.toLocaleString('ko-KR')}G`;
+}
+
+function truncateLabel(text, maxLength = 100) {
+  if (!text || text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 3)}...`;
+}
+
+function normalizeEquipmentCategory(type) {
+  return type === 'weapon' ? 'weapon' : 'armor';
+}
+
+function normalizeEquipmentFilters(filters = {}) {
+  const rarity = filters.rarity || 'all';
+  const type = filters.type || 'all';
+
+  return {
+    rarity: EQUIPMENT_RARITY_FILTERS[rarity] ? rarity : 'all',
+    type: EQUIPMENT_TYPE_FILTERS[type] ? type : 'all',
+  };
+}
+
+function getEquipmentListingData(listing) {
+  if (!listing.itemData || typeof listing.itemData !== 'object') {
+    return {};
+  }
+
+  return listing.itemData;
+}
+
+function createEquipmentSnapshot(equipment) {
+  return {
+    name: equipment.name,
+    type: equipment.type,
+    rarity: equipment.rarity,
+    attack: equipment.attack,
+    defense: equipment.defense,
+    hp: equipment.hp,
+    mana: equipment.mana,
+    effect: equipment.effect,
+    upgradeLevel: equipment.upgradeLevel || 0,
+  };
+}
+
+function buildEquipmentFromSnapshot(snapshot, characterId, fallbackName = '알 수 없는 장비') {
+  const toInt = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.floor(parsed) : fallback;
+  };
+
+  return {
+    characterId,
+    name: snapshot.name || fallbackName,
+    type: snapshot.type || 'weapon',
+    rarity: snapshot.rarity || 'common',
+    attack: toInt(snapshot.attack, 0),
+    defense: toInt(snapshot.defense, 0),
+    hp: toInt(snapshot.hp, 0),
+    mana: toInt(snapshot.mana, 0),
+    effect: snapshot.effect || null,
+    equipped: false,
+    upgradeLevel: toInt(snapshot.upgradeLevel, 0),
+  };
+}
+
+function formatEquipmentListingLine(listing, index) {
+  const data = getEquipmentListingData(listing);
+  const rarityData = RARITIES[data.rarity || 'common'] || { emoji: '⚪', name: '일반' };
+  const typeData = EQUIPMENT_TYPES[data.type || 'weapon'] || { emoji: '⚔️', name: '장비' };
+  const levelSuffix = data.upgradeLevel > 0 ? ` +${data.upgradeLevel}` : '';
+  const stats = [
+    `⚔️${data.attack || 0}`,
+    `🛡️${data.defense || 0}`,
+    `❤️${data.hp || 0}`,
+    `🔷${data.mana || 0}`,
+  ].join(' ');
+
+  return `${index + 1}. ${rarityData.emoji} ${typeData.emoji} **${listing.itemName}${levelSuffix}**\n   ${rarityData.name} | ${typeData.name} | ${formatGold(listing.totalPrice)}\n   ${stats}`;
+}
+
+function filterEquipmentListings(listings, filters) {
+  return listings.filter((listing) => {
+    const data = getEquipmentListingData(listing);
+    const rarityMatched = filters.rarity === 'all' || data.rarity === filters.rarity;
+    const typeMatched =
+      filters.type === 'all' ||
+      normalizeEquipmentCategory(data.type || 'weapon') === filters.type;
+
+    return rarityMatched && typeMatched;
+  });
+}
+
+function createEquipmentMarketEmbed(listings, filters) {
+  const rarity = EQUIPMENT_RARITY_FILTERS[filters.rarity];
+  const type = EQUIPMENT_TYPE_FILTERS[filters.type];
+
+  return new EmbedBuilder()
+    .setColor(EMBED_COLORS.profile)
+    .setTitle('⚔️ 장비 거래소')
+    .setDescription(
+      [
+        createDivider(),
+        `📊 등록 수: ${listings.length}개`,
+        `🔎 등급: ${rarity.emoji} ${rarity.label}`,
+        `🔎 타입: ${type.emoji} ${type.label}`,
+        '',
+        listings.length > 0
+          ? listings.map((listing, index) => formatEquipmentListingLine(listing, index)).join('\n\n')
+          : '조건에 맞는 장비가 없습니다',
+        '',
+        createDivider(),
+        '',
+        '💡 구매하려면 장비를 선택하세요',
+        '💡 판매하려면 "등록" 버튼을 누르세요',
+      ].join('\n'),
+    )
+    .setFooter({
+      text: `거래 수수료 ${Math.round(MARKET_FEE_RATE * 100)}% (판매자 부담)`,
+    });
+}
+
+function createEquipmentMarketActionRows(listings, filters) {
+  const rows = [];
+  const buyOptions = listings.slice(0, MAX_SELECT_OPTIONS).map((listing) => {
+    const data = getEquipmentListingData(listing);
+    const rarityData = RARITIES[data.rarity || 'common'] || { emoji: '⚪', name: '일반' };
+    const typeData = EQUIPMENT_TYPES[data.type || 'weapon'] || { name: '장비' };
+    const levelSuffix = data.upgradeLevel > 0 ? ` +${data.upgradeLevel}` : '';
+
+    return {
+      value: `${listing.id}`,
+      label: truncateLabel(`${listing.itemName}${levelSuffix}`),
+      description: truncateLabel(`${rarityData.name} ${typeData.name} | ${formatGold(listing.totalPrice)}`),
+      emoji: rarityData.emoji,
+    };
+  });
+
+  if (buyOptions.length > 0) {
+    rows.push(
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`${MARKET_BUTTON_PREFIX}equipmentbuy`)
+          .setPlaceholder('구매할 장비를 선택하세요')
+          .addOptions(buyOptions),
+      ),
+    );
+  }
+
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}eqfilterrarity:${filters.type}`)
+        .setPlaceholder('등급 필터')
+        .addOptions(
+          Object.entries(EQUIPMENT_RARITY_FILTERS).map(([value, info]) => ({
+            value,
+            label: info.label,
+            emoji: info.emoji,
+            default: value === filters.rarity,
+          })),
+        ),
+    ),
+  );
+
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}eqfiltertype:${filters.rarity}`)
+        .setPlaceholder('타입 필터')
+        .addOptions(
+          Object.entries(EQUIPMENT_TYPE_FILTERS).map(([value, info]) => ({
+            value,
+            label: info.label,
+            emoji: info.emoji,
+            default: value === filters.type,
+          })),
+        ),
+    ),
+  );
+
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}equipmentsell`)
+        .setLabel('등록')
+        .setEmoji('💰')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}back`)
+        .setLabel('뒤로')
+        .setEmoji('🔙')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  );
+
+  return rows;
+}
+
+async function renderEquipmentMarket(interaction, prisma, filters = {}) {
+  const normalizedFilters = normalizeEquipmentFilters(filters);
+  const activeListings = await prisma.marketListing.findMany({
+    where: {
+      itemType: 'equipment',
+      status: 'active',
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+  const filtered = filterEquipmentListings(activeListings, normalizedFilters);
+
+  await interaction.update({
+    embeds: [createEquipmentMarketEmbed(filtered, normalizedFilters)],
+    components: createEquipmentMarketActionRows(filtered, normalizedFilters),
+  });
+}
+
+function formatTrendLabel(trend) {
+  if (trend === 'up') {
+    return '📈 상승';
+  }
+
+  if (trend === 'down') {
+    return '📉 하락';
+  }
+
+  return '➖ 안정';
+}
 
 function createMarketMainEmbed() {
   return new EmbedBuilder()
@@ -29,21 +307,18 @@ function createMarketMainEmbed() {
     .setDescription(
       [
         createDivider(),
-        '**플레이어 간 거래소**',
+        '**양방향 주문장 거래소**',
         '',
-        '📦 자원과 장비를 사고팔 수 있습니다',
-        '💰 거래 수수료: 10%',
+        '📉 자원 매도/매수: 동일 가격 주문 자동 체결',
+        '⚔️ 장비 거래: 등록 후 즉시 구매 방식',
         '',
-        '🔍 **거래소 메뉴**',
-        '📦 자원 거래소 - 채집 자원 매매',
-        '⚔️ 장비 거래소 - 장비 매매 (미구현)',
-        '📊 내 등록 목록 - 판매 중인 아이템',
+        `💰 체결 수수료: ${Math.round(MARKET_FEE_RATE * 100)}% (판매자 부담)`,
         '',
         createDivider(),
       ].join('\n'),
     )
     .setFooter({
-      text: '아래 버튼으로 거래소를 이용하세요',
+      text: '자원 주문장 / 장비 거래소를 선택하세요',
     });
 }
 
@@ -58,91 +333,77 @@ function createMarketMainActionRow() {
       .setCustomId(`${MARKET_BUTTON_PREFIX}equipment`)
       .setLabel('장비 거래소')
       .setEmoji('⚔️')
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(true), // 미구현
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId(`${MARKET_BUTTON_PREFIX}mylistings`)
-      .setLabel('내 등록')
+      .setCustomId(`${MARKET_BUTTON_PREFIX}myorders`)
+      .setLabel('내 주문')
       .setEmoji('📊')
       .setStyle(ButtonStyle.Success),
   );
 }
 
-function createResourceMarketEmbed(listings, page = 0) {
-  const pageSize = 10;
-  const start = page * pageSize;
-  const end = start + pageSize;
-  const pageListings = listings.slice(start, end);
+function buildResourceSelectOptions() {
+  return Object.entries(RESOURCES)
+    .map(([key, resource]) => ({
+      value: key,
+      label: resource.name,
+      emoji: resource.emoji,
+      tier: resource.tier || 0,
+    }))
+    .sort((a, b) => {
+      if (a.tier !== b.tier) {
+        return a.tier - b.tier;
+      }
 
-  const listingLines = pageListings.map((listing, index) => {
-    const resource = RESOURCES[listing.itemKey];
-    const emoji = resource?.emoji || '📦';
-    const totalPrice = listing.pricePerUnit * listing.quantity;
+      return a.label.localeCompare(b.label, 'ko-KR');
+    })
+    .slice(0, MAX_SELECT_OPTIONS)
+    .map((option) => ({
+      value: option.value,
+      label: option.label,
+      emoji: option.emoji,
+      description: `티어 ${option.tier} 자원`,
+    }));
+}
 
-    return `${start + index + 1}. ${emoji} **${listing.itemName}** x${listing.quantity}\n   ${listing.pricePerUnit}G/개 | 총 ${totalPrice}G`;
-  });
-
-  const totalPages = Math.ceil(listings.length / pageSize);
-
+function createResourceSelectionEmbed() {
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
     .setTitle('📦 자원 거래소')
     .setDescription(
       [
         createDivider(),
-        `📊 등록 수: ${listings.length}개 | 페이지: ${page + 1}/${totalPages || 1}`,
+        '호가창을 볼 자원을 선택하세요.',
         '',
-        listingLines.length > 0 ? listingLines.join('\n\n') : '등록된 자원이 없습니다',
+        '🟥 매도 호가 / 🟩 매수 호가',
+        '📌 최저 매도 / 최고 매수',
+        '🕒 최근 체결 내역',
+        '🏛️ NPC 동적 매입가(실시간, 수급 기반)',
         '',
         createDivider(),
-        '',
-        '💡 구매하려면 번호를 선택하세요',
-        '💡 판매하려면 "등록" 버튼을 누르세요',
       ].join('\n'),
     )
-    .setFooter({
-      text: '거래 수수료 10% (판매자 부담)',
-    });
+    .setFooter({ text: '선택한 자원 기준으로 주문 등록이 진행됩니다' });
 }
 
-function createResourceMarketActionRow(listings, page = 0) {
-  const pageSize = 10;
-  const start = page * pageSize;
-  const pageListings = listings.slice(start, start + pageSize);
+function createResourceSelectionActionRows() {
+  const options = buildResourceSelectOptions();
 
-  const selectOptions = pageListings.map((listing, index) => {
-    const resource = RESOURCES[listing.itemKey];
-    const emoji = resource?.emoji || '📦';
-    const totalPrice = listing.pricePerUnit * listing.quantity;
+  const rows = [];
 
-    return {
-      label: `${listing.itemName} x${listing.quantity}`,
-      description: `${listing.pricePerUnit}G/개 | 총 ${totalPrice}G`,
-      value: `${listing.id}`,
-      emoji: emoji,
-    };
-  });
-
-  const components = [];
-
-  if (selectOptions.length > 0) {
-    components.push(
+  if (options.length > 0) {
+    rows.push(
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
-          .setCustomId(`${MARKET_BUTTON_PREFIX}buy:resource`)
-          .setPlaceholder('구매할 자원을 선택하세요')
-          .addOptions(selectOptions),
+          .setCustomId(`${MARKET_BUTTON_PREFIX}select:resource`)
+          .setPlaceholder('호가창을 확인할 자원을 선택하세요')
+          .addOptions(options),
       ),
     );
   }
 
-  components.push(
+  rows.push(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`${MARKET_BUTTON_PREFIX}sell:resource`)
-        .setLabel('등록')
-        .setEmoji('💰')
-        .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId(`${MARKET_BUTTON_PREFIX}back`)
         .setLabel('뒤로')
@@ -151,20 +412,711 @@ function createResourceMarketActionRow(listings, page = 0) {
     ),
   );
 
-  return components;
+  return rows;
+}
+
+function aggregateOrderLevels(orders) {
+  const levels = [];
+  const seenByPrice = new Map();
+
+  for (const order of orders) {
+    if (seenByPrice.has(order.price)) {
+      const index = seenByPrice.get(order.price);
+      levels[index].quantity += order.quantity;
+      continue;
+    }
+
+    seenByPrice.set(order.price, levels.length);
+    levels.push({
+      price: order.price,
+      quantity: order.quantity,
+    });
+  }
+
+  return levels;
+}
+
+function formatOrderLevels(levels, emptyMessage) {
+  if (!levels || levels.length === 0) {
+    return emptyMessage;
+  }
+
+  return levels
+    .slice(0, ORDERBOOK_DEPTH)
+    .map((level, index) => `${index + 1}. ${formatGold(level.price)} · ${level.quantity}개`)
+    .join('\n');
+}
+
+function formatTradeTime(createdAt) {
+  const date = new Date(createdAt);
+  const hh = `${date.getHours()}`.padStart(2, '0');
+  const mm = `${date.getMinutes()}`.padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function formatRecentTrades(trades) {
+  if (!trades || trades.length === 0) {
+    return '체결 내역이 없습니다';
+  }
+
+  return trades
+    .map((trade) => {
+      const unitPrice = trade.quantity > 0 ? Math.floor(trade.price / trade.quantity) : trade.price;
+      return `${formatTradeTime(trade.createdAt)} | ${formatGold(unitPrice)} · ${trade.quantity}개`;
+    })
+    .join('\n');
+}
+
+function createOrderBookEmbed(itemKey, snapshot) {
+  const resource = getResourceInfo(itemKey);
+  const bestAsk = snapshot.sellLevels[0]?.price ?? null;
+  const bestBid = snapshot.buyLevels[0]?.price ?? null;
+  const npcPrice = snapshot.npcPrice || {
+    unitPrice: getResourceBasePrice(itemKey),
+    trend: 'stable',
+    circuitBreakerTriggered: false,
+    supplyQuantity: 0,
+    demandQuantity: 0,
+  };
+
+  return new EmbedBuilder()
+    .setColor(EMBED_COLORS.profile)
+    .setTitle(`${resource.emoji} ${resource.name} 호가창`)
+    .setDescription(
+      [
+        createDivider(),
+        `🟥 최저 매도: ${bestAsk ? formatGold(bestAsk) : '없음'}`,
+        `🟩 최고 매수: ${bestBid ? formatGold(bestBid) : '없음'}`,
+        '',
+        '🟥 **매도 호가**',
+        formatOrderLevels(snapshot.sellLevels, '매도 주문이 없습니다'),
+        '',
+        '🟩 **매수 호가**',
+        formatOrderLevels(snapshot.buyLevels, '매수 주문이 없습니다'),
+        '',
+        '🕒 **최근 체결**',
+        formatRecentTrades(snapshot.recentTrades),
+        '',
+        '🏛️ **NPC 즉시 매입 (동적가)**',
+        `${formatGold(npcPrice.unitPrice)}/개 · ${formatTrendLabel(npcPrice.trend)}`,
+        `공급 ${npcPrice.supplyQuantity} / 수요 ${npcPrice.demandQuantity}`,
+        npcPrice.circuitBreakerTriggered ? '🛑 서킷브레이커 발동(급변동 완화)' : '✅ 서킷브레이커 정상',
+        '',
+        createDivider(),
+      ].join('\n'),
+    )
+    .setFooter({
+      text: '매도/매수 등록 후 가격이 일치하면 자동 체결됩니다',
+    });
+}
+
+function createOrderBookActionRows(itemKey) {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}place:sell:${itemKey}`)
+        .setLabel('매도 등록')
+        .setEmoji('📉')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}place:buy:${itemKey}`)
+        .setLabel('매수 등록')
+        .setEmoji('📈')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}npcsell:${itemKey}`)
+        .setLabel('NPC 즉시 매입')
+        .setEmoji('🏛️')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}book:${itemKey}`)
+        .setLabel('새로고침')
+        .setEmoji('🔄')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}myorders`)
+        .setLabel('내 주문')
+        .setEmoji('📊')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}resources`)
+        .setLabel('자원 선택')
+        .setEmoji('🗂️')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  ];
+}
+
+function formatOrderTypeLabel(type) {
+  return type === 'buy' ? '매수' : '매도';
+}
+
+function createMyOrdersEmbed(orders) {
+  const lines = orders.map((order, index) => {
+    const resource = getResourceInfo(order.itemKey);
+    const orderValue = order.quantity * order.price;
+
+    return `${index + 1}. ${resource.emoji} [${formatOrderTypeLabel(order.type)}] **${order.itemName}**\n   ${order.quantity}개 @ ${formatGold(order.price)} (총 ${formatGold(orderValue)})`;
+  });
+
+  return new EmbedBuilder()
+    .setColor(EMBED_COLORS.profile)
+    .setTitle('📊 내 주문')
+    .setDescription(
+      [
+        createDivider(),
+        `열린 주문: ${orders.length}개`,
+        '',
+        lines.length > 0 ? lines.join('\n\n') : '현재 열린 주문이 없습니다',
+        '',
+        createDivider(),
+      ].join('\n'),
+    )
+    .setFooter({
+      text: '취소하면 미체결 잔량이 복구됩니다',
+    });
+}
+
+function createMyOrdersActionRows(orders) {
+  const rows = [];
+
+  if (orders.length > 0) {
+    const options = orders.slice(0, MAX_SELECT_OPTIONS).map((order) => {
+      const resource = getResourceInfo(order.itemKey);
+      const orderValue = order.quantity * order.price;
+
+      return {
+        value: `${order.id}`,
+        label: `[${formatOrderTypeLabel(order.type)}] ${order.itemName} x${order.quantity}`,
+        description: `@${formatGold(order.price)} / 총 ${formatGold(orderValue)}`,
+        emoji: resource.emoji,
+      };
+    });
+
+    rows.push(
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`${MARKET_BUTTON_PREFIX}cancel:order`)
+          .setPlaceholder('취소할 주문을 선택하세요')
+          .addOptions(options),
+      ),
+    );
+  }
+
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}resources`)
+        .setLabel('자원 거래소')
+        .setEmoji('📦')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}back`)
+        .setLabel('뒤로')
+        .setEmoji('🔙')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  );
+
+  return rows;
+}
+
+function parsePositiveInteger(rawValue) {
+  const parsed = Number.parseInt(rawValue, 10);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+async function fetchOrderBookSnapshot(prisma, itemKey) {
+  const priceWindowStart = new Date(Date.now() - PRICE_LOOKBACK_HOURS * 60 * 60 * 1000);
+  const [sellOrders, buyOrders, recentTrades, pricingWindowTrades] = await Promise.all([
+    prisma.orderBook.findMany({
+      where: {
+        itemType: 'resource',
+        itemKey,
+        type: 'sell',
+        status: 'open',
+      },
+      orderBy: [
+        { price: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      take: 100,
+    }),
+    prisma.orderBook.findMany({
+      where: {
+        itemType: 'resource',
+        itemKey,
+        type: 'buy',
+        status: 'open',
+      },
+      orderBy: [
+        { price: 'desc' },
+        { createdAt: 'asc' },
+      ],
+      take: 100,
+    }),
+    prisma.tradeHistory.findMany({
+      where: {
+        itemType: 'resource',
+        itemKey,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: RECENT_TRADE_LIMIT,
+    }),
+    prisma.tradeHistory.findMany({
+      where: {
+        itemType: 'resource',
+        itemKey,
+        createdAt: {
+          gte: priceWindowStart,
+        },
+      },
+      select: {
+        quantity: true,
+        price: true,
+        buyerId: true,
+        sellerId: true,
+      },
+    }),
+  ]);
+
+  const recentTradeRows = Array.isArray(recentTrades) ? recentTrades : [];
+  const sellRows = Array.isArray(sellOrders) ? sellOrders : [];
+  const buyRows = Array.isArray(buyOrders) ? buyOrders : [];
+  const pricedTrades = Array.isArray(pricingWindowTrades) ? pricingWindowTrades : [];
+
+  let recentAveragePrice = 0;
+  let totalTradeQuantity = 0;
+  let weightedTradePrice = 0;
+  let npcInboundSupply = 0;
+  let npcOutboundDemand = 0;
+  let playerDemand = 0;
+
+  pricedTrades.forEach((trade) => {
+    const quantity = Number.isFinite(trade.quantity) ? Math.max(0, trade.quantity) : 0;
+    const totalPrice = Number.isFinite(trade.price) ? Math.max(0, trade.price) : 0;
+
+    if (quantity <= 0 || totalPrice <= 0) {
+      return;
+    }
+
+    totalTradeQuantity += quantity;
+    weightedTradePrice += totalPrice;
+
+    if (trade.buyerId === NPC_TRADER_ID) {
+      npcInboundSupply += quantity;
+      return;
+    }
+
+    if (trade.sellerId === NPC_TRADER_ID) {
+      npcOutboundDemand += quantity;
+      return;
+    }
+
+    playerDemand += quantity;
+  });
+
+  if (totalTradeQuantity > 0) {
+    recentAveragePrice = Math.round(weightedTradePrice / totalTradeQuantity);
+  }
+
+  const openSellSupply = sellRows.reduce((sum, order) => sum + Math.max(0, order.quantity || 0), 0);
+  const openBuyDemand = buyRows.reduce((sum, order) => sum + Math.max(0, order.quantity || 0), 0);
+
+  const npcPrice = calculateNpcResourcePrice({
+    resourceType: itemKey,
+    supplyQuantity: openSellSupply + npcInboundSupply,
+    demandQuantity: openBuyDemand + playerDemand + npcOutboundDemand,
+    recentAveragePrice,
+  });
+
+  return {
+    sellLevels: aggregateOrderLevels(sellRows).slice(0, ORDERBOOK_DEPTH),
+    buyLevels: aggregateOrderLevels(buyRows).slice(0, ORDERBOOK_DEPTH),
+    recentTrades: recentTradeRows,
+    npcPrice,
+  };
+}
+
+async function addResourceToCharacter(tx, { characterId, itemKey, itemName, quantity }) {
+  await tx.resource.upsert({
+    where: {
+      characterId_type: {
+        characterId,
+        type: itemKey,
+      },
+    },
+    update: {
+      quantity: {
+        increment: quantity,
+      },
+    },
+    create: {
+      characterId,
+      type: itemKey,
+      name: itemName,
+      quantity,
+    },
+  });
+}
+
+async function placeOrderWithMatching({ prisma, character, side, itemKey, quantity, price }) {
+  const resource = getResourceInfo(itemKey);
+  const reserveAmount = quantity * price;
+
+  return prisma.$transaction(async (tx) => {
+    if (side === 'sell') {
+      const inventory = await tx.resource.findUnique({
+        where: {
+          characterId_type: {
+            characterId: character.id,
+            type: itemKey,
+          },
+        },
+      });
+
+      if (!inventory || inventory.quantity < quantity) {
+        throw new Error('INSUFFICIENT_RESOURCE');
+      }
+
+      await tx.resource.update({
+        where: { id: inventory.id },
+        data: {
+          quantity: {
+            decrement: quantity,
+          },
+        },
+      });
+    }
+
+    if (side === 'buy') {
+      const freshBuyer = await tx.character.findUnique({
+        where: { id: character.id },
+        select: {
+          gold: true,
+        },
+      });
+
+      if (!freshBuyer || freshBuyer.gold < reserveAmount) {
+        throw new Error('INSUFFICIENT_GOLD');
+      }
+
+      await tx.character.update({
+        where: { id: character.id },
+        data: {
+          gold: {
+            decrement: reserveAmount,
+          },
+        },
+      });
+    }
+
+    const createdOrder = await tx.orderBook.create({
+      data: {
+        type: side,
+        itemType: 'resource',
+        itemKey,
+        itemName: resource.name,
+        price,
+        quantity,
+        userId: character.userId,
+        characterId: character.id,
+        status: 'open',
+      },
+    });
+
+    const matchedTrades = [];
+    const matchedCharacterIds = new Set();
+    let remainingQuantity = quantity;
+
+    while (remainingQuantity > 0) {
+      const oppositeType = side === 'sell' ? 'buy' : 'sell';
+      const oppositeOrder = await tx.orderBook.findFirst({
+        where: {
+          itemType: 'resource',
+          itemKey,
+          type: oppositeType,
+          status: 'open',
+          price,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+
+      if (!oppositeOrder) {
+        break;
+      }
+
+      const now = new Date();
+      const matchedQuantity = Math.min(remainingQuantity, oppositeOrder.quantity);
+      const tradedGold = matchedQuantity * price;
+      const fee = Math.floor(tradedGold * MARKET_FEE_RATE);
+      const sellerNet = tradedGold - fee;
+
+      const buyerId = side === 'buy' ? character.id : oppositeOrder.characterId;
+      const sellerId = side === 'sell' ? character.id : oppositeOrder.characterId;
+
+      await tx.character.update({
+        where: {
+          id: sellerId,
+        },
+        data: {
+          gold: {
+            increment: sellerNet,
+          },
+          tradeVolume: {
+            increment: tradedGold,
+          },
+        },
+      });
+
+      await tx.character.update({
+        where: {
+          id: buyerId,
+        },
+        data: {
+          tradeVolume: {
+            increment: tradedGold,
+          },
+        },
+      });
+
+      await addResourceToCharacter(tx, {
+        characterId: buyerId,
+        itemKey,
+        itemName: resource.name,
+        quantity: matchedQuantity,
+      });
+
+      const oppositeRemaining = oppositeOrder.quantity - matchedQuantity;
+
+      await tx.orderBook.update({
+        where: {
+          id: oppositeOrder.id,
+        },
+        data: {
+          quantity: oppositeRemaining,
+          status: oppositeRemaining > 0 ? 'open' : 'filled',
+          filledAt: oppositeRemaining > 0 ? null : now,
+        },
+      });
+
+      remainingQuantity -= matchedQuantity;
+
+      await tx.orderBook.update({
+        where: {
+          id: createdOrder.id,
+        },
+        data: {
+          quantity: remainingQuantity,
+          status: remainingQuantity > 0 ? 'open' : 'filled',
+          filledAt: remainingQuantity > 0 ? null : now,
+        },
+      });
+
+      const tradeRecord = await tx.tradeHistory.create({
+        data: {
+          sellerId,
+          buyerId,
+          itemType: 'resource',
+          itemKey,
+          itemName: resource.name,
+          quantity: matchedQuantity,
+          price: tradedGold,
+          fee,
+        },
+      });
+      await logTradePricePoint(tx, tradeRecord);
+
+      await tx.rankingEvent.createMany({
+        data: [
+          {
+            characterId: sellerId,
+            category: 'trade_volume',
+            value: tradedGold,
+          },
+          {
+            characterId: buyerId,
+            category: 'trade_volume',
+            value: tradedGold,
+          },
+        ],
+      });
+
+      matchedTrades.push({
+        quantity: matchedQuantity,
+        tradedGold,
+        fee,
+      });
+      matchedCharacterIds.add(sellerId);
+      matchedCharacterIds.add(buyerId);
+    }
+
+    const order = await tx.orderBook.findUnique({
+      where: {
+        id: createdOrder.id,
+      },
+    });
+
+    const matchedQuantity = matchedTrades.reduce((sum, trade) => sum + trade.quantity, 0);
+    const matchedGold = matchedTrades.reduce((sum, trade) => sum + trade.tradedGold, 0);
+    const matchedFee = matchedTrades.reduce((sum, trade) => sum + trade.fee, 0);
+
+    return {
+      order: order || {
+        ...createdOrder,
+        quantity: remainingQuantity,
+        status: remainingQuantity > 0 ? 'open' : 'filled',
+      },
+      reserveAmount,
+      matchedQuantity,
+      matchedGold,
+      matchedFee,
+      matchedCharacterIds: [...matchedCharacterIds],
+    };
+  });
+}
+
+async function cancelOrder({ prisma, characterId, orderId }) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.orderBook.findUnique({
+      where: {
+        id: orderId,
+      },
+    });
+
+    if (!order || order.characterId !== characterId || order.status !== 'open') {
+      throw new Error('ORDER_NOT_CANCELABLE');
+    }
+
+    let refundedGold = 0;
+
+    if (order.type === 'buy') {
+      refundedGold = order.quantity * order.price;
+
+      await tx.character.update({
+        where: {
+          id: characterId,
+        },
+        data: {
+          gold: {
+            increment: refundedGold,
+          },
+        },
+      });
+    }
+
+    if (order.type === 'sell') {
+      await addResourceToCharacter(tx, {
+        characterId,
+        itemKey: order.itemKey,
+        itemName: order.itemName,
+        quantity: order.quantity,
+      });
+    }
+
+    const cancelledOrder = await tx.orderBook.update({
+      where: {
+        id: orderId,
+      },
+      data: {
+        status: 'cancelled',
+      },
+    });
+
+    return {
+      order: cancelledOrder,
+      refundedGold,
+    };
+  });
+}
+
+function createOrderModal({ side, itemKey, quantityLabel, title }) {
+  const modal = new ModalBuilder()
+    .setCustomId(`${MARKET_BUTTON_PREFIX}ordermodal:${side}:${itemKey}`)
+    .setTitle(title);
+
+  const quantityInput = new TextInputBuilder()
+    .setCustomId('quantity')
+    .setLabel(quantityLabel)
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('1')
+    .setRequired(true)
+    .setMinLength(1)
+    .setMaxLength(10);
+
+  const priceInput = new TextInputBuilder()
+    .setCustomId('price')
+    .setLabel('개당 가격 (골드)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('100')
+    .setRequired(true)
+    .setMinLength(1)
+    .setMaxLength(10);
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(quantityInput),
+    new ActionRowBuilder().addComponents(priceInput),
+  );
+
+  return modal;
+}
+
+function createNpcSellModal({ itemKey, quantityLabel, title }) {
+  const modal = new ModalBuilder()
+    .setCustomId(`${MARKET_BUTTON_PREFIX}npcmodal:${itemKey}`)
+    .setTitle(title);
+
+  const quantityInput = new TextInputBuilder()
+    .setCustomId('quantity')
+    .setLabel(quantityLabel)
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('1')
+    .setRequired(true)
+    .setMinLength(1)
+    .setMaxLength(10);
+
+  modal.addComponents(new ActionRowBuilder().addComponents(quantityInput));
+
+  return modal;
+}
+
+async function getCharacterForMarket(prisma, userId, includeOptions = false) {
+  const includeResources =
+    typeof includeOptions === 'boolean'
+      ? includeOptions
+      : Boolean(includeOptions?.includeResources);
+  const includeEquipment =
+    typeof includeOptions === 'object' ? Boolean(includeOptions?.includeEquipment) : false;
+
+  return prisma.character.findUnique({
+    where: {
+      userId,
+    },
+    include: {
+      resources: includeResources,
+      equipment: includeEquipment,
+    },
+  });
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('market')
-    .setDescription('플레이어 간 거래소를 이용합니다'),
+    .setDescription('플레이어 주문장 거래소를 이용합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
+    const character = await getCharacterForMarket(prisma, interaction.user.id);
 
     if (!character) {
       await interaction.reply({
@@ -194,176 +1146,69 @@ module.exports = {
     }
 
     const customId = interaction.customId.slice(MARKET_BUTTON_PREFIX.length);
-    const [action, param] = customId.split(':');
+    const [action, param1, param2] = customId.split(':');
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        resources: true,
-        marketListings: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터를 찾을 수 없습니다.',
-        ephemeral: true,
-      });
-
-      return true;
-    }
-
-    // 뒤로가기
     if (action === 'back') {
       await interaction.update({
         embeds: [createMarketMainEmbed()],
         components: [createMarketMainActionRow()],
       });
-
       return true;
     }
 
-    // 자원 거래소 보기
-    if (action === 'resources') {
-      const listings = await prisma.marketListing.findMany({
-        where: {
-          status: 'active',
-          itemType: 'resource',
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-
-      await interaction.update({
-        embeds: [createResourceMarketEmbed(listings)],
-        components: createResourceMarketActionRow(listings),
-      });
-
+    if (action === 'equipment') {
+      await renderEquipmentMarket(interaction, prisma);
       return true;
     }
 
-    // 내 등록 목록
-    if (action === 'mylistings') {
-      const myListings = character.marketListings.filter((l) => l.status === 'active');
-
-      const listingLines = myListings.map((listing, index) => {
-        const resource = RESOURCES[listing.itemKey];
-        const emoji = resource?.emoji || '📦';
-        const totalPrice = listing.pricePerUnit * listing.quantity;
-        const fee = Math.floor(totalPrice * MARKET_FEE_RATE);
-        const netProfit = totalPrice - fee;
-
-        return `${index + 1}. ${emoji} **${listing.itemName}** x${listing.quantity}\n   ${listing.pricePerUnit}G/개 | 총 ${totalPrice}G (수수료 -${fee}G = ${netProfit}G)`;
+    if (action === 'equipmentsell') {
+      const character = await getCharacterForMarket(prisma, interaction.user.id, {
+        includeEquipment: true,
       });
 
-      const embed = new EmbedBuilder()
-        .setColor(EMBED_COLORS.profile)
-        .setTitle('📊 내 등록 목록')
-        .setDescription(
-          [
-            createDivider(),
-            `📦 등록 중: ${myListings.length}개`,
-            '',
-            listingLines.length > 0 ? listingLines.join('\n\n') : '등록한 아이템이 없습니다',
-            '',
-            createDivider(),
-          ].join('\n'),
-        )
-        .setFooter({
-          text: '취소하려면 번호를 선택하세요',
-        });
-
-      const components = [];
-
-      if (myListings.length > 0) {
-        const selectOptions = myListings.slice(0, 25).map((listing, index) => {
-          const resource = RESOURCES[listing.itemKey];
-          const emoji = resource?.emoji || '📦';
-
-          return {
-            label: `${listing.itemName} x${listing.quantity}`,
-            description: `${listing.pricePerUnit}G/개`,
-            value: `${listing.id}`,
-            emoji: emoji,
-          };
-        });
-
-        components.push(
-          new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-              .setCustomId(`${MARKET_BUTTON_PREFIX}cancel`)
-              .setPlaceholder('취소할 등록을 선택하세요')
-              .addOptions(selectOptions),
-          ),
-        );
-      }
-
-      components.push(
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`${MARKET_BUTTON_PREFIX}back`)
-            .setLabel('뒤로')
-            .setEmoji('🔙')
-            .setStyle(ButtonStyle.Secondary),
-        ),
-      );
-
-      await interaction.update({
-        embeds: [embed],
-        components,
-      });
-
-      return true;
-    }
-
-    // 자원 등록 (선택 메뉴)
-    if (action === 'sell' && param === 'resource') {
-      if (character.resources.length === 0) {
+      if (!character) {
         await interaction.reply({
-          content: '❌ 판매할 자원이 없습니다.',
+          content: '캐릭터를 찾을 수 없습니다.',
           ephemeral: true,
         });
-
         return true;
       }
 
-      const resourceOptions = character.resources
-        .filter((r) => r.quantity > 0)
-        .slice(0, 25)
-        .map((r) => {
-          const resource = RESOURCES[r.type];
-          return {
-            label: `${r.name} (${r.quantity}개)`,
-            description: `보유: ${r.quantity}개`,
-            value: r.type,
-            emoji: resource?.emoji || '📦',
-          };
-        });
+      const sellable = character.equipment.filter((equipment) => !equipment.equipped);
 
-      if (resourceOptions.length === 0) {
+      if (sellable.length === 0) {
         await interaction.reply({
-          content: '❌ 판매할 자원이 없습니다.',
+          content: '❌ 판매할 장비가 없습니다. (장착 중인 장비는 등록 불가)',
           ephemeral: true,
         });
-
         return true;
       }
+
+      const options = sellable.slice(0, MAX_SELECT_OPTIONS).map((equipment) => {
+        const rarityData = RARITIES[equipment.rarity] || { emoji: '⚪', name: '일반' };
+        const typeData = EQUIPMENT_TYPES[equipment.type] || { name: '장비' };
+        const levelSuffix = equipment.upgradeLevel > 0 ? ` +${equipment.upgradeLevel}` : '';
+
+        return {
+          value: `${equipment.id}`,
+          label: truncateLabel(`${equipment.name}${levelSuffix}`),
+          description: truncateLabel(`${rarityData.name} ${typeData.name}`),
+          emoji: rarityData.emoji,
+        };
+      });
 
       await interaction.update({
         embeds: [
           new EmbedBuilder()
             .setColor(EMBED_COLORS.profile)
-            .setTitle('💰 자원 등록')
+            .setTitle('💰 장비 판매 등록')
             .setDescription(
               [
                 createDivider(),
-                '판매할 자원을 선택하세요',
+                '판매할 장비를 선택하세요.',
                 '',
-                '💡 선택 후 수량과 가격을 입력합니다',
-                '💡 수수료 10%가 차감됩니다',
+                '⚠️ 장착 중인 장비는 등록할 수 없습니다',
+                '🧷 등록 시 장비는 판매 완료/취소 전까지 보관됩니다',
                 '',
                 createDivider(),
               ].join('\n'),
@@ -372,20 +1217,177 @@ module.exports = {
         components: [
           new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
-              .setCustomId(`${MARKET_BUTTON_PREFIX}sellselect:resource`)
-              .setPlaceholder('판매할 자원 선택')
-              .addOptions(resourceOptions),
+              .setCustomId(`${MARKET_BUTTON_PREFIX}equipmentsellselect`)
+              .setPlaceholder('판매할 장비를 선택하세요')
+              .addOptions(options),
           ),
           new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-              .setCustomId(`${MARKET_BUTTON_PREFIX}resources`)
+              .setCustomId(`${MARKET_BUTTON_PREFIX}equipment`)
               .setLabel('뒤로')
               .setEmoji('🔙')
               .setStyle(ButtonStyle.Secondary),
           ),
         ],
       });
+      return true;
+    }
 
+    if (action === 'resources') {
+      await interaction.update({
+        embeds: [createResourceSelectionEmbed()],
+        components: createResourceSelectionActionRows(),
+      });
+      return true;
+    }
+
+    if (action === 'book') {
+      const itemKey = param1;
+      const resource = RESOURCES[itemKey];
+
+      if (!resource) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 자원입니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const snapshot = await fetchOrderBookSnapshot(prisma, itemKey);
+
+      await interaction.update({
+        embeds: [createOrderBookEmbed(itemKey, snapshot)],
+        components: createOrderBookActionRows(itemKey),
+      });
+      return true;
+    }
+
+    if (action === 'myorders') {
+      const character = await getCharacterForMarket(prisma, interaction.user.id);
+
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const orders = await prisma.orderBook.findMany({
+        where: {
+          characterId: character.id,
+          itemType: 'resource',
+          status: 'open',
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: MAX_SELECT_OPTIONS,
+      });
+
+      await interaction.update({
+        embeds: [createMyOrdersEmbed(orders)],
+        components: createMyOrdersActionRows(orders),
+      });
+      return true;
+    }
+
+    if (action === 'place') {
+      const side = param1;
+      const itemKey = param2;
+      const resource = getResourceInfo(itemKey);
+
+      if (!['sell', 'buy'].includes(side) || !RESOURCES[itemKey]) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 주문 요청입니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const character = await getCharacterForMarket(prisma, interaction.user.id, side === 'sell');
+
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      if (side === 'sell') {
+        const owned = character.resources.find((entry) => entry.type === itemKey);
+
+        if (!owned || owned.quantity <= 0) {
+          await interaction.reply({
+            content: `❌ ${resource.name} 보유 수량이 부족합니다.`,
+            ephemeral: true,
+          });
+          return true;
+        }
+
+        const modal = createOrderModal({
+          side,
+          itemKey,
+          quantityLabel: `매도 수량 (최대 ${owned.quantity}개)`,
+          title: `${resource.name} 매도 등록`,
+        });
+
+        await interaction.showModal(modal);
+        return true;
+      }
+
+      const modal = createOrderModal({
+        side,
+        itemKey,
+        quantityLabel: '매수 수량',
+        title: `${resource.name} 매수 등록`,
+      });
+
+      await interaction.showModal(modal);
+      return true;
+    }
+
+    if (action === 'npcsell') {
+      const itemKey = param1;
+      const resource = getResourceInfo(itemKey);
+
+      if (!RESOURCES[itemKey]) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 자원입니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const character = await getCharacterForMarket(prisma, interaction.user.id, true);
+
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const owned = character.resources.find((entry) => entry.type === itemKey);
+
+      if (!owned || owned.quantity <= 0) {
+        await interaction.reply({
+          content: `❌ ${resource.name} 보유 수량이 부족합니다.`,
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const snapshot = await fetchOrderBookSnapshot(prisma, itemKey);
+      const modal = createNpcSellModal({
+        itemKey,
+        quantityLabel: `NPC 즉시 매입 수량 (최대 ${owned.quantity}개)`,
+        title: `${resource.name} NPC 매입 (${formatGold(snapshot.npcPrice.unitPrice)}/개)`,
+      });
+
+      await interaction.showModal(modal);
       return true;
     }
 
@@ -401,124 +1403,199 @@ module.exports = {
     const [action, param] = customId.split(':');
     const selectedValue = interaction.values[0];
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        resources: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터를 찾을 수 없습니다.',
-        ephemeral: true,
+    if (action === 'eqfilterrarity') {
+      await renderEquipmentMarket(interaction, prisma, {
+        rarity: selectedValue,
+        type: param,
       });
-
       return true;
     }
 
-    // 구매
-    if (action === 'buy') {
-      const listingId = parseInt(selectedValue);
-      const listing = await prisma.marketListing.findUnique({
-        where: { id: listingId },
+    if (action === 'eqfiltertype') {
+      await renderEquipmentMarket(interaction, prisma, {
+        rarity: param,
+        type: selectedValue,
+      });
+      return true;
+    }
+
+    if (action === 'equipmentsellselect') {
+      const equipmentId = Number.parseInt(selectedValue, 10);
+
+      if (!Number.isInteger(equipmentId)) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 장비입니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const character = await getCharacterForMarket(prisma, interaction.user.id, {
+        includeEquipment: true,
       });
 
-      if (!listing || listing.status !== 'active') {
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const equipment = character.equipment.find((entry) => entry.id === equipmentId);
+
+      if (!equipment) {
+        await interaction.reply({
+          content: '❌ 해당 장비를 보유하고 있지 않습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      if (equipment.equipped) {
+        await interaction.reply({
+          content: '⚠️ 장착 중인 장비는 판매할 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const modal = new ModalBuilder()
+        .setCustomId(`${MARKET_BUTTON_PREFIX}equipmentmodal:${equipment.id}`)
+        .setTitle(`${equipment.name} 판매 등록`);
+
+      const priceInput = new TextInputBuilder()
+        .setCustomId('price')
+        .setLabel('판매 가격 (골드)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('1000')
+        .setRequired(true)
+        .setMinLength(1)
+        .setMaxLength(10);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(priceInput));
+
+      await interaction.showModal(modal);
+      return true;
+    }
+
+    if (action === 'equipmentbuy') {
+      const listingId = Number.parseInt(selectedValue, 10);
+
+      if (!Number.isInteger(listingId)) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 거래소 상품입니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const character = await getCharacterForMarket(prisma, interaction.user.id);
+
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const listing = await prisma.marketListing.findUnique({
+        where: {
+          id: listingId,
+        },
+      });
+
+      if (!listing || listing.status !== 'active' || listing.itemType !== 'equipment') {
         await interaction.reply({
           content: '❌ 이미 판매된 상품이거나 존재하지 않습니다.',
           ephemeral: true,
         });
-
         return true;
       }
 
       if (listing.sellerId === character.id) {
         await interaction.reply({
-          content: '❌ 자신이 등록한 상품은 구매할 수 없습니다.',
+          content: '❌ 자신이 등록한 장비는 구매할 수 없습니다.',
           ephemeral: true,
         });
-
         return true;
       }
 
-      const totalPrice = listing.pricePerUnit * listing.quantity;
+      const totalPrice = listing.totalPrice || listing.pricePerUnit * listing.quantity;
 
       if (character.gold < totalPrice) {
         await interaction.reply({
-          content: `❌ 골드가 부족합니다. (필요: ${totalPrice}G, 보유: ${character.gold}G)`,
+          content: `❌ 골드가 부족합니다. (필요: ${formatGold(totalPrice)}, 보유: ${formatGold(character.gold)})`,
           ephemeral: true,
         });
-
         return true;
       }
 
-      // 거래 처리 (트랜잭션 내에서 listing 상태 재확인)
       const fee = Math.floor(totalPrice * MARKET_FEE_RATE);
-      const netProfit = totalPrice - fee;
+      const sellerNet = totalPrice - fee;
 
       try {
         await prisma.$transaction(async (tx) => {
-          // 트랜잭션 내에서 listing 상태 재확인 (동시 구매 방지)
           const freshListing = await tx.marketListing.findUnique({
             where: { id: listingId },
           });
 
-          if (!freshListing || freshListing.status !== 'active') {
+          if (!freshListing || freshListing.status !== 'active' || freshListing.itemType !== 'equipment') {
             throw new Error('LISTING_UNAVAILABLE');
           }
 
-          // 구매자 골드 차감 (atomic decrement)
-          await tx.character.update({
-            where: { id: character.id },
-            data: {
-              gold: { decrement: totalPrice },
-              tradeVolume: { increment: totalPrice },
-            },
-          });
-
-          // 판매자 골드 추가 (수수료 차감)
-          await tx.character.update({
-            where: { id: listing.sellerId },
-            data: {
-              gold: { increment: netProfit },
-              tradeVolume: { increment: totalPrice },
-            },
-          });
-
-          // 구매자에게 자원 추가
-          const existingResource = await tx.resource.findUnique({
-            where: {
-              characterId_type: {
-                characterId: character.id,
-                type: listing.itemKey,
-              },
-            },
-          });
-
-          if (existingResource) {
-            await tx.resource.update({
-              where: { id: existingResource.id },
-              data: {
-                quantity: existingResource.quantity + listing.quantity,
-              },
-            });
-          } else {
-            await tx.resource.create({
-              data: {
-                characterId: character.id,
-                type: listing.itemKey,
-                name: listing.itemName,
-                quantity: listing.quantity,
-              },
-            });
+          if (freshListing.sellerId === character.id) {
+            throw new Error('SELF_PURCHASE');
           }
 
-          // 등록 상태 변경
+          const debit = await tx.character.updateMany({
+            where: {
+              id: character.id,
+              gold: {
+                gte: totalPrice,
+              },
+            },
+            data: {
+              gold: {
+                decrement: totalPrice,
+              },
+              tradeVolume: {
+                increment: totalPrice,
+              },
+            },
+          });
+
+          if (debit.count === 0) {
+            throw new Error('INSUFFICIENT_GOLD');
+          }
+
+          await tx.character.update({
+            where: {
+              id: freshListing.sellerId,
+            },
+            data: {
+              gold: {
+                increment: sellerNet,
+              },
+              tradeVolume: {
+                increment: totalPrice,
+              },
+            },
+          });
+
+          await tx.equipment.create({
+            data: buildEquipmentFromSnapshot(
+              getEquipmentListingData(freshListing),
+              character.id,
+              freshListing.itemName,
+            ),
+          });
+
           await tx.marketListing.update({
-            where: { id: listingId },
+            where: {
+              id: listingId,
+            },
             data: {
               status: 'sold',
               soldAt: new Date(),
@@ -526,24 +1603,24 @@ module.exports = {
             },
           });
 
-          // 거래 기록
-          await tx.tradeHistory.create({
+          const tradeRecord = await tx.tradeHistory.create({
             data: {
-              sellerId: listing.sellerId,
+              sellerId: freshListing.sellerId,
               buyerId: character.id,
-              itemType: listing.itemType,
-              itemKey: listing.itemKey,
-              itemName: listing.itemName,
-              quantity: listing.quantity,
+              itemType: freshListing.itemType,
+              itemKey: freshListing.itemKey,
+              itemName: freshListing.itemName,
+              quantity: freshListing.quantity,
               price: totalPrice,
               fee,
             },
           });
+          await logTradePricePoint(tx, tradeRecord);
 
           await tx.rankingEvent.createMany({
             data: [
               {
-                characterId: listing.sellerId,
+                characterId: freshListing.sellerId,
                 category: 'trade_volume',
                 value: totalPrice,
               },
@@ -555,17 +1632,32 @@ module.exports = {
             ],
           });
         });
-      } catch (err) {
-        if (err.message === 'LISTING_UNAVAILABLE') {
+      } catch (error) {
+        if (error.message === 'LISTING_UNAVAILABLE') {
           await interaction.reply({
             content: '❌ 이미 판매된 상품입니다.',
             ephemeral: true,
           });
-
           return true;
         }
 
-        throw err;
+        if (error.message === 'SELF_PURCHASE') {
+          await interaction.reply({
+            content: '❌ 자신이 등록한 장비는 구매할 수 없습니다.',
+            ephemeral: true,
+          });
+          return true;
+        }
+
+        if (error.message === 'INSUFFICIENT_GOLD') {
+          await interaction.reply({
+            content: '❌ 골드가 부족합니다. 잔액을 확인해주세요.',
+            ephemeral: true,
+          });
+          return true;
+        }
+
+        throw error;
       }
 
       try {
@@ -574,17 +1666,22 @@ module.exports = {
           recordDailyQuestProgress(prisma, listing.sellerId, DAILY_QUEST_EVENTS.MARKET_TRADE, 1),
         ]);
       } catch (error) {
-        console.error('Daily quest progress update failed (market trade):', error);
+        console.error('Daily quest progress update failed (equipment market trade):', error);
       }
+
+      const listingData = getEquipmentListingData(listing);
+      const rarityData = RARITIES[listingData.rarity || 'common'] || { emoji: '⚪', name: '일반' };
+      const typeData = EQUIPMENT_TYPES[listingData.type || 'weapon'] || { name: '장비' };
+      const levelSuffix = listingData.upgradeLevel > 0 ? ` +${listingData.upgradeLevel}` : '';
 
       await interaction.reply({
         content: [
           '✅ 구매 완료!',
           '',
-          `${RESOURCES[listing.itemKey]?.emoji || '📦'} **${listing.itemName}** x${listing.quantity}`,
-          `💰 ${totalPrice}G 지불`,
-          '',
-          `남은 골드: ${character.gold - totalPrice}G`,
+          `${rarityData.emoji} **${listing.itemName}${levelSuffix}**`,
+          `🧩 ${rarityData.name} ${typeData.name}`,
+          `💰 ${formatGold(totalPrice)} 지불`,
+          `💵 남은 골드: ${formatGold(character.gold - totalPrice)}`,
         ].join('\n'),
         ephemeral: true,
       });
@@ -599,115 +1696,92 @@ module.exports = {
       return true;
     }
 
-    // 취소
-    if (action === 'cancel') {
-      const listingId = parseInt(selectedValue);
-      const listing = await prisma.marketListing.findUnique({
-        where: { id: listingId },
-      });
+    if (action === 'select' && param === 'resource') {
+      const itemKey = selectedValue;
 
-      if (!listing || listing.sellerId !== character.id || listing.status !== 'active') {
+      if (!RESOURCES[itemKey]) {
         await interaction.reply({
-          content: '❌ 취소할 수 없는 등록입니다.',
+          content: '❌ 유효하지 않은 자원입니다.',
           ephemeral: true,
         });
-
         return true;
       }
 
-      // 취소 처리: 자원 반환
-      await prisma.$transaction(async (tx) => {
-        // 자원 반환
-        const existingResource = await tx.resource.findUnique({
-          where: {
-            characterId_type: {
-              characterId: character.id,
-              type: listing.itemKey,
-            },
-          },
-        });
+      const snapshot = await fetchOrderBookSnapshot(prisma, itemKey);
 
-        if (existingResource) {
-          await tx.resource.update({
-            where: { id: existingResource.id },
-            data: {
-              quantity: existingResource.quantity + listing.quantity,
-            },
-          });
-        } else {
-          await tx.resource.create({
-            data: {
-              characterId: character.id,
-              type: listing.itemKey,
-              name: listing.itemName,
-              quantity: listing.quantity,
-            },
-          });
-        }
-
-        // 등록 취소
-        await tx.marketListing.update({
-          where: { id: listingId },
-          data: {
-            status: 'cancelled',
-          },
-        });
+      await interaction.update({
+        embeds: [createOrderBookEmbed(itemKey, snapshot)],
+        components: createOrderBookActionRows(itemKey),
       });
-
-      await interaction.reply({
-        content: [
-          '✅ 등록 취소!',
-          '',
-          `${RESOURCES[listing.itemKey]?.emoji || '📦'} **${listing.itemName}** x${listing.quantity} 반환`,
-        ].join('\n'),
-        ephemeral: true,
-      });
-
       return true;
     }
 
-    // 자원 판매 선택 (모달 띄우기)
-    if (action === 'sellselect' && param === 'resource') {
-      const resourceType = selectedValue;
-      const resource = character.resources.find((r) => r.type === resourceType);
+    if (action === 'cancel' && param === 'order') {
+      const orderId = Number.parseInt(selectedValue, 10);
 
-      if (!resource || resource.quantity === 0) {
+      if (!Number.isInteger(orderId)) {
         await interaction.reply({
-          content: '❌ 해당 자원을 보유하고 있지 않습니다.',
+          content: '❌ 유효하지 않은 주문 번호입니다.',
           ephemeral: true,
         });
-
         return true;
       }
 
-      const modal = new ModalBuilder()
-        .setCustomId(`${MARKET_BUTTON_PREFIX}sellmodal:${resourceType}`)
-        .setTitle(`${resource.name} 판매 등록`);
+      const character = await getCharacterForMarket(prisma, interaction.user.id);
 
-      const quantityInput = new TextInputBuilder()
-        .setCustomId('quantity')
-        .setLabel(`판매 수량 (최대 ${resource.quantity}개)`)
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('1')
-        .setRequired(true)
-        .setMinLength(1)
-        .setMaxLength(10);
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
 
-      const priceInput = new TextInputBuilder()
-        .setCustomId('price')
-        .setLabel('개당 가격 (골드)')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('100')
-        .setRequired(true)
-        .setMinLength(1)
-        .setMaxLength(10);
+      let cancelled;
 
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(quantityInput),
-        new ActionRowBuilder().addComponents(priceInput),
-      );
+      try {
+        cancelled = await cancelOrder({
+          prisma,
+          characterId: character.id,
+          orderId,
+        });
+      } catch (error) {
+        if (error.message === 'ORDER_NOT_CANCELABLE') {
+          await interaction.reply({
+            content: '❌ 취소할 수 없는 주문입니다.',
+            ephemeral: true,
+          });
+          return true;
+        }
 
-      await interaction.showModal(modal);
+        throw error;
+      }
+
+      const latestOrders = await prisma.orderBook.findMany({
+        where: {
+          characterId: character.id,
+          itemType: 'resource',
+          status: 'open',
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: MAX_SELECT_OPTIONS,
+      });
+
+      await interaction.update({
+        embeds: [createMyOrdersEmbed(latestOrders)],
+        components: createMyOrdersActionRows(latestOrders),
+      });
+
+      const restoredText = cancelled.order.type === 'buy'
+        ? `환불 ${formatGold(cancelled.refundedGold)}`
+        : `자원 ${cancelled.order.quantity}개 복구`;
+
+      await interaction.followUp({
+        content: `✅ ${formatOrderTypeLabel(cancelled.order.type)} 주문 취소 완료 (${restoredText})`,
+        ephemeral: true,
+      });
 
       return true;
     }
@@ -721,122 +1795,459 @@ module.exports = {
     }
 
     const customId = interaction.customId.slice(MARKET_BUTTON_PREFIX.length);
-    const [action, resourceType] = customId.split(':');
+    const [action, param1, param2] = customId.split(':');
 
-    if (action !== 'sellmodal') {
+    if (action === 'equipmentmodal') {
+      const equipmentId = Number.parseInt(param1, 10);
+
+      if (!Number.isInteger(equipmentId)) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 장비입니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const character = await getCharacterForMarket(prisma, interaction.user.id, {
+        includeEquipment: true,
+      });
+
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const equipment = character.equipment.find((entry) => entry.id === equipmentId);
+
+      if (!equipment) {
+        await interaction.reply({
+          content: '❌ 해당 장비를 보유하고 있지 않습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      if (equipment.equipped) {
+        await interaction.reply({
+          content: '⚠️ 장착 중인 장비는 판매할 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const pricePerUnit = parsePositiveInteger(interaction.fields.getTextInputValue('price'));
+
+      if (!pricePerUnit) {
+        await interaction.reply({
+          content: '❌ 유효한 가격을 입력하세요.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      if (pricePerUnit > EQUIPMENT_MAX_PRICE) {
+        await interaction.reply({
+          content: `❌ 가격은 ${formatGold(EQUIPMENT_MAX_PRICE)}를 초과할 수 없습니다.`,
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const totalPrice = pricePerUnit;
+      const fee = Math.floor(totalPrice * MARKET_FEE_RATE);
+      const netProfit = totalPrice - fee;
+
+      try {
+        await prisma.$transaction(async (tx) => {
+          const freshEquipment = await tx.equipment.findUnique({
+            where: {
+              id: equipmentId,
+            },
+          });
+
+          if (!freshEquipment || freshEquipment.characterId !== character.id) {
+            throw new Error('EQUIPMENT_NOT_FOUND');
+          }
+
+          if (freshEquipment.equipped) {
+            throw new Error('EQUIPMENT_EQUIPPED');
+          }
+
+          const duplicated = await tx.marketListing.findFirst({
+            where: {
+              itemType: 'equipment',
+              itemKey: `${equipmentId}`,
+              status: 'active',
+            },
+          });
+
+          if (duplicated) {
+            throw new Error('EQUIPMENT_ALREADY_LISTED');
+          }
+
+          await tx.marketListing.create({
+            data: {
+              sellerId: character.id,
+              itemType: 'equipment',
+              itemKey: `${equipmentId}`,
+              itemName: freshEquipment.name,
+              quantity: 1,
+              pricePerUnit,
+              totalPrice,
+              itemData: createEquipmentSnapshot(freshEquipment),
+              status: 'active',
+            },
+          });
+
+          // 에스크로 보관: 인벤토리에서 제거 후 거래 완료 시 복원/이전
+          await tx.equipment.delete({
+            where: {
+              id: equipmentId,
+            },
+          });
+        });
+      } catch (error) {
+        if (error.message === 'EQUIPMENT_NOT_FOUND') {
+          await interaction.reply({
+            content: '❌ 해당 장비를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+          return true;
+        }
+
+        if (error.message === 'EQUIPMENT_EQUIPPED') {
+          await interaction.reply({
+            content: '⚠️ 장착 중인 장비는 판매할 수 없습니다.',
+            ephemeral: true,
+          });
+          return true;
+        }
+
+        if (error.message === 'EQUIPMENT_ALREADY_LISTED') {
+          await interaction.reply({
+            content: '❌ 이미 등록된 장비입니다.',
+            ephemeral: true,
+          });
+          return true;
+        }
+
+        throw error;
+      }
+
+      const rarityData = RARITIES[equipment.rarity] || { emoji: '⚪', name: '일반' };
+      const typeData = EQUIPMENT_TYPES[equipment.type] || { name: '장비' };
+      const levelSuffix = equipment.upgradeLevel > 0 ? ` +${equipment.upgradeLevel}` : '';
+
+      await interaction.reply({
+        content: [
+          '✅ 거래소에 등록했습니다!',
+          '',
+          `${rarityData.emoji} **${equipment.name}${levelSuffix}**`,
+          `🧩 ${rarityData.name} ${typeData.name}`,
+          `💰 ${formatGold(totalPrice)}`,
+          `📊 판매 시 수수료 ${Math.round(MARKET_FEE_RATE * 100)}% (${formatGold(fee)})`,
+          `💵 실수령액: ${formatGold(netProfit)}`,
+          '',
+          '💡 `/market`에서 판매 현황을 확인하세요',
+        ].join('\n'),
+        ephemeral: true,
+      });
+
+      const onboardingFeedback = await handleOnboardingEvent({
+        prisma,
+        user: interaction.user,
+        eventType: 'trade_action',
+      });
+      await sendOnboardingFeedback(interaction, onboardingFeedback);
+
+      return true;
+    }
+
+    if (action === 'npcmodal') {
+      const itemKey = param1;
+
+      if (!RESOURCES[itemKey]) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 자원입니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const character = await getCharacterForMarket(prisma, interaction.user.id, true);
+
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const quantity = parsePositiveInteger(interaction.fields.getTextInputValue('quantity'));
+
+      if (!quantity) {
+        await interaction.reply({
+          content: '❌ 유효한 수량을 입력하세요.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const resource = getResourceInfo(itemKey);
+      const owned = character.resources.find((entry) => entry.type === itemKey);
+
+      if (!owned || owned.quantity < quantity) {
+        await interaction.reply({
+          content: `❌ 수량이 부족합니다. (보유: ${owned?.quantity || 0}개)`,
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const snapshot = await fetchOrderBookSnapshot(prisma, itemKey);
+      const unitPrice = snapshot.npcPrice?.unitPrice || getResourceBasePrice(itemKey);
+      const totalPrice = unitPrice * quantity;
+      const remainingQuantity = owned.quantity - quantity;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.resource.update({
+          where: {
+            id: owned.id,
+          },
+          data: {
+            quantity: {
+              decrement: quantity,
+            },
+          },
+        });
+
+        await tx.character.update({
+          where: {
+            id: character.id,
+          },
+          data: {
+            gold: {
+              increment: totalPrice,
+            },
+            tradeVolume: {
+              increment: totalPrice,
+            },
+          },
+        });
+
+        const tradeRecord = await tx.tradeHistory.create({
+          data: {
+            sellerId: character.id,
+            buyerId: NPC_TRADER_ID,
+            itemType: 'resource',
+            itemKey,
+            itemName: resource.name,
+            quantity,
+            price: totalPrice,
+            fee: 0,
+          },
+        });
+
+        await logTradePricePoint(tx, tradeRecord);
+      });
+
+      await interaction.reply({
+        content: [
+          '✅ NPC 즉시 매입 완료',
+          '',
+          `${resource.emoji} **${resource.name}** x${quantity}`,
+          `🏛️ 매입 단가: ${formatGold(unitPrice)}/개 (${formatTrendLabel(snapshot.npcPrice?.trend)})`,
+          `💰 획득 골드: ${formatGold(totalPrice)}`,
+          `📦 남은 수량: ${remainingQuantity}개`,
+          snapshot.npcPrice?.circuitBreakerTriggered
+            ? '🛑 급변동 완화 장치가 적용된 가격입니다.'
+            : '✅ 실시간 수급 가격이 적용되었습니다.',
+        ].join('\n'),
+        ephemeral: true,
+      });
+
+      try {
+        await recordDailyQuestProgress(prisma, character.id, DAILY_QUEST_EVENTS.MARKET_TRADE, 1);
+      } catch (error) {
+        console.error('Daily quest progress update failed (npc market trade):', error);
+      }
+
+      const onboardingFeedback = await handleOnboardingEvent({
+        prisma,
+        user: interaction.user,
+        eventType: 'trade_action',
+      });
+      await sendOnboardingFeedback(interaction, onboardingFeedback);
+
+      return true;
+    }
+
+    if (action !== 'ordermodal') {
       return false;
     }
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        resources: true,
-      },
-    });
+    const side = param1;
+    const itemKey = param2;
+
+    if (!['sell', 'buy'].includes(side) || !RESOURCES[itemKey]) {
+      await interaction.reply({
+        content: '❌ 유효하지 않은 주문 요청입니다.',
+        ephemeral: true,
+      });
+      return true;
+    }
+
+    const character = await getCharacterForMarket(prisma, interaction.user.id, side === 'sell');
 
     if (!character) {
       await interaction.reply({
         content: '캐릭터를 찾을 수 없습니다.',
         ephemeral: true,
       });
-
       return true;
     }
 
-    const resource = character.resources.find((r) => r.type === resourceType);
+    const quantity = parsePositiveInteger(interaction.fields.getTextInputValue('quantity'));
+    const price = parsePositiveInteger(interaction.fields.getTextInputValue('price'));
 
-    if (!resource || resource.quantity === 0) {
-      await interaction.reply({
-        content: '❌ 해당 자원을 보유하고 있지 않습니다.',
-        ephemeral: true,
-      });
-
-      return true;
-    }
-
-    const quantity = parseInt(interaction.fields.getTextInputValue('quantity'));
-    const pricePerUnit = parseInt(interaction.fields.getTextInputValue('price'));
-
-    if (isNaN(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
+    if (!quantity) {
       await interaction.reply({
         content: '❌ 유효한 수량을 입력하세요.',
         ephemeral: true,
       });
-
       return true;
     }
 
-    if (isNaN(pricePerUnit) || pricePerUnit <= 0) {
+    if (!price) {
       await interaction.reply({
         content: '❌ 유효한 가격을 입력하세요.',
         ephemeral: true,
       });
-
       return true;
     }
 
-    if (pricePerUnit > 100000) {
+    if (price > MAX_PRICE_PER_UNIT) {
       await interaction.reply({
-        content: '❌ 개당 가격은 100,000G를 초과할 수 없습니다.',
+        content: `❌ 개당 가격은 ${formatGold(MAX_PRICE_PER_UNIT)}를 초과할 수 없습니다.`,
         ephemeral: true,
       });
-
       return true;
     }
 
-    if (quantity > resource.quantity) {
-      await interaction.reply({
-        content: `❌ 수량이 부족합니다. (보유: ${resource.quantity}개)`,
-        ephemeral: true,
-      });
+    const resource = getResourceInfo(itemKey);
 
-      return true;
+    if (side === 'sell') {
+      const owned = character.resources.find((entry) => entry.type === itemKey);
+
+      if (!owned || owned.quantity < quantity) {
+        await interaction.reply({
+          content: `❌ 수량이 부족합니다. (보유: ${owned?.quantity || 0}개)`,
+          ephemeral: true,
+        });
+        return true;
+      }
     }
 
-    const totalPrice = pricePerUnit * quantity;
-    const fee = Math.floor(totalPrice * MARKET_FEE_RATE);
-    const netProfit = totalPrice - fee;
+    if (side === 'buy') {
+      const totalReserve = quantity * price;
 
-    // 거래소 등록
-    await prisma.$transaction(async (tx) => {
-      // 자원 차감
-      await tx.resource.update({
-        where: { id: resource.id },
-        data: {
-          quantity: resource.quantity - quantity,
-        },
-      });
+      if (character.gold < totalReserve) {
+        await interaction.reply({
+          content: `❌ 골드가 부족합니다. (필요: ${formatGold(totalReserve)}, 보유: ${formatGold(character.gold)})`,
+          ephemeral: true,
+        });
+        return true;
+      }
+    }
 
-      // 거래소 등록
-      await tx.marketListing.create({
-        data: {
-          sellerId: character.id,
-          itemType: 'resource',
-          itemKey: resourceType,
-          itemName: resource.name,
-          quantity,
-          pricePerUnit,
-          totalPrice,
-          status: 'active',
-        },
+    let placement;
+
+    try {
+      placement = await placeOrderWithMatching({
+        prisma,
+        character,
+        side,
+        itemKey,
+        quantity,
+        price,
       });
-    });
+    } catch (error) {
+      if (error.message === 'INSUFFICIENT_RESOURCE') {
+        await interaction.reply({
+          content: '❌ 주문 등록 중 보유 자원이 부족해졌습니다. 다시 시도하세요.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      if (error.message === 'INSUFFICIENT_GOLD') {
+        await interaction.reply({
+          content: '❌ 주문 등록 중 골드가 부족해졌습니다. 다시 시도하세요.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      throw error;
+    }
+
+    const sideLabel = side === 'sell' ? '매도' : '매수';
+    const remainingQuantity = placement.order?.quantity || 0;
+    const remainingReserve = remainingQuantity * price;
+    const sellerNet = placement.matchedGold - placement.matchedFee;
+
+    const message = [
+      `✅ ${sideLabel} 주문 등록 완료`,
+      '',
+      `${resource.emoji} **${resource.name}**`,
+      `📌 주문: ${quantity}개 @ ${formatGold(price)}`,
+    ];
+
+    if (placement.matchedQuantity > 0) {
+      message.push(
+        `⚡ 즉시 체결: ${placement.matchedQuantity}개 (총 ${formatGold(placement.matchedGold)})`,
+        `🧾 수수료: ${formatGold(placement.matchedFee)}`,
+      );
+
+      if (side === 'sell') {
+        message.push(`💵 즉시 정산: ${formatGold(sellerNet)}`);
+      }
+    } else {
+      message.push('⌛ 즉시 체결 없이 주문장에 등록되었습니다');
+    }
+
+    if (remainingQuantity > 0) {
+      if (side === 'sell') {
+        message.push(`📦 잔량 ${remainingQuantity}개가 호가창에 유지됩니다`);
+      } else {
+        message.push(`💰 잔량 예약금 ${formatGold(remainingReserve)}가 유지됩니다`);
+      }
+    } else {
+      message.push('✅ 잔량 없이 전량 체결되었습니다');
+    }
+
+    message.push('', '💡 `/market`에서 호가창을 확인하세요');
 
     await interaction.reply({
-      content: [
-        '✅ 거래소에 등록했습니다!',
-        '',
-        `${RESOURCES[resourceType]?.emoji || '📦'} **${resource.name}** x${quantity}`,
-        `💰 ${pricePerUnit}G/개 | 총 ${totalPrice}G`,
-        `📊 판매 시 수수료 10% 차감 (${fee}G)`,
-        `💵 실수령액: ${netProfit}G`,
-        '',
-        '💡 `/market`에서 판매 현황을 확인하세요',
-      ].join('\n'),
+      content: message.join('\n'),
       ephemeral: true,
     });
+
+    if (placement.matchedCharacterIds.length > 0) {
+      try {
+        await Promise.all(
+          placement.matchedCharacterIds.map((characterId) =>
+            recordDailyQuestProgress(prisma, characterId, DAILY_QUEST_EVENTS.MARKET_TRADE, 1),
+          ),
+        );
+      } catch (error) {
+        console.error('Daily quest progress update failed (orderbook trade):', error);
+      }
+    }
 
     const onboardingFeedback = await handleOnboardingEvent({
       prisma,

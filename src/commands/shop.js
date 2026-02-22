@@ -573,21 +573,57 @@ module.exports = {
         return true;
       }
 
-      // TODO: 포션 인벤토리 시스템 구현 필요
-      // 현재는 골드만 차감
-      await prisma.character.update({
-        where: {
-          id: character.id,
-        },
-        data: {
-          gold: { decrement: price },
-        },
+      const potionConfig = potionType === 'health'
+        ? {
+          name: '💊 체력 회복 포션',
+          type: 'potion',
+          effect: 'heal_hp',
+          power: 35,
+        }
+        : {
+          name: '🔷 마나 회복 포션',
+          type: 'potion',
+          effect: 'heal_mp',
+          power: 50,
+        };
+
+      await prisma.$transaction(async (tx) => {
+        await tx.character.update({
+          where: {
+            id: character.id,
+          },
+          data: {
+            gold: { decrement: price },
+          },
+        });
+
+        await tx.consumable.upsert({
+          where: {
+            characterId_type_effect: {
+              characterId: character.id,
+              type: potionConfig.type,
+              effect: potionConfig.effect,
+            },
+          },
+          update: {
+            quantity: { increment: 1 },
+            name: potionConfig.name,
+            power: potionConfig.power,
+          },
+          create: {
+            characterId: character.id,
+            name: potionConfig.name,
+            type: potionConfig.type,
+            effect: potionConfig.effect,
+            power: potionConfig.power,
+            duration: null,
+            quantity: 1,
+          },
+        });
       });
 
-      const potionName = potionType === 'health' ? '💊 체력 회복 포션' : '🔷 마나 회복 포션';
-
       await interaction.reply({
-        content: `✅ ${potionName}을(를) 구매했습니다! (-${price}G)\n💡 포션은 전투 중 사용할 수 있습니다.`,
+        content: `✅ ${potionConfig.name}을(를) 구매했습니다! (-${price}G)\n💡 소비템 인벤토리에 추가되었습니다.`,
         ephemeral: true,
       });
 

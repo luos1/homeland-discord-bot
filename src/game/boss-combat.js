@@ -10,6 +10,7 @@ const { applyExperience } = require('./leveling');
 const { calculateEquipmentStats } = require('./equipment');
 const { getAvailableSkills, canUseSkill } = require('./skills');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests');
+const { resolvePremiumBenefits } = require('./premium');
 const { EMBED_COLORS, createDivider, createHPBar } = require('../utils/ui');
 const { RARITIES } = require('./equipment');
 
@@ -246,14 +247,16 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
 
   const equipStats = calculateEquipmentStats(equipment);
   const maxHp = character.maxHp + equipStats.hp;
+  const premiumBenefits = resolvePremiumBenefits(character.premiumSubscription);
 
   // 골드 보상
-  const goldReward = Math.floor(
+  const baseGoldReward = Math.floor(
     Math.random() * (boss.goldReward.max - boss.goldReward.min + 1) + boss.goldReward.min,
   );
+  const goldReward = Math.floor(baseGoldReward * premiumBenefits.goldMultiplier);
 
   // 경험치 보상
-  const xpReward = boss.xpReward;
+  const xpReward = Math.floor(boss.xpReward * premiumBenefits.xpMultiplier);
 
   // 레벨업 체크 (올바른 시그니처: character object, xp, currentHp, currentMana)
   const leveling = applyExperience(character, xpReward, session.playerHp, character.mana ?? 0);
@@ -347,6 +350,9 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
         '',
         `💰 골드: +${goldReward}G`,
         `💎 경험치: +${xpReward}`,
+        premiumBenefits.active
+          ? `👑 Premium 보너스 적용 (XP +${Math.round((premiumBenefits.xpMultiplier - 1) * 100)}%, GOLD +${Math.round((premiumBenefits.goldMultiplier - 1) * 100)}%)`
+          : '',
         leveling.levelsGained > 0
           ? `🎉 **레벨 업!** ${character.level} → ${leveling.characterUpdate.level}`
           : '',

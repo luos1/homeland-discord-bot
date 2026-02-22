@@ -34,9 +34,27 @@ describe('shop command', () => {
     const handled = await shopCommand.handleShopButton(interaction, { prisma });
 
     expect(handled).toBe(true);
-    expect(prisma.character.update).toHaveBeenCalledWith({
+    expect(tx.character.update).toHaveBeenCalledWith({
       where: { id: character.id },
       data: { gold: { decrement: 50 } },
+    });
+    expect(tx.consumable.upsert).toHaveBeenCalledWith({
+      where: {
+        characterId_type_effect: {
+          characterId: character.id,
+          type: 'potion',
+          effect: 'heal_hp',
+        },
+      },
+      update: expect.objectContaining({
+        quantity: { increment: 1 },
+      }),
+      create: expect.objectContaining({
+        characterId: character.id,
+        type: 'potion',
+        effect: 'heal_hp',
+        quantity: 1,
+      }),
     });
     expect(interaction.reply).toHaveBeenCalledTimes(1);
     expect(interaction.reply.mock.calls[0][0].content).toContain('구매했습니다');

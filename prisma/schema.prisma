@@ -71,6 +71,7 @@ model Character {
   attack           Int                @default(10)
   defense          Int                @default(5)
   gold             Int                @default(0)
+  gems             Int                @default(0)
   winStreak        Int                @default(0)
   maxWinStreak     Int                @default(0)
   battleWins       Int                @default(0)
@@ -85,11 +86,15 @@ model Character {
   gatherSessions   GatherSession[]
   craftingSessions CraftingSession[]
   marketListings   MarketListing[]
+  orderBookOrders  OrderBook[]
   rankingEvents    RankingEvent[]
   consumables      Consumable[]
   attendanceRecords AttendanceRecord[]
   dailyQuests      DailyQuest[]
   dailyQuestProfile DailyQuestProfile?
+  premiumSubscription PremiumSubscription?
+  gemTransactions  GemTransaction[]
+  gemExchanges     GemExchange[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -97,6 +102,7 @@ model Character {
   @@index([battleWins])
   @@index([bossKills])
   @@index([gold])
+  @@index([gems])
   @@index([productionLevel])
   @@index([tradeVolume])
 }
@@ -203,6 +209,7 @@ model MarketListing {
   quantity    Int       @default(1)
   pricePerUnit Int
   totalPrice  Int
+  itemData    Json?     // equipment snapshot JSON
   status      String    @default("active") // active, sold, cancelled
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -212,6 +219,27 @@ model MarketListing {
   @@index([sellerId])
   @@index([status])
   @@index([itemType])
+}
+
+model OrderBook {
+  id          Int       @id @default(autoincrement())
+  type        String    // buy or sell
+  itemType    String    @default("resource")
+  itemKey     String
+  itemName    String
+  price       Int
+  quantity    Int
+  userId      String
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  status      String    @default("open") // open, filled, cancelled
+  filledAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([itemType, itemKey, type, status, price, createdAt])
+  @@index([userId, status])
+  @@index([characterId, status])
 }
 
 model TradeHistory {
@@ -231,6 +259,91 @@ model TradeHistory {
   @@index([createdAt])
   @@index([createdAt, sellerId])
   @@index([createdAt, buyerId])
+}
+
+model PremiumSubscription {
+  userId     String    @id
+  character  Character @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  planId     String
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([planId])
+  @@index([endDate])
+}
+
+model GemTransaction {
+  id         Int       @id @default(autoincrement())
+  userId     String
+  character  Character @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  type       String
+  amount     Int
+  rate       Int
+  note       String?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+}
+
+model GemExchange {
+  id         Int       @id @default(autoincrement())
+  userId     String
+  character  Character @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  orderType  String
+  amount     Int
+  rate       Int
+  fee        Int       @default(0)
+  goldAmount Int       @default(0)
+  status     String    @default("filled")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([orderType, status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model EconomySnapshot {
+  id               Int      @id @default(autoincrement())
+  snapshotType     String   @default("hourly") // hourly, daily, manual
+  totalGold        Int      @default(0)
+  totalTradeVolume Int      @default(0)
+  resources        Json
+  averagePrices    Json
+  createdAt        DateTime @default(now())
+
+  @@index([snapshotType, createdAt])
+  @@index([createdAt])
+}
+
+model ResourcePriceHistory {
+  id            Int      @id @default(autoincrement())
+  resourceType  String
+  resourceName  String
+  averagePrice  Int
+  tradeCount    Int      @default(0)
+  totalQuantity Int      @default(0)
+  snapshotType  String   @default("hourly") // trade, hourly, daily
+  createdAt     DateTime @default(now())
+
+  @@index([resourceType, createdAt])
+  @@index([snapshotType, createdAt])
+}
+
+model EconomyAlert {
+  id         Int      @id @default(autoincrement())
+  alertType  String // inflation, abnormal_trade
+  severity   String // warn, critical
+  message    String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+
+  @@index([alertType, createdAt])
+  @@index([severity, createdAt])
+  @@index([resolvedAt])
 }
 
 model RankingEvent {

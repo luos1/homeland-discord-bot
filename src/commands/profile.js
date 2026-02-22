@@ -13,6 +13,7 @@ const { canProductionJobChange } = require('../game/production-advanced-classes'
 const { calculateEquipmentStats } = require('../game/equipment');
 const { getStreakDisplay } = require('../game/streak');
 const { cleanupOldSessions } = require('../game/session-cleanup');
+const { resolvePremiumBenefits } = require('../game/premium');
 const {
   EMBED_COLORS,
   createDivider,
@@ -49,6 +50,7 @@ async function getProfileCharacter(prisma, userId) {
       combatSession: true,
       equipment: true,
       skills: true,
+      premiumSubscription: true,
     },
   });
 }
@@ -60,6 +62,10 @@ function createProfileEmbed(character) {
   const currentMana = character.mana ?? 0;
   const maxMana = character.maxMana ?? Math.max(currentMana, 1);
   const manaBar = createHPBar(currentMana, maxMana, 10);
+  const premiumBenefits = resolvePremiumBenefits(character.premiumSubscription);
+  const premiumStatusLine = premiumBenefits.active
+    ? `👑 Premium 활성 (XP +${Math.round((premiumBenefits.xpMultiplier - 1) * 100)}%, GOLD +${Math.round((premiumBenefits.goldMultiplier - 1) * 100)}%)`
+    : '👑 Premium 비활성';
 
   const combatStatus = character.combatSession
     ? (() => {
@@ -125,7 +131,8 @@ function createProfileEmbed(character) {
     .setDescription(
       [
         createDivider(),
-        `💎 레벨 ${character.level} | 💰 골드 ${formatNumber(character.gold)}G`,
+        `💎 레벨 ${character.level} | 💰 골드 ${formatNumber(character.gold)}G | 💠 젬 ${formatNumber(character.gems || 0)}`,
+        premiumStatusLine,
         jobLine,
         productionLine,
         streakLine,

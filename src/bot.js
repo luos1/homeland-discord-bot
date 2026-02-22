@@ -50,6 +50,10 @@ const {
   stopDailyQuestResetScheduler,
 } = require('./game/daily-quests');
 const {
+  resolveEconomyMonitoringConfig,
+  startEconomyMonitoringJob,
+} = require('./game/economy-scheduler');
+const {
   handleOnboardingEvent,
   maybeSendGuideTip,
   sendOnboardingFeedback,
@@ -61,6 +65,7 @@ const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
 const MONSTER_SELECT_PREFIX = 'monster_select:';
 const PROFILE_ZONE_KEYS = new Set(listZones().map((zone) => zone.key));
 let sessionCleanupJob = null;
+let economyMonitoringJob = null;
 
 const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
 
@@ -154,6 +159,29 @@ client.once(Events.ClientReady, async (readyClient) => {
     startDailyQuestResetScheduler(prisma);
   } catch (error) {
     console.error('Daily quest 자정 리셋 스케줄러 시작 실패:', error);
+  }
+
+  try {
+    if (economyMonitoringJob) {
+      economyMonitoringJob.stop();
+    }
+
+    const economyConfig = resolveEconomyMonitoringConfig();
+    economyMonitoringJob = startEconomyMonitoringJob(prisma, {
+      client: readyClient,
+      runOnStart: true,
+      hourlySnapshotIntervalMs: economyConfig.hourlySnapshotIntervalMs,
+      dailySnapshotIntervalMs: economyConfig.dailySnapshotIntervalMs,
+      alertCheckIntervalMs: economyConfig.alertCheckIntervalMs,
+    });
+
+    console.log(
+      `📈 경제 모니터링 시작 (hourly=${Math.floor(economyConfig.hourlySnapshotIntervalMs / 60000)}분, `
+      + `daily=${Math.floor(economyConfig.dailySnapshotIntervalMs / 60000)}분, `
+      + `alerts=${Math.floor(economyConfig.alertCheckIntervalMs / 60000)}분)`,
+    );
+  } catch (error) {
+    console.error('경제 모니터링 시작 실패:', error);
   }
 });
 
@@ -1456,6 +1484,11 @@ async function shutdown(signal) {
   if (sessionCleanupJob) {
     sessionCleanupJob.stop();
     sessionCleanupJob = null;
+  }
+
+  if (economyMonitoringJob) {
+    economyMonitoringJob.stop();
+    economyMonitoringJob = null;
   }
 
   await prisma.$disconnect();

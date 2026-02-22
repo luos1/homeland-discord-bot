@@ -89,6 +89,53 @@ describe('combat flow', () => {
     expect(outcome.rewards.goldReward).toBeGreaterThan(0);
   });
 
+  test('프리미엄 혜택: 활성 구독이면 전투 보상이 증가한다', () => {
+    const session = createSession({
+      monsterHp: 1,
+      monsterMaxHp: 20,
+      monsterDefense: 0,
+      monsterAttack: 3,
+      monsterXpReward: 20,
+      monsterGoldMin: 10,
+      monsterGoldMax: 10,
+    });
+    const baseCharacter = createCharacter({
+      attack: 40,
+      defense: 5,
+      gold: 100,
+      winStreak: 0,
+    });
+    const premiumCharacter = createCharacter({
+      ...baseCharacter,
+      premiumSubscription: {
+        userId: baseCharacter.userId,
+        planId: 'premium_monthly_999',
+        startDate: new Date('2026-02-01T00:00:00.000Z'),
+        endDate: new Date('2026-03-01T00:00:00.000Z'),
+      },
+    });
+
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+
+    const baseOutcome = resolveCombatTurn({
+      character: baseCharacter,
+      session,
+      action: COMBAT_ACTIONS.attack,
+    });
+    const premiumOutcome = resolveCombatTurn({
+      character: premiumCharacter,
+      session,
+      action: COMBAT_ACTIONS.attack,
+    });
+
+    expect(baseOutcome.status).toBe('victory');
+    expect(premiumOutcome.status).toBe('victory');
+    expect(premiumOutcome.rewards.xpReward).toBeGreaterThan(baseOutcome.rewards.xpReward);
+    expect(premiumOutcome.rewards.goldReward).toBeGreaterThan(baseOutcome.rewards.goldReward);
+
+    randomSpy.mockRestore();
+  });
+
   test('패배: 플레이어 HP가 0 이하가 되면 즉시 전투 종료된다', () => {
     const character = createCharacter({
       attack: 1,

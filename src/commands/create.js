@@ -167,6 +167,7 @@ module.exports = {
           `⚔️ 공격력: ${character.attack}`,
           `🛡️ 방어력: ${character.defense}`,
           `💰 골드: ${character.gold}G`,
+          `💠 젬: ${character.gems || 0}`,
           '',
           '🎯 전투를 시작해보세요!',
         ].join('\n'),

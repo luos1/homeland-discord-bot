@@ -35,6 +35,7 @@ async function handleBossCombatAction({ interaction, prisma }) {
         include: {
           equipment: { where: { equipped: true } },
           skills: true,
+          premiumSubscription: true,
         },
       },
     },
@@ -187,6 +188,7 @@ async function handleBossCombatAction({ interaction, prisma }) {
         character: {
           include: {
             equipment: { where: { equipped: true } },
+            premiumSubscription: true,
           },
         },
       },
