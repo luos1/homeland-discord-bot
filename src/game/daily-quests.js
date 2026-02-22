@@ -314,7 +314,7 @@ async function ensureDailyQuestsForDay(db, characterId, dayKey) {
     },
   });
 
-  if (existing.length > 0) {
+  if ((existing?.length ?? 0) > 0) {
     return existing;
   }
 
@@ -525,7 +525,7 @@ async function recordDailyQuestProgress(
       },
     });
 
-    if (activeQuests.length === 0) {
+    if ((activeQuests?.length ?? 0) === 0) {
       return {
         dayKey,
         eventKey,

@@ -441,7 +441,7 @@ async function maybeStartQuestChain(tx, state, feedback, now) {
 }
 
 async function progressTutorial(tx, state, character, feedback, now) {
-  if (!state.tutorialStarted || state.tutorialCompleted) {
+  if (!state || !state.tutorialStarted || state.tutorialCompleted) {
     return state;
   }
 
@@ -483,7 +483,7 @@ async function progressTutorial(tx, state, character, feedback, now) {
 }
 
 async function progressQuestChain(tx, state, character, eventType, feedback, now) {
-  if (!eventType || !state.questChainStarted || state.questChainCompleted) {
+  if (!eventType || !state || !state.questChainStarted || state.questChainCompleted) {
     return state;
   }
 
@@ -593,7 +593,7 @@ async function handleOnboardingEvent({
       },
     });
 
-    if (startTutorial && !state.tutorialStarted) {
+    if (startTutorial && (!state || !state.tutorialStarted)) {
       state = await tx.onboardingProgress.update({
         where: { userId: normalizedUser.id },
         data: {
@@ -616,7 +616,7 @@ async function handleOnboardingEvent({
     state = await progressTutorial(tx, state, character, feedback, now);
     state = await progressQuestChain(tx, state, character, eventType, feedback, now);
 
-    if (state.tutorialCompleted && !state.questChainStarted) {
+    if (state?.tutorialCompleted && !state.questChainStarted) {
       await maybeStartQuestChain(tx, state, feedback, now);
     }
   });
