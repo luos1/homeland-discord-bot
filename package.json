@@ -9,7 +9,7 @@
     "dev": "node --watch src/bot.js",
     "prisma:generate": "prisma generate --schema src/database/schema.prisma",
     "prisma:migrate": "prisma migrate dev --name init --schema src/database/schema.prisma",
-    "check": "node --check src/bot.js src/database/client.js src/commands/create.js src/commands/profile.js src/commands/explore.js src/game/monsters.js src/game/leveling.js src/game/combat.js"
+    "check": "node --check src/bot.js src/database/client.js src/commands/create.js src/commands/profile.js src/commands/explore.js src/game/monsters.js src/game/leveling.js src/game/skills.js src/game/combat.js"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -39,6 +39,9 @@ function createProfileEmbed(character) {
   const progress = progressToNextLevel(character);
   const xpBar = createXPBar(character.xp, progress.required, 10);
   const hpBar = createHPBar(character.hp, character.maxHp, 10);
+  const currentMana = character.mana ?? 0;
+  const maxMana = character.maxMana ?? Math.max(currentMana, 1);
+  const manaBar = createHPBar(currentMana, maxMana, 10);
 
   const combatStatus = character.combatSession
     ? (() => {
@@ -65,6 +68,7 @@ function createProfileEmbed(character) {
         '',
         '📊 전투 능력치',
         `❤️ 체력: ${hpBar} ${character.hp}/${character.maxHp}`,
+        `🔷 마나: ${manaBar} ${currentMana}/${maxMana}`,
         `⚔️ 공격력: ${character.attack}`,
         `🛡️ 방어력: ${character.defense}`,
         '💥 크리티컬: 5%',

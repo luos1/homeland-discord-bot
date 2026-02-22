@@ -7,6 +7,7 @@ const {
 
 const { applyExperience } = require('./leveling');
 const { MONSTERS, getZone, randomInt } = require('./monsters');
+const { getCombatSkill } = require('./skills');
 const {
   EMBED_COLORS,
   createDivider,
@@ -15,12 +16,19 @@ const {
 } = require('../utils/ui');
 
 const COMBAT_PREFIX = 'combat';
+const COMBAT_END_PREFIX = 'combat_end';
 
 const COMBAT_ACTIONS = {
   attack: 'attack',
   defend: 'defend',
   potion: 'potion',
+  skill: 'skill',
   flee: 'flee',
+};
+
+const COMBAT_END_ACTIONS = {
+  retry: 'retry',
+  zones: 'zones',
 };
 
 function buildCombatCustomId(action, sessionId) {
@@ -54,8 +62,45 @@ function isCombatButton(customId) {
   return customId.startsWith(`${COMBAT_PREFIX}:`);
 }
 
+function buildCombatEndCustomId(action, zoneKey = 'zone1') {
+  return `${COMBAT_END_PREFIX}:${action}:${zoneKey}`;
+}
+
+function parseCombatEndCustomId(customId) {
+  if (!customId || !customId.startsWith(`${COMBAT_END_PREFIX}:`)) {
+    return null;
+  }
+
+  const parts = customId.split(':');
+
+  if (parts.length !== 3) {
+    return null;
+  }
+
+  const [, action, zoneKey] = parts;
+
+  if (!COMBAT_END_ACTIONS[action] || !zoneKey) {
+    return null;
+  }
+
+  return {
+    action,
+    zoneKey,
+  };
+}
+
+function isCombatEndButton(customId) {
+  return customId.startsWith(`${COMBAT_END_PREFIX}:`);
+}
+
 function createCombatActionRow(sessionId, options = {}) {
   const disabled = options.disabled ?? false;
+  const character = options.character ?? null;
+  const skill = character ? getCombatSkill(character) : null;
+  const currentMana = character?.mana ?? 0;
+  const skillDisabled = disabled || !skill || currentMana < skill.manaCost;
+  const skillLabel = skill?.name ?? '스킬 없음';
+  const skillEmoji = skill?.emoji ?? '✨';
 
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -77,10 +122,35 @@ function createCombatActionRow(sessionId, options = {}) {
       .setStyle(ButtonStyle.Success)
       .setDisabled(disabled),
     new ButtonBuilder()
+      .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.skill, sessionId))
+      .setLabel(skillLabel)
+      .setEmoji(skillEmoji)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(skillDisabled),
+    new ButtonBuilder()
       .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.flee, sessionId))
       .setLabel('도망')
       .setEmoji('🏃')
       .setStyle(ButtonStyle.Danger)
+      .setDisabled(disabled),
+  );
+}
+
+function createCombatEndActionRow(zoneKey, options = {}) {
+  const disabled = options.disabled ?? false;
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(buildCombatEndCustomId(COMBAT_END_ACTIONS.retry, zoneKey))
+      .setLabel('다시 전투')
+      .setEmoji('🔁')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId(buildCombatEndCustomId(COMBAT_END_ACTIONS.zones, zoneKey))
+      .setLabel('탐험지 선택')
+      .setEmoji('🗺️')
+      .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
   );
 }
@@ -106,6 +176,10 @@ function buildOngoingDescription({ character, session, battleLog }) {
   const monsterLevel = resolveMonsterLevel(session.monsterName, zone?.minLevel ?? 1);
   const monsterHpBar = createHPBar(session.monsterHp, session.monsterMaxHp, 10);
   const playerHpBar = createHPBar(session.playerHp, character.maxHp, 10);
+  const currentMana = character.mana ?? 0;
+  const maxMana = character.maxMana ?? Math.max(currentMana, 1);
+  const playerManaBar = createHPBar(currentMana, maxMana, 10);
+  const combatSkill = getCombatSkill(character);
   const lines = [];
 
   appendBattleLog(lines, battleLog);
@@ -117,7 +191,11 @@ function buildOngoingDescription({ character, session, battleLog }) {
   lines.push(createDivider());
   lines.push(`⚔️ ${character.name} (${localizeClassName(character.class)}) Lv.${character.level}`);
   lines.push(`❤️ ${playerHpBar} ${session.playerHp}/${character.maxHp} HP`);
+  lines.push(`🔷 ${playerManaBar} ${currentMana}/${maxMana} MP`);
   lines.push(`⚔️ 공격력: ${character.attack} | 🛡️ 방어력: ${character.defense}`);
+  if (combatSkill) {
+    lines.push(`${combatSkill.emoji} 스킬: ${combatSkill.name} (${combatSkill.manaCost} MP)`);
+  }
   lines.push(`💊 포션: ${session.potionsRemaining}개`);
   lines.push('');
   lines.push(createDivider());
@@ -135,6 +213,9 @@ function buildVictoryDescription({
   levelUpDetails,
 }) {
   const playerHpBar = createHPBar(session.playerHp, character.maxHp, 10);
+  const currentMana = character.mana ?? 0;
+  const maxMana = character.maxMana ?? Math.max(currentMana, 1);
+  const playerManaBar = createHPBar(currentMana, maxMana, 10);
   const lines = [];
 
   appendBattleLog(lines, battleLog);
@@ -145,6 +226,7 @@ function buildVictoryDescription({
   lines.push('📊 전투 결과');
   lines.push(`⏱️ 전투 시간: ${session.turn}턴`);
   lines.push(`❤️ 남은 체력: ${playerHpBar} ${session.playerHp}/${character.maxHp} HP`);
+  lines.push(`🔷 남은 마나: ${playerManaBar} ${currentMana}/${maxMana} MP`);
   lines.push('');
   lines.push('🎁 보상');
   lines.push(`✨ 경험치 +${rewards?.xpReward ?? 0}`);
@@ -153,6 +235,8 @@ function buildVictoryDescription({
 
   if (levelUpDetails) {
     const hpGain = levelUpDetails.after.maxHp - levelUpDetails.before.maxHp;
+    const manaGain =
+      (levelUpDetails.after.maxMana ?? 0) - (levelUpDetails.before.maxMana ?? 0);
     const attackGain = levelUpDetails.after.attack - levelUpDetails.before.attack;
     const defenseGain = levelUpDetails.after.defense - levelUpDetails.before.defense;
 
@@ -163,6 +247,9 @@ function buildVictoryDescription({
     lines.push(`⚔️ Lv.${levelUpDetails.before.level} → Lv.${levelUpDetails.after.level}`);
     lines.push(
       `❤️ 최대 체력 +${hpGain} (${levelUpDetails.before.maxHp} → ${levelUpDetails.after.maxHp})`,
+    );
+    lines.push(
+      `🔷 최대 마나 +${manaGain} (${levelUpDetails.before.maxMana ?? 0} → ${levelUpDetails.after.maxMana ?? 0})`,
     );
     lines.push(
       `⚔️ 공격력 +${attackGain} (${levelUpDetails.before.attack} → ${levelUpDetails.after.attack})`,
@@ -181,6 +268,9 @@ function buildVictoryDescription({
 
 function buildDefeatDescription({ character, session, battleLog }) {
   const hpBar = createHPBar(session.playerHp, character.maxHp, 10);
+  const currentMana = character.mana ?? 0;
+  const maxMana = character.maxMana ?? Math.max(currentMana, 1);
+  const manaBar = createHPBar(currentMana, maxMana, 10);
   const lines = [];
 
   appendBattleLog(lines, battleLog);
@@ -188,9 +278,10 @@ function buildDefeatDescription({ character, session, battleLog }) {
   lines.push(createDivider());
   lines.push('💔 전투에서 쓰러졌습니다');
   lines.push(`❤️ 체력: ${hpBar} ${session.playerHp}/${character.maxHp} HP`);
+  lines.push(`🔷 마나: ${manaBar} ${currentMana}/${maxMana} MP`);
   lines.push('');
   lines.push('🏥 마을에서 회복되었습니다');
-  lines.push('💊 체력이 완전히 회복되었습니다');
+  lines.push('💊 체력과 마나가 완전히 회복되었습니다');
   lines.push('');
   lines.push(createDivider());
   lines.push('💡 팁: 방어를 사용하면 받는 피해를 크게 줄일 수 있습니다.');
@@ -200,6 +291,9 @@ function buildDefeatDescription({ character, session, battleLog }) {
 
 function buildFledDescription({ character, session, battleLog }) {
   const hpBar = createHPBar(session.playerHp, character.maxHp, 10);
+  const currentMana = character.mana ?? 0;
+  const maxMana = character.maxMana ?? Math.max(currentMana, 1);
+  const manaBar = createHPBar(currentMana, maxMana, 10);
   const lines = [];
 
   appendBattleLog(lines, battleLog);
@@ -207,9 +301,10 @@ function buildFledDescription({ character, session, battleLog }) {
   lines.push(createDivider());
   lines.push('💔 부상을 입었습니다');
   lines.push(`❤️ 체력: ${hpBar} ${session.playerHp}/${character.maxHp} HP`);
+  lines.push(`🔷 마나: ${manaBar} ${currentMana}/${maxMana} MP`);
   lines.push('');
   lines.push('🏥 마을에서 회복 중...');
-  lines.push('💊 체력이 절반으로 회복되었습니다');
+  lines.push('💊 체력과 마나가 절반으로 회복되었습니다');
   lines.push('');
   lines.push(createDivider());
   lines.push('💡 팁: 포션을 사용하면 전투 중 체력을 회복할 수 있습니다!');
@@ -310,6 +405,8 @@ function rollDamage(attackPower, defenseValue, options = {}) {
 
 function resolveCombatTurn({ character, session, action }) {
   let playerHp = session.playerHp;
+  let playerMana = Math.max(character.mana ?? 0, 0);
+  const maxMana = Math.max(character.maxMana ?? playerMana, 0);
   let monsterHp = session.monsterHp;
   let potionsRemaining = session.potionsRemaining;
   let playerDefending = false;
@@ -330,6 +427,36 @@ function resolveCombatTurn({ character, session, action }) {
     }
 
     battleLog.push(`💔 ${session.monsterName}에게 ${playerStrike.damage} 데미지`);
+  }
+
+  if (action === COMBAT_ACTIONS.skill) {
+    const skill = getCombatSkill(character);
+
+    if (!skill) {
+      battleLog.push('❌ 아직 사용할 수 있는 스킬이 없습니다.');
+    } else if (playerMana < skill.manaCost) {
+      battleLog.push(`❌ 마나가 부족합니다. (${playerMana}/${skill.manaCost} MP)`);
+    } else {
+      playerMana -= skill.manaCost;
+
+      const skillStrike = rollDamage(
+        Math.round(character.attack * skill.damageMultiplier),
+        Math.floor(session.monsterDefense * 0.7),
+        {
+          critChance: Math.min(0.45, 0.12 + (skill.critChanceBonus ?? 0)),
+          critMultiplier: skill.critMultiplier ?? 1.75,
+        },
+      );
+
+      monsterHp = Math.max(monsterHp - skillStrike.damage, 0);
+      battleLog.push(`${skill.emoji} ${skill.name} 시전! (${skill.manaCost} MP 소모)`);
+
+      if (skillStrike.isCritical) {
+        battleLog.push('💥 스킬 크리티컬!');
+      }
+
+      battleLog.push(`💔 ${session.monsterName}에게 ${skillStrike.damage} 스킬 데미지`);
+    }
   }
 
   if (action === COMBAT_ACTIONS.defend) {
@@ -360,13 +487,20 @@ function resolveCombatTurn({ character, session, action }) {
 
     if (fleeSuccess) {
       const recoveredHp = Math.max(playerHp, Math.ceil(character.maxHp * 0.5));
-      const recoveredAmount = recoveredHp - playerHp;
+      const recoveredMana = Math.max(playerMana, Math.ceil(maxMana * 0.5));
+      const recoveredHpAmount = recoveredHp - playerHp;
+      const recoveredManaAmount = recoveredMana - playerMana;
 
       playerHp = recoveredHp;
+      playerMana = recoveredMana;
       battleLog.push('🏃 도망에 성공했습니다.');
 
-      if (recoveredAmount > 0) {
-        battleLog.push(`🏥 마을에서 체력을 ${recoveredAmount} 회복했습니다.`);
+      if (recoveredHpAmount > 0) {
+        battleLog.push(`🏥 마을에서 체력을 ${recoveredHpAmount} 회복했습니다.`);
+      }
+
+      if (recoveredManaAmount > 0) {
+        battleLog.push(`🔷 마을에서 마나를 ${recoveredManaAmount} 회복했습니다.`);
       }
 
       return {
@@ -381,6 +515,7 @@ function resolveCombatTurn({ character, session, action }) {
         },
         characterUpdate: {
           hp: playerHp,
+          mana: playerMana,
         },
       };
     }
@@ -393,14 +528,23 @@ function resolveCombatTurn({ character, session, action }) {
     const goldReward = randomInt(session.monsterGoldMin, session.monsterGoldMax);
 
     // 전투 종료 화면에서 레벨업 수치를 즉시 보여주기 위해 XP를 바로 반영한다.
-    const leveling = applyExperience(character, xpReward, playerHp);
+    const leveling = applyExperience(character, xpReward, playerHp, playerMana);
+    const recoveredMana = Math.min(
+      leveling.characterUpdate.maxMana,
+      leveling.characterUpdate.mana + Math.ceil(leveling.characterUpdate.maxMana * 0.3),
+    );
 
     const characterUpdate = {
       ...leveling.characterUpdate,
+      mana: recoveredMana,
       gold: character.gold + goldReward,
     };
 
     battleLog.push(`🎁 경험치 +${xpReward}, 골드 +${goldReward}G 획득!`);
+
+    if (recoveredMana > leveling.characterUpdate.mana) {
+      battleLog.push(`🔷 전투 후 마나 ${recoveredMana - leveling.characterUpdate.mana} 회복`);
+    }
 
     if (leveling.levelsGained > 0) {
       battleLog.push(
@@ -460,6 +604,7 @@ function resolveCombatTurn({ character, session, action }) {
       },
       characterUpdate: {
         hp: character.maxHp,
+        mana: maxMana,
       },
     };
   }
@@ -476,6 +621,7 @@ function resolveCombatTurn({ character, session, action }) {
     },
     characterUpdate: {
       hp: playerHp,
+      mana: playerMana,
     },
   };
 }
@@ -507,12 +653,14 @@ function buildLevelUpDetails(before, after, levelsGained) {
     before: {
       level: before.level,
       maxHp: before.maxHp,
+      maxMana: before.maxMana ?? 0,
       attack: before.attack,
       defense: before.defense,
     },
     after: {
       level: after.level,
       maxHp: after.maxHp,
+      maxMana: after.maxMana ?? before.maxMana ?? 0,
       attack: after.attack,
       defense: after.defense,
     },
@@ -615,9 +763,13 @@ async function handleCombatButton({ interaction, prisma }) {
     levelUpDetails,
   });
 
+  const components = ended
+    ? [createCombatEndActionRow(session.zone)]
+    : [createCombatActionRow(session.id, { character: refreshedCharacter })];
+
   await interaction.editReply({
     embeds: [embed],
-    components: [createCombatActionRow(session.id, { disabled: ended })],
+    components,
   });
 
   return true;
@@ -627,7 +779,10 @@ module.exports = {
   COMBAT_ACTIONS,
   isCombatButton,
   parseCombatCustomId,
+  isCombatEndButton,
+  parseCombatEndCustomId,
   createCombatActionRow,
+  createCombatEndActionRow,
   createCombatEmbed,
   resolveCombatTurn,
   handleCombatButton,

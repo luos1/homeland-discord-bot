@@ -132,7 +132,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
-        components: [createCombatActionRow(character.combatSession.id)],
+        components: [createCombatActionRow(character.combatSession.id, { character })],
         ephemeral: true,
       });
 
@@ -208,7 +208,16 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
-      components: [createCombatActionRow(session.id)],
+      components: [
+        createCombatActionRow(session.id, {
+          character: {
+            ...character,
+            hp: playerHp,
+          },
+        }),
+      ],
     });
   },
+  createZoneSelectionEmbed,
+  createZoneSelectionActionRows,
 };

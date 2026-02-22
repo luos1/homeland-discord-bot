@@ -13,7 +13,12 @@ const {
 } = require('discord.js');
 
 const { prisma } = require('./database/client');
-const { handleCombatButton, isCombatButton } = require('./game/combat');
+const {
+  handleCombatButton,
+  isCombatButton,
+  isCombatEndButton,
+  parseCombatEndCustomId,
+} = require('./game/combat');
 const {
   PROFILE_BUTTON_IDS,
   createProfileActionRow,
@@ -101,6 +106,60 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton()) {
       if (isCombatButton(interaction.customId)) {
         await handleCombatButton({ interaction, prisma });
+        return;
+      }
+
+      if (isCombatEndButton(interaction.customId)) {
+        const combatEndAction = parseCombatEndCustomId(interaction.customId);
+
+        if (!combatEndAction) {
+          await interaction.reply({
+            content: '유효하지 않은 전투 종료 버튼입니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const exploreCommand = client.commands.get('explore');
+
+        if (!exploreCommand) {
+          await interaction.reply({
+            content: '탐험 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        if (combatEndAction.action === 'zones') {
+          await interaction.update({
+            embeds: [exploreCommand.createZoneSelectionEmbed()],
+            components: exploreCommand.createZoneSelectionActionRows(),
+          });
+
+          return;
+        }
+
+        await exploreCommand.execute(
+          {
+            user: interaction.user,
+            options: {
+              getString(optionName) {
+                return optionName === 'zone' ? combatEndAction.zoneKey : null;
+              },
+            },
+            reply(payload) {
+              if (payload.ephemeral) {
+                return interaction.reply(payload);
+              }
+
+              return interaction.update(payload);
+            },
+          },
+          { prisma, client },
+        );
+
         return;
       }
 

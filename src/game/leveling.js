@@ -8,15 +8,17 @@ function xpRequiredForLevel(level) {
   return 100 + (level - 1) * 40;
 }
 
-function applyExperience(character, gainedXp, currentHp) {
+function applyExperience(character, gainedXp, currentHp, currentMana = character.mana) {
   const safeGain = Math.max(0, gainedXp);
 
   let level = character.level;
   let xp = character.xp + safeGain;
   let maxHp = character.maxHp;
+  let maxMana = character.maxMana ?? 40;
   let attack = character.attack;
   let defense = character.defense;
   let hp = Math.min(currentHp, maxHp);
+  let mana = Math.min(currentMana ?? maxMana, maxMana);
 
   let levelsGained = 0;
 
@@ -33,9 +35,11 @@ function applyExperience(character, gainedXp, currentHp) {
 
     // 레벨업 보너스: 1주차 기준으로 단순하고 체감되게 유지한다.
     maxHp += 12;
+    maxMana += 4;
     attack += 3;
     defense += 2;
     hp = maxHp;
+    mana = maxMana;
   }
 
   if (level >= LEVEL_CAP) {
@@ -48,6 +52,8 @@ function applyExperience(character, gainedXp, currentHp) {
       xp,
       hp,
       maxHp,
+      mana,
+      maxMana,
       attack,
       defense,
     },
