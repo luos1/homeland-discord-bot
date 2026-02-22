@@ -1,10 +1,14 @@
+// This file is auto-synced from src/database/schema.prisma
+// The canonical schema lives at src/database/schema.prisma
+// All prisma CLI commands use --schema src/database/schema.prisma (see package.json)
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./homeland.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -16,42 +20,199 @@ model User {
 }
 
 model Character {
-  id            Int            @id @default(autoincrement())
-  userId        String         @unique
-  user          User           @relation(fields: [userId], references: [discordId], onDelete: Cascade)
-  name          String
-  class         String
-  level         Int            @default(1)
-  xp            Int            @default(0)
-  hp            Int            @default(100)
-  maxHp         Int            @default(100)
-  mana          Int            @default(40)
-  maxMana       Int            @default(40)
-  attack        Int            @default(10)
-  defense       Int            @default(5)
-  gold          Int            @default(0)
-  combatSession CombatSession?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id               Int                @id @default(autoincrement())
+  userId           String             @unique
+  user             User               @relation(fields: [userId], references: [discordId], onDelete: Cascade)
+  name             String
+  class            String
+  advancedClass    String?
+  productionClass  String?
+  level            Int                @default(1)
+  xp               Int                @default(0)
+  hp               Int                @default(100)
+  maxHp            Int                @default(100)
+  mana             Int                @default(40)
+  maxMana          Int                @default(40)
+  attack           Int                @default(10)
+  defense          Int                @default(5)
+  gold             Int                @default(0)
+  winStreak        Int                @default(0)
+  maxWinStreak     Int                @default(0)
+  productionLevel  Int                @default(1)
+  productionXp     Int                @default(0)
+  combatSession    CombatSession?
+  equipment        Equipment[]
+  skills           Skill[]
+  resources        Resource[]
+  gatherSessions   GatherSession[]
+  craftingSessions CraftingSession[]
+  marketListings   MarketListing[]
+  consumables      Consumable[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
+
+model Equipment {
+  id           Int       @id @default(autoincrement())
+  characterId  Int
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name         String
+  type         String
+  rarity       String
+  attack       Int       @default(0)
+  defense      Int       @default(0)
+  hp           Int       @default(0)
+  mana         Int       @default(0)
+  effect       String?
+  equipped     Boolean   @default(false)
+  upgradeLevel Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([characterId])
+  @@index([equipped])
+}
+
+model Skill {
+  id           Int       @id @default(autoincrement())
+  characterId  Int
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  skillKey     String
+  skillLevel   Int       @default(1)
+  equipped     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([characterId, skillKey])
+  @@index([characterId])
+  @@index([equipped])
+}
+
+model Resource {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  type        String
+  name        String
+  quantity    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, type])
+  @@index([characterId])
+}
+
+model Consumable {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name        String
+  type        String    // potion, food, scroll
+  effect      String    // heal_hp, heal_mp, buff_regen, etc
+  power       Int       // 효과 수치
+  duration    Int?      // 지속 시간 (초, 버프용)
+  quantity    Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, type, effect])
+  @@index([characterId])
+}
+
+model GatherSession {
+  id             String    @id @default(cuid())
+  characterId    Int       @unique
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  resourceType   String
+  startedAt      DateTime  @default(now())
+  completesAt    DateTime
+  quantity       Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model CraftingSession {
+  id          String    @id @default(cuid())
+  characterId Int       @unique
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  recipeKey   String
+  startedAt   DateTime  @default(now())
+  completesAt DateTime
+  quantity    Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model MarketListing {
+  id          Int       @id @default(autoincrement())
+  sellerId    Int
+  seller      Character @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  itemType    String    // resource or equipment
+  itemKey     String    // resource type or equipment id
+  itemName    String
+  quantity    Int       @default(1)
+  pricePerUnit Int
+  totalPrice  Int
+  status      String    @default("active") // active, sold, cancelled
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  soldAt      DateTime?
+  buyerId     Int?
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([itemType])
+}
+
+model TradeHistory {
+  id          Int      @id @default(autoincrement())
+  sellerId    Int
+  buyerId     Int
+  itemType    String
+  itemKey     String
+  itemName    String
+  quantity    Int
+  price       Int
+  fee         Int
+  createdAt   DateTime @default(now())
+
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([createdAt])
 }
 
 model CombatSession {
-  id              String    @id @default(cuid())
-  characterId     Int       @unique
-  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  zone            String
-  monsterName     String
-  monsterHp       Int
-  monsterMaxHp    Int
-  monsterAttack   Int
-  monsterDefense  Int
-  monsterXpReward Int
-  monsterGoldMin  Int
-  monsterGoldMax  Int
-  playerHp        Int
-  playerDefending Boolean   @default(false)
-  potionsRemaining Int      @default(3)
-  turn            Int       @default(1)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  characterId      Int       @unique
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  zone             String
+  monsterName      String
+  monsterHp        Int
+  monsterMaxHp     Int
+  monsterAttack    Int
+  monsterDefense   Int
+  monsterXpReward  Int
+  monsterGoldMin   Int
+  monsterGoldMax   Int
+  playerHp         Int
+  playerDefending  Boolean   @default(false)
+  potionsRemaining Int       @default(3)
+  turn             Int       @default(1)
+  isBossFight      Boolean   @default(false)
+  bossId           String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model BossEncounter {
+  id             Int       @id @default(autoincrement())
+  bossId         String    @unique
+  lastDefeatedAt DateTime?
+  defeatedBy     String?   // character name
+  defeatedById   Int?      // character id
+  respawnAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([respawnAt])
 }

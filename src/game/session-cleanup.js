@@ -1,6 +1,7 @@
 // 전투 세션 자동 정리 유틸리티
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30분
+const PRODUCTION_SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24시간 (생산 세션용)
 
 /**
  * 오래된 전투 세션 정리
@@ -32,6 +33,37 @@ async function cleanupOldSessions(prisma, userId = null) {
     return result.count;
   } catch (error) {
     console.error('Failed to cleanup old sessions:', error);
+    return 0;
+  }
+}
+
+/**
+ * 오래된 생산 세션(채집/제작) 정리 (24시간 이상 경과)
+ * @param {PrismaClient} prisma
+ * @returns {Promise<number>} 정리된 세션 수
+ */
+async function cleanupOldProductionSessions(prisma) {
+  const cutoffTime = new Date(Date.now() - PRODUCTION_SESSION_TIMEOUT_MS);
+  let cleaned = 0;
+
+  try {
+    const gatherResult = await prisma.gatherSession.deleteMany({
+      where: {
+        updatedAt: { lt: cutoffTime },
+      },
+    });
+    cleaned += gatherResult.count;
+
+    const craftResult = await prisma.craftingSession.deleteMany({
+      where: {
+        updatedAt: { lt: cutoffTime },
+      },
+    });
+    cleaned += craftResult.count;
+
+    return cleaned;
+  } catch (error) {
+    console.error('Failed to cleanup old production sessions:', error);
     return 0;
   }
 }
@@ -70,20 +102,28 @@ async function forceEndUserSession(prisma, userId) {
 }
 
 /**
- * 전역 세션 정리 (모든 오래된 세션)
+ * 전역 세션 정리 (모든 오래된 세션 - 전투 + 생산)
  * 주기적으로 실행하거나 봇 시작 시 실행
  * @param {PrismaClient} prisma
  */
 async function cleanupAllOldSessions(prisma) {
-  const cleaned = await cleanupOldSessions(prisma);
-  if (cleaned > 0) {
-    console.log(`🧹 Cleaned up ${cleaned} old combat sessions`);
+  const combatCleaned = await cleanupOldSessions(prisma);
+  const productionCleaned = await cleanupOldProductionSessions(prisma);
+  const total = combatCleaned + productionCleaned;
+
+  if (combatCleaned > 0) {
+    console.log(`🧹 Cleaned up ${combatCleaned} old combat sessions`);
   }
-  return cleaned;
+  if (productionCleaned > 0) {
+    console.log(`🧹 Cleaned up ${productionCleaned} old production sessions`);
+  }
+
+  return total;
 }
 
 module.exports = {
   cleanupOldSessions,
+  cleanupOldProductionSessions,
   forceEndUserSession,
   cleanupAllOldSessions,
   SESSION_TIMEOUT_MS,

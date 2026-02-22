@@ -181,13 +181,13 @@ module.exports = {
 
     // 스킬 구매
     await prisma.$transaction(async (tx) => {
-      // 골드 차감
+      // 골드 차감 (atomic decrement)
       await tx.character.update({
         where: {
           id: character.id,
         },
         data: {
-          gold: character.gold - skill.cost,
+          gold: { decrement: skill.cost },
         },
       });
 

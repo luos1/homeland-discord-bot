@@ -184,21 +184,27 @@ function createConsumableInventoryEmbed(character, consumables) {
 }
 
 function createInventoryActionRow(equipmentList) {
-  const unequipped = equipmentList.filter((e) => !e.equipped).slice(0, 4);
+  const rows = [];
 
-  const buttons = unequipped.map((eq, index) => {
-    const rarityData = RARITIES[eq.rarity];
-    const typeData = EQUIPMENT_TYPES[eq.type];
+  // 첫 번째 행: 장비 장착 버튼 (최대 5개)
+  const unequipped = equipmentList.filter((e) => !e.equipped).slice(0, 5);
 
-    return new ButtonBuilder()
-      .setCustomId(`${INVENTORY_BUTTON_PREFIX}equip:${eq.id}`)
-      .setLabel(`${index + 1}. 장착`)
-      .setEmoji(typeData.emoji)
-      .setStyle(ButtonStyle.Primary);
-  });
+  if (unequipped.length > 0) {
+    const equipButtons = unequipped.map((eq, index) => {
+      const typeData = EQUIPMENT_TYPES[eq.type];
 
-  // 항상 탭 전환 버튼 추가
-  buttons.push(
+      return new ButtonBuilder()
+        .setCustomId(`${INVENTORY_BUTTON_PREFIX}equip:${eq.id}`)
+        .setLabel(`${index + 1}. 장착`)
+        .setEmoji(typeData.emoji)
+        .setStyle(ButtonStyle.Primary);
+    });
+
+    rows.push(new ActionRowBuilder().addComponents(equipButtons));
+  }
+
+  // 두 번째 행: 탭 전환 버튼
+  const navButtons = [
     new ButtonBuilder()
       .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:skill`)
       .setLabel('스킬')
@@ -213,10 +219,12 @@ function createInventoryActionRow(equipmentList) {
       .setCustomId('back_to_profile')
       .setLabel('프로필로')
       .setEmoji('👤')
-      .setStyle(ButtonStyle.Secondary)
-  );
+      .setStyle(ButtonStyle.Secondary),
+  ];
 
-  return new ActionRowBuilder().addComponents(buttons);
+  rows.push(new ActionRowBuilder().addComponents(navButtons));
+
+  return rows;
 }
 
 function createSkillActionRow(skills) {
@@ -282,7 +290,10 @@ function createSkillActionRow(skills) {
 }
 
 function createConsumableActionRow(consumables) {
-  const buttons = consumables.slice(0, 4).map((item, index) => {
+  const rows = [];
+
+  // 첫 번째 행: 소비템 사용 버튼 (최대 5개)
+  const useButtons = consumables.slice(0, 5).map((item, index) => {
     return new ButtonBuilder()
       .setCustomId(`${INVENTORY_BUTTON_PREFIX}use:${item.id}`)
       .setLabel(`${index + 1}. 사용`)
@@ -290,7 +301,12 @@ function createConsumableActionRow(consumables) {
       .setStyle(ButtonStyle.Primary);
   });
 
-  buttons.push(
+  if (useButtons.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(useButtons));
+  }
+
+  // 두 번째 행: 탭 전환 버튼
+  const navButtons = [
     new ButtonBuilder()
       .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:equipment`)
       .setLabel('장비')
@@ -306,9 +322,11 @@ function createConsumableActionRow(consumables) {
       .setLabel('프로필로')
       .setEmoji('👤')
       .setStyle(ButtonStyle.Secondary),
-  );
+  ];
 
-  return new ActionRowBuilder().addComponents(buttons);
+  rows.push(new ActionRowBuilder().addComponents(navButtons));
+
+  return rows;
 }
 
 function createEquipmentDetailEmbed(equipment) {
@@ -415,11 +433,11 @@ module.exports = {
     }
 
     const embed = createInventoryEmbed(character, character.equipment);
-    const actionRow = createInventoryActionRow(character.equipment);
+    const actionRows = createInventoryActionRow(character.equipment);
 
     await interaction.reply({
       embeds: [embed],
-      components: [actionRow],
+      components: actionRows,
     });
   },
 
@@ -463,7 +481,7 @@ module.exports = {
       if (param === INVENTORY_TAB.equipment) {
         await interaction.update({
           embeds: [createInventoryEmbed(character, character.equipment)],
-          components: [createInventoryActionRow(character.equipment)],
+          components: createInventoryActionRow(character.equipment),
         });
 
         return true;
@@ -472,7 +490,7 @@ module.exports = {
       if (param === INVENTORY_TAB.consumable) {
         await interaction.update({
           embeds: [createConsumableInventoryEmbed(character, character.consumables)],
-          components: [createConsumableActionRow(character.consumables)],
+          components: createConsumableActionRow(character.consumables),
         });
 
         return true;
@@ -564,6 +582,94 @@ module.exports = {
       return true;
     }
 
+    // 스킬 장착 (장비 조회 전에 처리해야 함)
+    if (action === INVENTORY_ACTION.equipSkill) {
+      const skillId = parseInt(param, 10);
+
+      const skill = await prisma.skill.findUnique({
+        where: { id: skillId },
+        include: { character: true },
+      });
+
+      if (!skill || skill.character.userId !== interaction.user.id) {
+        await interaction.reply({
+          content: '이 스킬에 접근할 수 없습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      // 장착된 스킬 개수 확인
+      const equippedCount = await prisma.skill.count({
+        where: {
+          characterId: skill.characterId,
+          equipped: true,
+        },
+      });
+
+      if (equippedCount >= 3) {
+        await interaction.reply({
+          content: '❌ 스킬 슬롯이 가득 찼습니다. (최대 3개)\n다른 스킬을 해제하고 다시 시도하세요.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      // 스킬 장착
+      await prisma.skill.update({
+        where: { id: skillId },
+        data: { equipped: true },
+      });
+
+      const { getAdvancedSkillByKey } = require('../game/advanced-skills');
+      const skillData = getAdvancedSkillByKey(skill.character.advancedClass, skill.skillKey);
+
+      await interaction.reply({
+        content: `✅ ${skillData?.emoji || ''} ${skillData?.name || '스킬'}을(를) 장착했습니다!`,
+        ephemeral: true,
+      });
+
+      return true;
+    }
+
+    // 스킬 해제 (장비 조회 전에 처리해야 함)
+    if (action === INVENTORY_ACTION.unequipSkill) {
+      const skillId = parseInt(param, 10);
+
+      const skill = await prisma.skill.findUnique({
+        where: { id: skillId },
+        include: { character: true },
+      });
+
+      if (!skill || skill.character.userId !== interaction.user.id) {
+        await interaction.reply({
+          content: '이 스킬에 접근할 수 없습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      // 스킬 해제
+      await prisma.skill.update({
+        where: { id: skillId },
+        data: { equipped: false },
+      });
+
+      const { getAdvancedSkillByKey } = require('../game/advanced-skills');
+      const skillData = getAdvancedSkillByKey(skill.character.advancedClass, skill.skillKey);
+
+      await interaction.reply({
+        content: `❌ ${skillData?.emoji || ''} ${skillData?.name || '스킬'}을(를) 해제했습니다.`,
+        ephemeral: true,
+      });
+
+      return true;
+    }
+
+    // 이하 장비 관련 액션
     const equipmentId = parseInt(param, 10);
 
     if (!equipmentId) {
@@ -643,6 +749,15 @@ module.exports = {
     }
 
     if (action === INVENTORY_ACTION.delete) {
+      if (equipment.equipped) {
+        await interaction.reply({
+          content: '⚠️ 장착 중인 장비는 삭제할 수 없습니다. 먼저 해제해주세요.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
       await prisma.equipment.delete({
         where: {
           id: equipmentId,
@@ -651,93 +766,6 @@ module.exports = {
 
       await interaction.reply({
         content: `🗑️ ${equipment.name}을(를) 삭제했습니다.`,
-        ephemeral: true,
-      });
-
-      return true;
-    }
-
-    // 스킬 장착
-    if (action === INVENTORY_ACTION.equipSkill) {
-      const skillId = parseInt(param, 10);
-
-      const skill = await prisma.skill.findUnique({
-        where: { id: skillId },
-        include: { character: true },
-      });
-
-      if (!skill || skill.character.userId !== interaction.user.id) {
-        await interaction.reply({
-          content: '이 스킬에 접근할 수 없습니다.',
-          ephemeral: true,
-        });
-
-        return true;
-      }
-
-      // 장착된 스킬 개수 확인
-      const equippedCount = await prisma.skill.count({
-        where: {
-          characterId: skill.characterId,
-          equipped: true,
-        },
-      });
-
-      if (equippedCount >= 3) {
-        await interaction.reply({
-          content: '❌ 스킬 슬롯이 가득 찼습니다. (최대 3개)\n다른 스킬을 해제하고 다시 시도하세요.',
-          ephemeral: true,
-        });
-
-        return true;
-      }
-
-      // 스킬 장착
-      await prisma.skill.update({
-        where: { id: skillId },
-        data: { equipped: true },
-      });
-
-      const { getAdvancedSkillByKey } = require('../game/advanced-skills');
-      const skillData = getAdvancedSkillByKey(skill.character.advancedClass, skill.skillKey);
-
-      await interaction.reply({
-        content: `✅ ${skillData?.emoji || ''} ${skillData?.name || '스킬'}을(를) 장착했습니다!`,
-        ephemeral: true,
-      });
-
-      return true;
-    }
-
-    // 스킬 해제
-    if (action === INVENTORY_ACTION.unequipSkill) {
-      const skillId = parseInt(param, 10);
-
-      const skill = await prisma.skill.findUnique({
-        where: { id: skillId },
-        include: { character: true },
-      });
-
-      if (!skill || skill.character.userId !== interaction.user.id) {
-        await interaction.reply({
-          content: '이 스킬에 접근할 수 없습니다.',
-          ephemeral: true,
-        });
-
-        return true;
-      }
-
-      // 스킬 해제
-      await prisma.skill.update({
-        where: { id: skillId },
-        data: { equipped: false },
-      });
-
-      const { getAdvancedSkillByKey } = require('../game/advanced-skills');
-      const skillData = getAdvancedSkillByKey(skill.character.advancedClass, skill.skillKey);
-
-      await interaction.reply({
-        content: `❌ ${skillData?.emoji || ''} ${skillData?.name || '스킬'}을(를) 해제했습니다.`,
         ephemeral: true,
       });
 

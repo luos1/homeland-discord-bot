@@ -102,7 +102,7 @@ function createResourceMarketEmbed(listings, page = 0) {
 function createResourceMarketActionRow(listings, page = 0) {
   const pageSize = 10;
   const start = page * pageSize;
-  const pageListings = listings.slice(start, pageSize);
+  const pageListings = listings.slice(start, start + pageSize);
 
   const selectOptions = pageListings.map((listing, index) => {
     const resource = RESOURCES[listing.itemKey];
@@ -442,81 +442,101 @@ module.exports = {
         return true;
       }
 
-      // 거래 처리
-      await prisma.$transaction(async (tx) => {
-        // 구매자 골드 차감
-        await tx.character.update({
-          where: { id: character.id },
-          data: {
-            gold: character.gold - totalPrice,
-          },
-        });
+      // 거래 처리 (트랜잭션 내에서 listing 상태 재확인)
+      const fee = Math.floor(totalPrice * MARKET_FEE_RATE);
+      const netProfit = totalPrice - fee;
 
-        // 판매자 골드 추가 (수수료 차감)
-        const fee = Math.floor(totalPrice * MARKET_FEE_RATE);
-        const netProfit = totalPrice - fee;
+      try {
+        await prisma.$transaction(async (tx) => {
+          // 트랜잭션 내에서 listing 상태 재확인 (동시 구매 방지)
+          const freshListing = await tx.marketListing.findUnique({
+            where: { id: listingId },
+          });
 
-        await tx.character.update({
-          where: { id: listing.sellerId },
-          data: {
-            gold: {
-              increment: netProfit,
-            },
-          },
-        });
+          if (!freshListing || freshListing.status !== 'active') {
+            throw new Error('LISTING_UNAVAILABLE');
+          }
 
-        // 구매자에게 자원 추가
-        const existingResource = await tx.resource.findUnique({
-          where: {
-            characterId_type: {
-              characterId: character.id,
-              type: listing.itemKey,
-            },
-          },
-        });
-
-        if (existingResource) {
-          await tx.resource.update({
-            where: { id: existingResource.id },
+          // 구매자 골드 차감 (atomic decrement)
+          await tx.character.update({
+            where: { id: character.id },
             data: {
-              quantity: existingResource.quantity + listing.quantity,
+              gold: { decrement: totalPrice },
             },
           });
-        } else {
-          await tx.resource.create({
+
+          // 판매자 골드 추가 (수수료 차감)
+          await tx.character.update({
+            where: { id: listing.sellerId },
             data: {
-              characterId: character.id,
-              type: listing.itemKey,
-              name: listing.itemName,
+              gold: { increment: netProfit },
+            },
+          });
+
+          // 구매자에게 자원 추가
+          const existingResource = await tx.resource.findUnique({
+            where: {
+              characterId_type: {
+                characterId: character.id,
+                type: listing.itemKey,
+              },
+            },
+          });
+
+          if (existingResource) {
+            await tx.resource.update({
+              where: { id: existingResource.id },
+              data: {
+                quantity: existingResource.quantity + listing.quantity,
+              },
+            });
+          } else {
+            await tx.resource.create({
+              data: {
+                characterId: character.id,
+                type: listing.itemKey,
+                name: listing.itemName,
+                quantity: listing.quantity,
+              },
+            });
+          }
+
+          // 등록 상태 변경
+          await tx.marketListing.update({
+            where: { id: listingId },
+            data: {
+              status: 'sold',
+              soldAt: new Date(),
+              buyerId: character.id,
+            },
+          });
+
+          // 거래 기록
+          await tx.tradeHistory.create({
+            data: {
+              sellerId: listing.sellerId,
+              buyerId: character.id,
+              itemType: listing.itemType,
+              itemKey: listing.itemKey,
+              itemName: listing.itemName,
               quantity: listing.quantity,
+              price: totalPrice,
+              fee,
             },
           });
+        });
+      } catch (err) {
+        if (err.message === 'LISTING_UNAVAILABLE') {
+          await interaction.reply({
+            content: '❌ 이미 판매된 상품입니다.',
+            ephemeral: true,
+          });
+
+          return true;
         }
 
-        // 등록 상태 변경
-        await tx.marketListing.update({
-          where: { id: listingId },
-          data: {
-            status: 'sold',
-            soldAt: new Date(),
-            buyerId: character.id,
-          },
-        });
-
-        // 거래 기록
-        await tx.tradeHistory.create({
-          data: {
-            sellerId: listing.sellerId,
-            buyerId: character.id,
-            itemType: listing.itemType,
-            itemKey: listing.itemKey,
-            itemName: listing.itemName,
-            quantity: listing.quantity,
-            price: totalPrice,
-            fee,
-          },
-        });
-      });
+        throw err;
+      }
 
       await interaction.reply({
         content: [
@@ -540,7 +560,7 @@ module.exports = {
         where: { id: listingId },
       });
 
-      if (!listing || listing.sellerId !== character.id) {
+      if (!listing || listing.sellerId !== character.id || listing.status !== 'active') {
         await interaction.reply({
           content: '❌ 취소할 수 없는 등록입니다.',
           ephemeral: true,
@@ -693,7 +713,7 @@ module.exports = {
     const quantity = parseInt(interaction.fields.getTextInputValue('quantity'));
     const pricePerUnit = parseInt(interaction.fields.getTextInputValue('price'));
 
-    if (isNaN(quantity) || quantity <= 0) {
+    if (isNaN(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
       await interaction.reply({
         content: '❌ 유효한 수량을 입력하세요.',
         ephemeral: true,
@@ -705,6 +725,15 @@ module.exports = {
     if (isNaN(pricePerUnit) || pricePerUnit <= 0) {
       await interaction.reply({
         content: '❌ 유효한 가격을 입력하세요.',
+        ephemeral: true,
+      });
+
+      return true;
+    }
+
+    if (pricePerUnit > 100000) {
+      await interaction.reply({
+        content: '❌ 개당 가격은 100,000G를 초과할 수 없습니다.',
         ephemeral: true,
       });
 

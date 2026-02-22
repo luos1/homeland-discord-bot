@@ -420,9 +420,20 @@ const ADVANCED_SKILLS = {
   ],
 };
 
+// 한글 전직명 → ADVANCED_SKILLS 키 매핑
+const ADVANCED_CLASS_MAPPING = {
+  '검성': 'berserker',
+  '수호자': 'berserker',
+  '저격수': 'sniper',
+  '사냥꾼': 'sniper',
+  '대마법사': 'archmage',
+  '마도학자': 'archmage',
+};
+
 // 특정 전직 직업의 스킬 목록 반환
 function getAdvancedSkillList(advancedClass) {
-  return ADVANCED_SKILLS[advancedClass] || [];
+  const mapped = ADVANCED_CLASS_MAPPING[advancedClass] || advancedClass;
+  return ADVANCED_SKILLS[mapped] || [];
 }
 
 // 상점에서 판매 가능한 스킬만 반환
@@ -443,9 +454,13 @@ function getAdvancedSkillByKey(advancedClass, skillKey) {
   return skills.find((skill) => skill.key === skillKey);
 }
 
+// boss-combat.js에서 사용하는 alias
+const getAdvancedClassSkills = getAdvancedSkillList;
+
 module.exports = {
   ADVANCED_SKILLS,
   getAdvancedSkillList,
+  getAdvancedClassSkills,
   getShopSkills,
   getBossDropSkills,
   getAdvancedSkillByKey,

@@ -170,12 +170,15 @@ function applyJobChange(character, advancedClassKey) {
 
   const bonuses = classData.bonuses;
 
+  const newMaxHp = character.maxHp + bonuses.maxHp;
+  const newMaxMana = character.maxMana + bonuses.maxMana;
+
   return {
     advancedClass: classData.name,
-    maxHp: character.maxHp + bonuses.maxHp,
-    hp: character.hp + bonuses.maxHp, // 전직 시 체력 보너스만큼 회복
-    maxMana: character.maxMana + bonuses.maxMana,
-    mana: character.mana + bonuses.maxMana, // 전직 시 마나 보너스만큼 회복
+    maxHp: newMaxHp,
+    hp: newMaxHp, // 전직 시 체력 완전 회복
+    maxMana: newMaxMana,
+    mana: newMaxMana, // 전직 시 마나 완전 회복
     attack: character.attack + bonuses.attack,
     defense: character.defense + bonuses.defense,
   };

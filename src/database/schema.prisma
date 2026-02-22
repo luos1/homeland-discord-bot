@@ -111,6 +111,7 @@ model Consumable {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  @@unique([characterId, type, effect])
   @@index([characterId])
 }
 
@@ -210,6 +211,5 @@ model BossEncounter {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  @@index([bossId])
   @@index([respawnAt])
 }

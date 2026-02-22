@@ -979,8 +979,15 @@ async function handleCombatButton({ interaction, prisma }) {
   const parsed = parseCombatCustomId(interaction.customId);
 
   if (!parsed) {
-    return false;
+    await interaction.reply({
+      content: '유효하지 않은 전투 버튼입니다.',
+      ephemeral: true,
+    });
+    return true;
   }
+
+  // Discord 3초 타임아웃 방지: DB 조회 전에 먼저 defer 처리
+  await interaction.deferUpdate();
 
   const session = await prisma.combatSession.findUnique({
     where: {
@@ -996,24 +1003,22 @@ async function handleCombatButton({ interaction, prisma }) {
   });
 
   if (!session) {
-    await interaction.reply({
+    await interaction.editReply({
       content: '이 전투는 이미 종료되었습니다.',
-      ephemeral: true,
+      components: [],
     });
 
     return true;
   }
 
   if (session.character.userId !== interaction.user.id) {
-    await interaction.reply({
+    await interaction.followUp({
       content: '이 캐릭터의 소유자만 전투 버튼을 사용할 수 있습니다.',
       ephemeral: true,
     });
 
     return true;
   }
-
-  await interaction.deferUpdate();
 
   const outcome = resolveCombatTurn({
     character: session.character,

@@ -1,12 +1,22 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { cleanupAllOldSessions } = require('../game/session-cleanup');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('cleanup')
-    .setDescription('[관리자] 오래된 전투 세션 정리'),
+    .setDescription('[관리자] 오래된 전투 세션 정리')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction, { prisma }) {
+    // 관리자 권한 체크
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+      await interaction.reply({
+        content: '❌ 이 명령어는 관리자만 사용할 수 있습니다.',
+        ephemeral: true,
+      });
+      return;
+    }
+
     await interaction.deferReply({ ephemeral: true });
 
     try {

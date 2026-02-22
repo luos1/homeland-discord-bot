@@ -566,7 +566,7 @@ module.exports = {
           id: character.id,
         },
         data: {
-          gold: character.gold - price,
+          gold: { decrement: price },
         },
       });
 
@@ -640,7 +640,7 @@ module.exports = {
             id: character.id,
           },
           data: {
-            gold: character.gold - price,
+            gold: { decrement: price },
           },
         });
 
@@ -718,7 +718,7 @@ module.exports = {
             id: character.id,
           },
           data: {
-            gold: character.gold + sellPrice,
+            gold: { increment: sellPrice },
           },
         });
       });
@@ -783,28 +783,24 @@ module.exports = {
 
       const success = Math.random() < UPGRADE_SUCCESS_RATE;
 
-      await prisma.character.update({
-        where: {
-          id: character.id,
-        },
-        data: {
-          gold: character.gold - upgradeCost,
-        },
-      });
-
       if (success) {
         const newLevel = upgradeLevel + 1;
         const statBonus = Math.floor((equipment.attack + equipment.defense) * 0.1) + 1;
 
-        await prisma.equipment.update({
-          where: {
-            id: equipmentId,
-          },
-          data: {
-            upgradeLevel: newLevel,
-            attack: equipment.attack + statBonus,
-            defense: equipment.defense + statBonus,
-          },
+        await prisma.$transaction(async (tx) => {
+          await tx.character.update({
+            where: { id: character.id },
+            data: { gold: { decrement: upgradeCost } },
+          });
+
+          await tx.equipment.update({
+            where: { id: equipmentId },
+            data: {
+              upgradeLevel: newLevel,
+              attack: equipment.attack + statBonus,
+              defense: equipment.defense + statBonus,
+            },
+          });
         });
 
         await interaction.reply({
@@ -817,10 +813,15 @@ module.exports = {
           ephemeral: true,
         });
       } else {
-        await prisma.equipment.delete({
-          where: {
-            id: equipmentId,
-          },
+        await prisma.$transaction(async (tx) => {
+          await tx.character.update({
+            where: { id: character.id },
+            data: { gold: { decrement: upgradeCost } },
+          });
+
+          await tx.equipment.delete({
+            where: { id: equipmentId },
+          });
         });
 
         await interaction.reply({
@@ -895,7 +896,7 @@ module.exports = {
             id: character.id,
           },
           data: {
-            gold: character.gold - skillData.shopPrice,
+            gold: { decrement: skillData.shopPrice },
           },
         });
 
@@ -970,7 +971,7 @@ module.exports = {
             id: character.id,
           },
           data: {
-            gold: character.gold - upgradeCost,
+            gold: { decrement: upgradeCost },
           },
         });
 

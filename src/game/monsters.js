@@ -231,12 +231,17 @@ function spawnMonster(zoneKey) {
   // 존별 능력치 배율 적용
   const zoneTypeData = ZONE_TYPES[zone.zoneType];
   const statMult = zoneTypeData ? zoneTypeData.statMultiplier : 1.0;
+  const goldMult = zoneTypeData ? zoneTypeData.goldMultiplier : 1.0;
+  const xpMult = zoneTypeData ? zoneTypeData.xpMultiplier : 1.0;
 
   return {
     ...baseMonster,
     hp: Math.floor(baseMonster.hp * statMult),
     attack: Math.floor(baseMonster.attack * statMult),
     defense: Math.floor(baseMonster.defense * statMult),
+    xpReward: Math.floor(baseMonster.xpReward * xpMult),
+    goldMin: Math.floor(baseMonster.goldMin * goldMult),
+    goldMax: Math.floor(baseMonster.goldMax * goldMult),
   };
 }
 

@@ -86,12 +86,36 @@ module.exports = {
         return true;
       }
 
-      // 캐릭터 삭제 (Cascade로 모든 관련 데이터 자동 삭제)
-      await prisma.character.delete({
-        where: {
-          id: character.id,
-        },
-      });
+      try {
+        // 활성 거래소 매물 취소 후 캐릭터 삭제 (트랜잭션)
+        await prisma.$transaction(async (tx) => {
+          // 활성 거래소 매물 취소
+          await tx.marketListing.updateMany({
+            where: {
+              sellerId: character.id,
+              status: 'active',
+            },
+            data: {
+              status: 'cancelled',
+            },
+          });
+
+          // 캐릭터 삭제 (Cascade로 모든 관련 데이터 자동 삭제)
+          await tx.character.delete({
+            where: {
+              id: character.id,
+            },
+          });
+        });
+      } catch (error) {
+        console.error('Character deletion error:', error);
+        await interaction.update({
+          content: '❌ 캐릭터 삭제 중 오류가 발생했습니다. 다시 시도해주세요.',
+          embeds: [],
+          components: [],
+        });
+        return true;
+      }
 
       const resultEmbed = new EmbedBuilder()
         .setColor('#00FF00')

@@ -46,6 +46,7 @@ async function getProfileCharacter(prisma, userId) {
     include: {
       combatSession: true,
       equipment: true,
+      skills: true,
     },
   });
 }
@@ -109,7 +110,7 @@ function createProfileEmbed(character) {
     const { PRODUCTION_CLASSES } = require('../game/production-classes');
     const { getRequiredProductionXP } = require('../game/production-leveling');
     const classData = PRODUCTION_CLASSES[character.productionClass];
-    const nextLevelXp = getRequiredProductionXP(character.productionLevel);
+    const nextLevelXp = getRequiredProductionXP(character.productionLevel) || 1;
     const productionProgress = Math.floor((character.productionXp / nextLevelXp) * 100);
     
     productionLine = `${classData.emoji} ${classData.name} Lv.${character.productionLevel} (${character.productionXp}/${nextLevelXp} | ${productionProgress}%)`;
@@ -123,8 +124,8 @@ function createProfileEmbed(character) {
         createDivider(),
         `💎 레벨 ${character.level} | 💰 골드 ${formatNumber(character.gold)}G`,
         jobLine,
-        productionLine || null,
-        streakLine || null,
+        productionLine,
+        streakLine,
         createDivider(),
         '',
         '📊 전투 능력치',
@@ -141,7 +142,7 @@ function createProfileEmbed(character) {
           : `🎯 다음 레벨까지 ${progress.remaining} 남음`,
         '',
         `🎮 현재 상태: ${combatStatus}`,
-      ].join('\n'),
+      ].filter(v => v != null).join('\n'),
     )
     .setFooter({
       text: jobCheck.allowed ? '전직 가능! /jobchange 명령어를 사용하세요' : '버튼으로 탐험/새로고침을 진행하세요',

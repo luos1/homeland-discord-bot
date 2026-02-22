@@ -106,34 +106,46 @@ module.exports = {
       return;
     }
 
-    const characterName = customName ?? interaction.user.username;
+    const rawName = customName ?? interaction.user.username;
+    // 유해 문자 제거: Discord 마크다운 / 멘션 / 특수 기호
+    const characterName = rawName.replace(/[*_`~@#<>|\\]/g, '').trim() || interaction.user.username;
 
-    await prisma.user.upsert({
-      where: {
-        discordId: interaction.user.id,
-      },
-      update: {
-        username: interaction.user.username,
-      },
-      create: {
-        discordId: interaction.user.id,
-        username: interaction.user.username,
-      },
-    });
+    let character;
+    try {
+      await prisma.user.upsert({
+        where: {
+          discordId: interaction.user.id,
+        },
+        update: {
+          username: interaction.user.username,
+        },
+        create: {
+          discordId: interaction.user.id,
+          username: interaction.user.username,
+        },
+      });
 
-    const character = await prisma.character.create({
-      data: {
-        userId: interaction.user.id,
-        name: characterName,
-        class: classPreset.label,
-        hp: classPreset.hp,
-        maxHp: classPreset.hp,
-        mana: classPreset.mana,
-        maxMana: classPreset.mana,
-        attack: classPreset.attack,
-        defense: classPreset.defense,
-      },
-    });
+      character = await prisma.character.create({
+        data: {
+          userId: interaction.user.id,
+          name: characterName,
+          class: classPreset.label,
+          hp: classPreset.hp,
+          maxHp: classPreset.hp,
+          mana: classPreset.mana,
+          maxMana: classPreset.mana,
+          attack: classPreset.attack,
+          defense: classPreset.defense,
+        },
+      });
+    } catch (error) {
+      console.error('Character creation error:', error);
+      await interaction.reply({
+        content: '❌ 캐릭터 생성 중 오류가 발생했습니다. 다시 시도해주세요.',
+        ephemeral: true,
+      });
+      return;
+    }
 
     const embed = new EmbedBuilder()
       .setColor(EMBED_COLORS.create)

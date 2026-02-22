@@ -139,7 +139,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (isCombatButton(interaction.customId)) {
-        await handleCombatButton({ interaction, prisma });
+        const handled = await handleCombatButton({ interaction, prisma });
+        if (!handled && !interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            content: '유효하지 않은 전투 버튼입니다.',
+            ephemeral: true,
+          });
+        }
         return;
       }
 
@@ -1158,6 +1164,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         return;
       }
+
+      // 어떤 버튼 핸들러에도 매칭되지 않은 경우
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: '알 수 없는 버튼입니다.',
+          ephemeral: true,
+        });
+      }
+      return;
     }
 
     // StringSelectMenu 핸들러
@@ -1174,6 +1189,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
           }
         }
       }
+
+      // 미처리 셀렉트 메뉴 fallback
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: '알 수 없는 선택입니다.',
+          ephemeral: true,
+        });
+      }
+      return;
     }
 
     // Modal 핸들러
@@ -1190,6 +1214,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
           }
         }
       }
+
+      // 미처리 모달 fallback
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: '처리할 수 없는 요청입니다.',
+          ephemeral: true,
+        });
+      }
+      return;
     }
   } catch (error) {
     console.error('인터랙션 처리 중 오류:', error);
@@ -1219,6 +1252,10 @@ process.once('SIGINT', () => {
 
 process.once('SIGTERM', () => {
   void shutdown('SIGTERM');
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('처리되지 않은 프로미스 거부:', error);
 });
 
 client.login(process.env.DISCORD_TOKEN).catch((error) => {

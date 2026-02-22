@@ -254,13 +254,14 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
   // 경험치 보상
   const xpReward = boss.xpReward;
 
-  // 레벨업 체크
-  const { leveled, newLevel } = await applyExperience(character.id, xpReward, prisma);
+  // 레벨업 체크 (올바른 시그니처: character object, xp, currentHp, currentMana)
+  const leveling = applyExperience(character, xpReward, session.playerHp, character.mana ?? 0);
 
   // 장비 드롭 (확정)
   const droppedEquipment = await generateBossEquipment({
     prisma,
     characterId: character.id,
+    characterLevel: leveling.characterUpdate.level,
     boss,
   });
 
@@ -274,35 +275,38 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
   // 보스 인카운터 업데이트 (리스폰 타이머 시작)
   const respawnAt = new Date(Date.now() + boss.respawnMinutes * 60 * 1000);
 
-  await prisma.bossEncounter.upsert({
-    where: { bossId: boss.id },
-    update: {
-      lastDefeatedAt: new Date(),
-      defeatedBy: character.name,
-      defeatedById: character.id,
-      respawnAt,
-    },
-    create: {
-      bossId: boss.id,
-      lastDefeatedAt: new Date(),
-      defeatedBy: character.name,
-      defeatedById: character.id,
-      respawnAt,
-    },
-  });
+  // 트랜잭션으로 모든 업데이트를 원자적으로 처리
+  await prisma.$transaction(async (tx) => {
+    await tx.bossEncounter.upsert({
+      where: { bossId: boss.id },
+      update: {
+        lastDefeatedAt: new Date(),
+        defeatedBy: character.name,
+        defeatedById: character.id,
+        respawnAt,
+      },
+      create: {
+        bossId: boss.id,
+        lastDefeatedAt: new Date(),
+        defeatedBy: character.name,
+        defeatedById: character.id,
+        respawnAt,
+      },
+    });
 
-  // 캐릭터 업데이트
-  await prisma.character.update({
-    where: { id: character.id },
-    data: {
-      gold: { increment: goldReward },
-      hp: session.playerHp,
-    },
-  });
+    // 캐릭터 업데이트 (레벨업 + 골드 + HP)
+    await tx.character.update({
+      where: { id: character.id },
+      data: {
+        ...leveling.characterUpdate,
+        gold: character.gold + goldReward,
+      },
+    });
 
-  // 전투 세션 삭제
-  await prisma.combatSession.delete({
-    where: { id: session.id },
+    // 전투 세션 삭제
+    await tx.combatSession.delete({
+      where: { id: session.id },
+    });
   });
 
   // 승리 메시지
@@ -316,7 +320,9 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
         '',
         `💰 골드: +${goldReward}G`,
         `💎 경험치: +${xpReward}`,
-        leveled ? `🎉 **레벨 업!** ${character.level} → ${newLevel}` : '',
+        leveling.levelsGained > 0
+          ? `🎉 **레벨 업!** ${character.level} → ${leveling.characterUpdate.level}`
+          : '',
         '',
         '📦 **보상**',
         droppedEquipment
@@ -356,7 +362,7 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
   });
 }
 
-async function generateBossEquipment({ prisma, characterId, boss }) {
+async function generateBossEquipment({ prisma, characterId, characterLevel, boss }) {
   const { generateEquipment } = require('./equipment');
 
   const dropConfig = boss.dropTable.equipment;
@@ -369,8 +375,24 @@ async function generateBossEquipment({ prisma, characterId, boss }) {
   const possibleRarities = rarities.slice(minIndex, maxIndex + 1);
   const rarity = possibleRarities[Math.floor(Math.random() * possibleRarities.length)];
 
-  // 장비 생성
-  const equipment = await generateEquipment(characterId, rarity, prisma);
+  // 장비 생성 (올바른 시그니처: characterLevel, options)
+  const equipmentData = generateEquipment(characterLevel, { rarity });
+
+  // DB에 장비 저장
+  const equipment = await prisma.equipment.create({
+    data: {
+      characterId,
+      name: equipmentData.name,
+      type: equipmentData.type,
+      rarity: equipmentData.rarity,
+      attack: equipmentData.attack,
+      defense: equipmentData.defense,
+      hp: equipmentData.hp,
+      mana: equipmentData.mana,
+      effect: equipmentData.effect,
+      equipped: false,
+    },
+  });
 
   return equipment;
 }
