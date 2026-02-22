@@ -225,6 +225,104 @@ const RECIPES = {
     },
   },
 
+  // T3 (희귀) - 대장장이 전용
+  silver_blade: {
+    key: 'silver_blade',
+    name: '은빛 검',
+    emoji: '⚔️',
+    type: 'weapon',
+    craftClass: 'blacksmith',
+    craftTime: 5400, // 90분
+    requiredLevel: 5,
+    materials: {
+      silver_ore: 12,
+      rare_wood: 5,
+      gem: 2,
+    },
+    result: {
+      type: 'equipment',
+      equipmentType: 'weapon',
+      rarity: 'rare',
+      attack: 25,
+      defense: 0,
+      effect: 'lightning',
+    },
+  },
+  mithril_armor: {
+    key: 'mithril_armor',
+    name: '미스릴 갑옷',
+    emoji: '🛡️',
+    type: 'armor',
+    craftClass: 'blacksmith',
+    craftTime: 6000, // 100분
+    requiredLevel: 6,
+    materials: {
+      silver_ore: 15,
+      iron_ore: 20,
+      fur: 8,
+    },
+    result: {
+      type: 'equipment',
+      equipmentType: 'armor',
+      rarity: 'rare',
+      attack: 0,
+      defense: 20,
+      hp: 40,
+      effect: 'regeneration',
+    },
+  },
+
+  // T4 (영웅) - 대장장이 전용
+  dragon_slayer: {
+    key: 'dragon_slayer',
+    name: '드래곤 슬레이어',
+    emoji: '⚔️',
+    type: 'weapon',
+    craftClass: 'blacksmith',
+    craftTime: 7200, // 120분
+    requiredLevel: 10,
+    materials: {
+      gold_ore: 20,
+      gem: 10,
+      magic_wood: 8,
+      bone: 15,
+    },
+    result: {
+      type: 'equipment',
+      equipmentType: 'weapon',
+      rarity: 'epic',
+      attack: 40,
+      defense: 0,
+      mana: 20,
+      effect: 'fire',
+    },
+  },
+  legendary_plate: {
+    key: 'legendary_plate',
+    name: '전설의 판금',
+    emoji: '🛡️',
+    type: 'armor',
+    craftClass: 'blacksmith',
+    craftTime: 7200, // 120분
+    requiredLevel: 12,
+    materials: {
+      gold_ore: 25,
+      silver_ore: 30,
+      gem: 8,
+      rare_herb: 10,
+    },
+    result: {
+      type: 'equipment',
+      equipmentType: 'armor',
+      rarity: 'epic',
+      attack: 5,
+      defense: 35,
+      hp: 80,
+      mana: 30,
+      effect: 'dodge',
+    },
+  },
+
   // 연금술사 - 포션
   health_potion: {
     key: 'health_potion',
