@@ -282,6 +282,27 @@ function calculateEquipmentStats(equipmentList) {
   return stats;
 }
 
+// 레시피에서 장비 생성
+function generateEquipmentFromRecipe(recipe) {
+  const result = recipe.result;
+  const typeData = EQUIPMENT_TYPES[result.equipmentType];
+  const rarityData = RARITIES[result.rarity];
+
+  // 이름 생성
+  let name = recipe.name;
+
+  return {
+    name,
+    type: result.equipmentType,
+    rarity: result.rarity,
+    attack: result.attack || 0,
+    defense: result.defense || 0,
+    hp: result.hp || 0,
+    mana: result.mana || 0,
+    effect: result.effect || null,
+  };
+}
+
 module.exports = {
   EQUIPMENT_TYPES,
   RARITIES,
@@ -291,4 +312,5 @@ module.exports = {
   shouldDropEquipment,
   getEquipmentEmbed,
   calculateEquipmentStats,
+  generateEquipmentFromRecipe,
 };

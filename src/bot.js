@@ -32,6 +32,7 @@ const { INVENTORY_BUTTON_PREFIX } = require('./commands/inventory');
 const { SHOP_BUTTON_PREFIX } = require('./commands/shop');
 const { PRODUCTION_BUTTON_PREFIX } = require('./commands/production');
 const { GATHER_BUTTON_PREFIX } = require('./commands/gather');
+const { CRAFT_BUTTON_PREFIX } = require('./commands/craft');
 const { cleanupAllOldSessions } = require('./game/session-cleanup');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
@@ -612,6 +613,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         const handled = await gatherCommand.handleGatherButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      // 제작 버튼
+      if (interaction.customId.startsWith(CRAFT_BUTTON_PREFIX)) {
+        const craftCommand = client.commands.get('craft');
+
+        if (!craftCommand) {
+          await interaction.reply({
+            content: '제작 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await craftCommand.handleCraftButton(interaction, { prisma });
 
         if (handled) {
           return;

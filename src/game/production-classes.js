@@ -159,42 +159,205 @@ const RESOURCES = {
 
 // 레시피 정의
 const RECIPES = {
+  // 대장장이 - 무기
   iron_sword: {
     key: 'iron_sword',
     name: '철 검',
     emoji: '⚔️',
     type: 'weapon',
     craftClass: 'blacksmith',
-    craftTime: 3600, // 60분
+    craftTime: 1800, // 30분
+    requiredLevel: 1,
     materials: {
       iron_ore: 5,
       wood: 2,
     },
     result: {
       type: 'equipment',
+      equipmentType: 'weapon',
       rarity: 'common',
-      attack: 10,
+      attack: 8,
       defense: 0,
     },
   },
+  steel_sword: {
+    key: 'steel_sword',
+    name: '강철 검',
+    emoji: '⚔️',
+    type: 'weapon',
+    craftClass: 'blacksmith',
+    craftTime: 3600, // 60분
+    requiredLevel: 3,
+    materials: {
+      iron_ore: 10,
+      silver_ore: 3,
+      hardwood: 3,
+    },
+    result: {
+      type: 'equipment',
+      equipmentType: 'weapon',
+      rarity: 'uncommon',
+      attack: 15,
+      defense: 0,
+    },
+  },
+  
+  // 대장장이 - 방어구
+  iron_armor: {
+    key: 'iron_armor',
+    name: '철 갑옷',
+    emoji: '🛡️',
+    type: 'armor',
+    craftClass: 'blacksmith',
+    craftTime: 2400, // 40분
+    requiredLevel: 2,
+    materials: {
+      iron_ore: 8,
+      leather: 4,
+    },
+    result: {
+      type: 'equipment',
+      equipmentType: 'armor',
+      rarity: 'common',
+      attack: 0,
+      defense: 10,
+      hp: 15,
+    },
+  },
+
+  // 연금술사 - 포션
   health_potion: {
     key: 'health_potion',
     name: '체력 회복 포션',
     emoji: '💊',
     type: 'potion',
     craftClass: 'alchemist',
-    craftTime: 1800, // 30분
+    craftTime: 900, // 15분
+    requiredLevel: 1,
     materials: {
       herb: 3,
-      water: 1,
     },
     result: {
       type: 'consumable',
-      effect: 'heal',
+      effect: 'heal_hp',
       power: 50,
     },
   },
-  // 추가 레시피는 나중에...
+  mana_potion: {
+    key: 'mana_potion',
+    name: '마나 회복 포션',
+    emoji: '🧪',
+    type: 'potion',
+    craftClass: 'alchemist',
+    craftTime: 900, // 15분
+    requiredLevel: 1,
+    materials: {
+      herb: 3,
+    },
+    result: {
+      type: 'consumable',
+      effect: 'heal_mp',
+      power: 30,
+    },
+  },
+  greater_health_potion: {
+    key: 'greater_health_potion',
+    name: '상급 체력 포션',
+    emoji: '💊',
+    type: 'potion',
+    craftClass: 'alchemist',
+    craftTime: 1800, // 30분
+    requiredLevel: 3,
+    materials: {
+      medicinal_herb: 5,
+      rare_herb: 2,
+    },
+    result: {
+      type: 'consumable',
+      effect: 'heal_hp',
+      power: 100,
+    },
+  },
+
+  // 재봉사 - 의류
+  leather_gloves: {
+    key: 'leather_gloves',
+    name: '가죽 장갑',
+    emoji: '🧤',
+    type: 'cloth',
+    craftClass: 'tailor',
+    craftTime: 1200, // 20분
+    requiredLevel: 1,
+    materials: {
+      leather: 4,
+    },
+    result: {
+      type: 'equipment',
+      equipmentType: 'accessory',
+      rarity: 'common',
+      attack: 3,
+      defense: 2,
+    },
+  },
+  fur_coat: {
+    key: 'fur_coat',
+    name: '모피 코트',
+    emoji: '🧥',
+    type: 'cloth',
+    craftClass: 'tailor',
+    craftTime: 2400, // 40분
+    requiredLevel: 2,
+    materials: {
+      fur: 6,
+      leather: 3,
+    },
+    result: {
+      type: 'equipment',
+      equipmentType: 'armor',
+      rarity: 'uncommon',
+      attack: 0,
+      defense: 12,
+      hp: 20,
+    },
+  },
+
+  // 요리사 - 음식
+  grilled_meat: {
+    key: 'grilled_meat',
+    name: '구운 고기',
+    emoji: '🍖',
+    type: 'food',
+    craftClass: 'chef',
+    craftTime: 600, // 10분
+    requiredLevel: 1,
+    materials: {
+      meat: 2,
+    },
+    result: {
+      type: 'consumable',
+      effect: 'heal_hp',
+      power: 30,
+    },
+  },
+  fish_stew: {
+    key: 'fish_stew',
+    name: '생선 스튜',
+    emoji: '🍲',
+    type: 'food',
+    craftClass: 'chef',
+    craftTime: 1200, // 20분
+    requiredLevel: 2,
+    materials: {
+      fish: 3,
+      herb: 2,
+    },
+    result: {
+      type: 'consumable',
+      effect: 'buff_regen',
+      power: 5,
+      duration: 3600, // 1시간
+    },
+  },
 };
 
 // 생산 클래스 목록 반환
@@ -247,6 +410,24 @@ function calculateGatherQuantity(productionClass, productionLevel, resourceTier)
   return Math.max(finalQuantity, 1);
 }
 
+// 클래스로 제작 가능한 레시피 반환
+function getCraftableRecipes(productionClass, productionLevel) {
+  return Object.values(RECIPES).filter((recipe) => {
+    return recipe.craftClass === productionClass && recipe.requiredLevel <= productionLevel;
+  });
+}
+
+// 제작 시간 계산 (레벨 보너스 적용)
+function calculateCraftTime(productionClass, productionLevel, baseTime) {
+  const classData = PRODUCTION_CLASSES[productionClass];
+  if (!classData) return baseTime;
+
+  const speedBonus = classData.levelBonus.craftSpeed * (productionLevel - 1);
+  const finalTime = Math.floor(baseTime * (1 - speedBonus));
+
+  return Math.max(finalTime, 300); // 최소 5분
+}
+
 module.exports = {
   PRODUCTION_CLASSES,
   RESOURCES,
@@ -257,4 +438,6 @@ module.exports = {
   getGatherableResources,
   calculateGatherTime,
   calculateGatherQuantity,
+  getCraftableRecipes,
+  calculateCraftTime,
 };
