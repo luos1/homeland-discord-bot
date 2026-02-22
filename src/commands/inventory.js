@@ -25,6 +25,7 @@ const INVENTORY_ACTION = {
 const INVENTORY_TAB = {
   equipment: 'equipment',
   consumable: 'consumable',
+  skill: 'skill',
 };
 
 function createInventoryEmbed(character, equipmentList) {
@@ -93,6 +94,41 @@ function createInventoryEmbed(character, equipmentList) {
     });
 }
 
+function createSkillInventoryEmbed(character, skills) {
+  const skillLines = skills.slice(0, 15).map((skill, index) => {
+    const levelInfo = skill.level > 1 ? ` (Lv.${skill.level})` : '';
+    return `${index + 1}. ${skill.emoji || '⭐'} **${skill.name}**${levelInfo}\n   ${skill.description}\n   마나: ${skill.manaCost}`;
+  });
+
+  return new EmbedBuilder()
+    .setColor(EMBED_COLORS.profile)
+    .setTitle(`📚 ${character.name}의 스킬`)
+    .setDescription(
+      [
+        createDivider(),
+        character.advancedClass ? `💎 전직: ${character.advancedClass}` : '⭐ 기본 스킬만 사용 가능',
+        '',
+        '✨ 보유 스킬',
+        '',
+        skillLines.length > 0 ? skillLines.join('\n\n') : '보유한 스킬이 없습니다',
+        skills.length > 15 ? `\n... 외 ${skills.length - 15}개` : '',
+        '',
+        createDivider(),
+        '',
+        `🔮 총 ${skills.length}개의 스킬 보유`,
+        '',
+        character.advancedClass
+          ? '💡 상점에서 스킬을 구매하거나 보스를 처치하여 획득하세요'
+          : '💡 전직 후 고급 스킬을 사용할 수 있습니다',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    )
+    .setFooter({
+      text: '스킬은 전투 중 자동으로 사용 가능합니다',
+    });
+}
+
 function createConsumableInventoryEmbed(character, consumables) {
   const consumableLines = consumables.slice(0, 15).map((item, index) => {
     const effectText = {
@@ -143,8 +179,38 @@ function createInventoryActionRow(equipmentList) {
       .setStyle(ButtonStyle.Primary);
   });
 
-  // 항상 뒤로가기 버튼 추가
+  // 항상 탭 전환 버튼 추가
   buttons.push(
+    new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:skill`)
+      .setLabel('스킬')
+      .setEmoji('📚')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:consumable`)
+      .setLabel('소비템')
+      .setEmoji('💊')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('back_to_profile')
+      .setLabel('프로필로')
+      .setEmoji('👤')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return new ActionRowBuilder().addComponents(buttons);
+}
+
+function createSkillActionRow(skills) {
+  const buttons = [];
+
+  // 스킬은 전투 중에만 사용 가능하므로 버튼 없이 탭 전환만
+  buttons.push(
+    new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:equipment`)
+      .setLabel('장비')
+      .setEmoji('⚔️')
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:consumable`)
       .setLabel('소비템')
@@ -175,6 +241,11 @@ function createConsumableActionRow(consumables) {
       .setLabel('장비')
       .setEmoji('⚔️')
       .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:skill`)
+      .setLabel('스킬')
+      .setEmoji('📚')
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('back_to_profile')
       .setLabel('프로필로')
@@ -273,6 +344,9 @@ module.exports = {
         consumables: {
           orderBy: { createdAt: 'desc' },
         },
+        skills: {
+          orderBy: { level: 'desc' },
+        },
       },
     });
 
@@ -316,6 +390,9 @@ module.exports = {
           consumables: {
             orderBy: { createdAt: 'desc' },
           },
+          skills: {
+            orderBy: { level: 'desc' },
+          },
         },
       });
 
@@ -341,6 +418,15 @@ module.exports = {
         await interaction.update({
           embeds: [createConsumableInventoryEmbed(character, character.consumables)],
           components: [createConsumableActionRow(character.consumables)],
+        });
+
+        return true;
+      }
+
+      if (param === INVENTORY_TAB.skill) {
+        await interaction.update({
+          embeds: [createSkillInventoryEmbed(character, character.skills || [])],
+          components: [createSkillActionRow(character.skills || [])],
         });
 
         return true;
