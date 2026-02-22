@@ -235,9 +235,19 @@ module.exports = {
       ...update,
     };
 
+    // 프로필 보기 버튼 추가
+    const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+    const profileButton = new ButtonBuilder()
+      .setCustomId('back_to_profile')
+      .setLabel('프로필 보기')
+      .setEmoji('👤')
+      .setStyle(ButtonStyle.Primary);
+
+    const row = new ActionRowBuilder().addComponents(profileButton);
+
     await interaction.editReply({
       embeds: [createJobChangeResultEmbed(updatedCharacter, classData, classData.bonuses)],
-      components: [],
+      components: [row],
     });
 
     return true;
