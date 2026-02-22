@@ -843,6 +843,56 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      // 존 정보 보기 버튼
+      if (interaction.customId.startsWith('zone_info:')) {
+        const zoneKey = interaction.customId.slice('zone_info:'.length);
+        const { getZone } = require('./game/monsters');
+        const exploreCommand = client.commands.get('explore');
+
+        if (!exploreCommand) {
+          await interaction.reply({
+            content: '탐험 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const zone = getZone(zoneKey);
+
+        if (!zone) {
+          await interaction.reply({
+            content: '유효하지 않은 존입니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        // 존 상세 정보 embed + 몬스터 선택으로 돌아가기 버튼
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        
+        await interaction.update({
+          embeds: [exploreCommand.createZoneInfoEmbed(zoneKey)],
+          components: [
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`${PROFILE_ZONE_BUTTON_PREFIX}${zoneKey}`)
+                .setLabel('몬스터 선택')
+                .setEmoji('👹')
+                .setStyle(ButtonStyle.Success),
+              new ButtonBuilder()
+                .setCustomId('back_to_zones')
+                .setLabel('존 선택')
+                .setEmoji('◀️')
+                .setStyle(ButtonStyle.Secondary),
+            ),
+          ],
+        });
+
+        return;
+      }
+
       // 뒤로가기 버튼 (Zone 선택 화면으로)
       if (interaction.customId === 'back_to_zones') {
         const exploreCommand = client.commands.get('explore');

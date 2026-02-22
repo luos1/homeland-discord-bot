@@ -29,6 +29,85 @@ const ZONE_BUTTON_STYLES = {
   zone3: ButtonStyle.Success,
 };
 
+function createZoneInfoEmbed(zoneKey) {
+  const zone = getZone(zoneKey);
+  
+  if (!zone) {
+    return new EmbedBuilder()
+      .setColor(EMBED_COLORS.combat)
+      .setTitle('❌ 존을 찾을 수 없습니다')
+      .setDescription('유효하지 않은 존입니다.');
+  }
+
+  const monsterNames = zone.monsterKeys.map((key) => MONSTERS[key].name).join(', ');
+  const bossNames = (zone.bossKeys || []).map((key) => MONSTERS[key].name).join(', ');
+  const zoneTypeData = ZONE_TYPES[zone.zoneType];
+  
+  const typeInfo = zoneTypeData
+    ? `${zoneTypeData.emoji} **${zoneTypeData.name}**\n${zoneTypeData.description}`
+    : '';
+
+  const statInfo = zoneTypeData
+    ? [
+        `⚔️ 몬스터 능력치: **x${zoneTypeData.statMultiplier}**`,
+        `💰 골드 보상: **x${zoneTypeData.goldMultiplier}**`,
+        `⭐ 경험치 보상: **x${zoneTypeData.xpMultiplier}**`,
+        `✨ 레어 확률: **x${zoneTypeData.rareChanceMultiplier}**`,
+      ].join('\n')
+    : '';
+
+  const resourceInfo = zone.resourceDrops && zone.resourceDrops.length > 0
+    ? `**드롭 확률**: ${Math.floor(zone.dropChance * 100)}%\n**자원 종류**: ${zone.resourceDrops.join(', ')}`
+    : '';
+
+  const specialMechanic = zone.key === 'zone3'
+    ? '⚠️ **특수 메커니즘**\n몬스터가 첫 턴에 먼저 공격합니다!\n체력 관리에 주의하세요.'
+    : '';
+
+  const monsterList = zone.monsterKeys
+    .map((key) => {
+      const monster = MONSTERS[key];
+      return `👹 **${monster.name}** (Lv.${monster.level}) - HP ${monster.hp}, ATK ${monster.attack}, DEF ${monster.defense}`;
+    })
+    .join('\n');
+
+  const bossList = (zone.bossKeys || [])
+    .map((key) => {
+      const boss = MONSTERS[key];
+      const dropText = boss.guaranteedDrop ? `${boss.guaranteedDrop.rarity} 등급 확정 드롭` : '';
+      return [
+        `💀 **${boss.name}** (Lv.${boss.level})`,
+        `   HP ${boss.hp}, ATK ${boss.attack}, DEF ${boss.defense}`,
+        dropText ? `   ✨ ${dropText}` : '',
+      ].filter(Boolean).join('\n');
+    })
+    .join('\n\n');
+
+  return new EmbedBuilder()
+    .setColor(EMBED_COLORS.combat)
+    .setTitle(`${zone.emoji} ${zone.name} - 상세 정보`)
+    .setDescription([
+      createDivider(),
+      `📍 **${zone.description}**`,
+      `📊 권장 레벨: **${zone.recommendedLevel}**`,
+      '',
+      typeInfo,
+      '',
+      '**📈 보상 배율**',
+      statInfo,
+      '',
+      '**🎁 자원 드롭**',
+      resourceInfo,
+      specialMechanic ? '\n' + specialMechanic : '',
+      '',
+      createDivider(),
+      '**👹 일반 몬스터**',
+      monsterList,
+      bossList ? '\n' + createDivider() + '\n**💀 필드 보스**\n' + bossList : '',
+      createDivider(),
+    ].filter(Boolean).join('\n'));
+}
+
 function createZoneSelectionEmbed() {
   const zoneDescriptions = listZones()
     .map((zone) => {
@@ -176,9 +255,14 @@ function createMonsterSelectionActionRows(zoneKey, zone) {
     rows.push(new ActionRowBuilder().addComponents(bossButtons));
   }
 
-  // 뒤로가기 버튼
+  // 존 정보 + 뒤로가기 버튼
   rows.push(
     new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`zone_info:${zoneKey}`)
+        .setLabel('존 정보 보기')
+        .setEmoji('ℹ️')
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('back_to_zones')
         .setLabel('뒤로 가기')
@@ -287,6 +371,7 @@ module.exports = {
   },
   createZoneSelectionEmbed,
   createZoneSelectionActionRows,
+  createZoneInfoEmbed,
   createMonsterSelectionEmbed,
   createMonsterSelectionActionRows,
   MONSTER_SELECT_PREFIX,
