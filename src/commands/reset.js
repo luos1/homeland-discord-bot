@@ -33,31 +33,45 @@ module.exports = {
       return;
     }
 
-    // 전투 세션 강제 종료
-    const ended = await forceEndUserSession(prisma, interaction.user.id);
-
-    if (ended) {
-      const embed = new EmbedBuilder()
-        .setColor(EMBED_COLORS.warning)
-        .setTitle('⚠️ 전투 종료')
-        .setDescription(
-          [
-            '진행 중이던 전투를 강제로 종료했습니다.',
-            '',
-            '💡 이 명령어는 응급 상황에만 사용하세요.',
-            '일반적으로는 전투 중 "도망" 버튼을 사용하세요.',
-          ].join('\n'),
-        );
-
-      await interaction.reply({
-        embeds: [embed],
-        ephemeral: true,
+    // 전투 세션 강제 종료 + 체력/마나 완전 회복
+    await prisma.$transaction(async (tx) => {
+      // 세션 삭제
+      await tx.combatSession.delete({
+        where: {
+          id: character.combatSession.id,
+        },
       });
-    } else {
-      await interaction.reply({
-        content: '전투 종료에 실패했습니다.',
-        ephemeral: true,
+
+      // 체력/마나 완전 회복
+      await tx.character.update({
+        where: {
+          id: character.id,
+        },
+        data: {
+          hp: character.maxHp,
+          mana: character.maxMana || 0,
+        },
       });
-    }
+    });
+
+    const embed = new EmbedBuilder()
+      .setColor(EMBED_COLORS.warning)
+      .setTitle('⚠️ 전투 리셋 완료')
+      .setDescription(
+        [
+          '✅ 진행 중이던 전투를 종료했습니다.',
+          '💊 체력과 마나가 완전히 회복되었습니다.',
+          '',
+          `❤️ HP: ${character.maxHp}/${character.maxHp}`,
+          `🔷 MP: ${character.maxMana || 0}/${character.maxMana || 0}`,
+          '',
+          '💡 일반적으로는 전투 중 "도망" 버튼을 사용하세요.',
+        ].join('\n'),
+      );
+
+    await interaction.reply({
+      embeds: [embed],
+      ephemeral: true,
+    });
   },
 };
