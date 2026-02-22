@@ -20,6 +20,8 @@ const INVENTORY_ACTION = {
   unequip: 'unequip',
   delete: 'delete',
   use: 'use',
+  equipSkill: 'equip_skill',
+  unequipSkill: 'unequip_skill',
 };
 
 const INVENTORY_TAB = {
@@ -95,10 +97,24 @@ function createInventoryEmbed(character, equipmentList) {
 }
 
 function createSkillInventoryEmbed(character, skills) {
-  const skillLines = skills.slice(0, 15).map((skill, index) => {
-    const levelInfo = skill.level > 1 ? ` (Lv.${skill.level})` : '';
-    return `${index + 1}. ${skill.emoji || '⭐'} **${skill.name}**${levelInfo}\n   ${skill.description}\n   마나: ${skill.manaCost}`;
-  });
+  const { getAdvancedSkillByKey } = require('../game/advanced-skills');
+  
+  const equipped = skills.filter((s) => s.equipped);
+  const unequipped = skills.filter((s) => !s.equipped);
+
+  const equippedLines = equipped.map((skill) => {
+    const skillData = getAdvancedSkillByKey(character.advancedClass, skill.skillKey);
+    if (!skillData) return null;
+    const levelInfo = skill.skillLevel > 1 ? ` +${skill.skillLevel}` : '';
+    return `${skillData.emoji} **${skillData.name}**${levelInfo} (마나: ${skillData.manaCost})`;
+  }).filter(Boolean);
+
+  const unequippedLines = unequipped.slice(0, 10).map((skill, index) => {
+    const skillData = getAdvancedSkillByKey(character.advancedClass, skill.skillKey);
+    if (!skillData) return null;
+    const levelInfo = skill.skillLevel > 1 ? ` +${skill.skillLevel}` : '';
+    return `${index + 1}. ${skillData.emoji} ${skillData.name}${levelInfo} (마나: ${skillData.manaCost})`;
+  }).filter(Boolean);
 
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
@@ -108,24 +124,26 @@ function createSkillInventoryEmbed(character, skills) {
         createDivider(),
         character.advancedClass ? `💎 전직: ${character.advancedClass}` : '⭐ 기본 스킬만 사용 가능',
         '',
-        '✨ 보유 스킬',
+        '✅ 장착 중인 스킬 (최대 3개)',
+        equippedLines.length > 0 ? equippedLines.join('\n') : '장착된 스킬이 없습니다',
+        `(${equipped.length}/3 슬롯 사용 중)`,
         '',
-        skillLines.length > 0 ? skillLines.join('\n\n') : '보유한 스킬이 없습니다',
-        skills.length > 15 ? `\n... 외 ${skills.length - 15}개` : '',
+        createDivider(),
+        '📦 보관 중인 스킬',
+        unequippedLines.length > 0 ? unequippedLines.join('\n') : '없음',
+        unequipped.length > 10 ? `... 외 ${unequipped.length - 10}개` : '',
         '',
         createDivider(),
         '',
         `🔮 총 ${skills.length}개의 스킬 보유`,
         '',
-        character.advancedClass
-          ? '💡 상점에서 스킬을 구매하거나 보스를 처치하여 획득하세요'
-          : '💡 전직 후 고급 스킬을 사용할 수 있습니다',
+        '💡 전투 시 장착된 스킬만 사용할 수 있습니다',
       ]
         .filter(Boolean)
         .join('\n'),
     )
     .setFooter({
-      text: '스킬은 전투 중 자동으로 사용 가능합니다',
+      text: '스킬을 선택하여 장착/해제할 수 있습니다',
     });
 }
 
@@ -202,20 +220,35 @@ function createInventoryActionRow(equipmentList) {
 }
 
 function createSkillActionRow(skills) {
+  const equipped = skills.filter((s) => s.equipped);
+  const unequipped = skills.filter((s) => !s.equipped);
   const buttons = [];
 
-  // 스킬은 전투 중에만 사용 가능하므로 버튼 없이 탭 전환만
+  // 미장착 스킬 장착 버튼 (최대 3개 슬롯)
+  if (equipped.length < 3) {
+    unequipped.slice(0, 3).forEach((skill, index) => {
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId(`${INVENTORY_BUTTON_PREFIX}${INVENTORY_ACTION.equipSkill}:${skill.id}`)
+          .setLabel(`${index + 1}. 장착`)
+          .setEmoji('✅')
+          .setStyle(ButtonStyle.Primary)
+      );
+    });
+  }
+
+  // 탭 전환 버튼
   buttons.push(
     new ButtonBuilder()
       .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:equipment`)
       .setLabel('장비')
       .setEmoji('⚔️')
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:consumable`)
       .setLabel('소비템')
       .setEmoji('💊')
-      .setStyle(ButtonStyle.Success),
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('back_to_profile')
       .setLabel('프로필로')
@@ -596,6 +629,93 @@ module.exports = {
 
       await interaction.reply({
         content: `🗑️ ${equipment.name}을(를) 삭제했습니다.`,
+        ephemeral: true,
+      });
+
+      return true;
+    }
+
+    // 스킬 장착
+    if (action === INVENTORY_ACTION.equipSkill) {
+      const skillId = parseInt(param, 10);
+
+      const skill = await prisma.skill.findUnique({
+        where: { id: skillId },
+        include: { character: true },
+      });
+
+      if (!skill || skill.character.userId !== interaction.user.id) {
+        await interaction.reply({
+          content: '이 스킬에 접근할 수 없습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      // 장착된 스킬 개수 확인
+      const equippedCount = await prisma.skill.count({
+        where: {
+          characterId: skill.characterId,
+          equipped: true,
+        },
+      });
+
+      if (equippedCount >= 3) {
+        await interaction.reply({
+          content: '❌ 스킬 슬롯이 가득 찼습니다. (최대 3개)\n다른 스킬을 해제하고 다시 시도하세요.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      // 스킬 장착
+      await prisma.skill.update({
+        where: { id: skillId },
+        data: { equipped: true },
+      });
+
+      const { getAdvancedSkillByKey } = require('../game/advanced-skills');
+      const skillData = getAdvancedSkillByKey(skill.character.advancedClass, skill.skillKey);
+
+      await interaction.reply({
+        content: `✅ ${skillData?.emoji || ''} ${skillData?.name || '스킬'}을(를) 장착했습니다!`,
+        ephemeral: true,
+      });
+
+      return true;
+    }
+
+    // 스킬 해제
+    if (action === INVENTORY_ACTION.unequipSkill) {
+      const skillId = parseInt(param, 10);
+
+      const skill = await prisma.skill.findUnique({
+        where: { id: skillId },
+        include: { character: true },
+      });
+
+      if (!skill || skill.character.userId !== interaction.user.id) {
+        await interaction.reply({
+          content: '이 스킬에 접근할 수 없습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      // 스킬 해제
+      await prisma.skill.update({
+        where: { id: skillId },
+        data: { equipped: false },
+      });
+
+      const { getAdvancedSkillByKey } = require('../game/advanced-skills');
+      const skillData = getAdvancedSkillByKey(skill.character.advancedClass, skill.skillKey);
+
+      await interaction.reply({
+        content: `❌ ${skillData?.emoji || ''} ${skillData?.name || '스킬'}을(를) 해제했습니다.`,
         ephemeral: true,
       });
 

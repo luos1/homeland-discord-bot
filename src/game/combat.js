@@ -142,8 +142,9 @@ function createCombatActionRows(sessionId, options = {}) {
     // 기본 스킬
     const basicSkills = getAvailableSkills(character);
     
-    // 전직 스킬 (DB에서 가져온 스킬 - 모두 표시)
+    // 전직 스킬 (장착된 스킬만 표시 - 최대 3개)
     const advancedSkills = (character.skills || [])
+      .filter(s => s.equipped)  // 장착된 스킬만!
       .map(s => {
         const skillData = character.advancedClass 
           ? getAdvancedSkillByKey(character.advancedClass, s.skillKey)
@@ -157,7 +158,7 @@ function createCombatActionRows(sessionId, options = {}) {
       })
       .filter(Boolean);
 
-    // 합치기 (최대 5개)
+    // 합치기 (기본 스킬 + 장착된 고급 스킬, 최대 5개)
     const allSkills = [...basicSkills, ...advancedSkills].slice(0, 5);
 
     if (allSkills.length > 0) {
