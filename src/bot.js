@@ -27,6 +27,7 @@ const {
 } = require('./commands/profile');
 const { getPlayCreateClassChoice } = require('./commands/play');
 const { JOBCHANGE_BUTTON_PREFIX } = require('./commands/jobchange');
+const { INVENTORY_BUTTON_PREFIX } = require('./commands/inventory');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
@@ -238,10 +239,61 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (interaction.customId === PROFILE_BUTTON_IDS.inventory) {
-        await interaction.reply({
-          content: '인벤토리 시스템은 2주차에 구현됩니다.',
-          ephemeral: true,
-        });
+        const inventoryCommand = client.commands.get('inventory');
+
+        if (!inventoryCommand) {
+          await interaction.reply({
+            content: '인벤토리 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        await inventoryCommand.execute(interaction, { prisma, client });
+        return;
+      }
+
+      // 인벤토리 액션 버튼
+      if (interaction.customId.startsWith(INVENTORY_BUTTON_PREFIX)) {
+        const inventoryCommand = client.commands.get('inventory');
+
+        if (!inventoryCommand) {
+          await interaction.reply({
+            content: '인벤토리 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await inventoryCommand.handleInventoryButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      // 인벤토리로 돌아가기 버튼
+      if (interaction.customId === 'back_to_inventory') {
+        const inventoryCommand = client.commands.get('inventory');
+
+        if (!inventoryCommand) {
+          await interaction.reply({
+            content: '인벤토리 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        await inventoryCommand.execute(
+          {
+            user: interaction.user,
+            reply: interaction.update.bind(interaction),
+          },
+          { prisma, client },
+        );
 
         return;
       }

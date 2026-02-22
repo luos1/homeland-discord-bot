@@ -32,8 +32,29 @@ model Character {
   defense       Int            @default(5)
   gold          Int            @default(0)
   combatSession CombatSession?
+  equipment     Equipment[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+}
+
+model Equipment {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name        String
+  type        String
+  rarity      String
+  attack      Int       @default(0)
+  defense     Int       @default(0)
+  hp          Int       @default(0)
+  mana        Int       @default(0)
+  effect      String?
+  equipped    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([characterId])
+  @@index([equipped])
 }
 
 model CombatSession {

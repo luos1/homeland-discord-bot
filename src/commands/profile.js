@@ -9,6 +9,7 @@ const {
 const { LEVEL_CAP, progressToNextLevel } = require('../game/leveling');
 const { getZone } = require('../game/monsters');
 const { canJobChange, JOB_CHANGE_LEVEL } = require('../game/jobchange');
+const { calculateEquipmentStats } = require('../game/equipment');
 const {
   EMBED_COLORS,
   createDivider,
@@ -32,6 +33,7 @@ async function getProfileCharacter(prisma, userId) {
     },
     include: {
       combatSession: true,
+      equipment: true,
     },
   });
 }
@@ -65,6 +67,24 @@ function createProfileEmbed(character) {
       ? `✨ 전직 가능! Lv.${JOB_CHANGE_LEVEL} 달성`
       : `⭐ 전직: Lv.${JOB_CHANGE_LEVEL}부터 가능`;
 
+  // 장비 보너스 계산
+  const equipmentStats = character.equipment
+    ? calculateEquipmentStats(character.equipment)
+    : { attack: 0, defense: 0, hp: 0, mana: 0, effects: [] };
+
+  const totalAttack = character.attack + equipmentStats.attack;
+  const totalDefense = character.defense + equipmentStats.defense;
+
+  const attackLine =
+    equipmentStats.attack > 0
+      ? `⚔️ 공격력: ${totalAttack} (기본 ${character.attack} + 장비 ${equipmentStats.attack})`
+      : `⚔️ 공격력: ${character.attack}`;
+
+  const defenseLine =
+    equipmentStats.defense > 0
+      ? `🛡️ 방어력: ${totalDefense} (기본 ${character.defense} + 장비 ${equipmentStats.defense})`
+      : `🛡️ 방어력: ${character.defense}`;
+
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
     .setTitle(`⚔️ ${character.name}님의 ${localizeClassName(character.class)}`)
@@ -78,8 +98,8 @@ function createProfileEmbed(character) {
         '📊 전투 능력치',
         `❤️ 체력: ${hpBar} ${character.hp}/${character.maxHp}`,
         `🔷 마나: ${manaBar} ${currentMana}/${maxMana}`,
-        `⚔️ 공격력: ${character.attack}`,
-        `🛡️ 방어력: ${character.defense}`,
+        attackLine,
+        defenseLine,
         '💥 크리티컬: 5%',
         '',
         '📈 경험치',

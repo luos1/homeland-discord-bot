@@ -8,6 +8,7 @@ const {
 const { applyExperience, progressToNextLevel } = require('./leveling');
 const { MONSTERS, getZone, randomInt } = require('./monsters');
 const { getCombatSkill } = require('./skills');
+const { shouldDropEquipment, generateEquipment } = require('./equipment');
 const {
   EMBED_COLORS,
   createDivider,
@@ -580,6 +581,15 @@ function resolveCombatTurn({ character, session, action }) {
       );
     }
 
+    // 장비 드롭 체크
+    let droppedEquipment = null;
+    if (shouldDropEquipment()) {
+      droppedEquipment = generateEquipment(characterUpdate.level);
+      battleLog.push('');
+      battleLog.push('✨ 장비 드롭!');
+      battleLog.push(`${droppedEquipment.name}을(를) 획득했습니다!`);
+    }
+
     return {
       status: 'victory',
       battleLog,
@@ -596,6 +606,7 @@ function resolveCombatTurn({ character, session, action }) {
         goldReward,
         levelsGained: leveling.levelsGained,
       },
+      droppedEquipment,
     };
   }
 
@@ -757,6 +768,24 @@ async function handleCombatButton({ interaction, prisma }) {
       },
       data: outcome.characterUpdate,
     });
+
+    // 장비 드롭이 있으면 인벤토리에 추가
+    if (outcome.droppedEquipment) {
+      await tx.equipment.create({
+        data: {
+          characterId: session.characterId,
+          name: outcome.droppedEquipment.name,
+          type: outcome.droppedEquipment.type,
+          rarity: outcome.droppedEquipment.rarity,
+          attack: outcome.droppedEquipment.attack,
+          defense: outcome.droppedEquipment.defense,
+          hp: outcome.droppedEquipment.hp,
+          mana: outcome.droppedEquipment.mana,
+          effect: outcome.droppedEquipment.effect,
+          equipped: false,
+        },
+      });
+    }
 
     if (outcome.status === 'ongoing') {
       await tx.combatSession.update({
