@@ -19,6 +19,7 @@ const { EMBED_COLORS, createDivider, localizeClassName } = require('../utils/ui'
 
 const zoneChoices = listZoneChoices();
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
+const MONSTER_SELECT_PREFIX = 'monster_select:';
 const ZONE_BUTTON_STYLES = {
   zone1: ButtonStyle.Primary,
   zone2: ButtonStyle.Secondary,
@@ -62,6 +63,56 @@ function createZoneSelectionActionRows() {
         .setCustomId(PROFILE_BUTTON_IDS.stats)
         .setLabel('프로필')
         .setEmoji('📊')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  ];
+}
+
+function createMonsterSelectionEmbed(zone) {
+  const monsterDescriptions = zone.monsterKeys
+    .map((key) => {
+      const monster = MONSTERS[key];
+      return [
+        `👹 **${monster.name}** (Lv.${monster.level})`,
+        `   ❤️ 체력: ${monster.hp}`,
+        `   ⚔️ 공격력: ${monster.attack}`,
+        `   🛡️ 방어력: ${monster.defense}`,
+        `   🎁 보상: 경험치 ${monster.xpReward}, 골드 ${monster.goldMin}-${monster.goldMax}`,
+      ].join('\n');
+    })
+    .join('\n\n');
+
+  return new EmbedBuilder()
+    .setColor(EMBED_COLORS.combat)
+    .setTitle(`${zone.emoji} ${zone.name} - 전투 대상 선택`)
+    .setDescription([
+      createDivider(),
+      `📍 ${zone.description}`,
+      `⚠️ 권장 레벨: ${zone.recommendedLevel}`,
+      createDivider(),
+      monsterDescriptions,
+      createDivider(),
+      '💡 전투할 몬스터를 선택하세요!',
+    ].join('\n'));
+}
+
+function createMonsterSelectionActionRows(zoneKey, zone) {
+  const monsterButtons = zone.monsterKeys.map((monsterKey) => {
+    const monster = MONSTERS[monsterKey];
+    return new ButtonBuilder()
+      .setCustomId(`${MONSTER_SELECT_PREFIX}${zoneKey}:${monsterKey}`)
+      .setLabel(`${monster.name} (Lv.${monster.level})`)
+      .setEmoji('👹')
+      .setStyle(ButtonStyle.Danger);
+  });
+
+  return [
+    new ActionRowBuilder().addComponents(monsterButtons),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('back_to_zones')
+        .setLabel('뒤로 가기')
+        .setEmoji('◀️')
         .setStyle(ButtonStyle.Secondary),
     ),
   ];
@@ -148,76 +199,17 @@ module.exports = {
       return;
     }
 
-    let playerHp = character.hp;
-
-    if (playerHp <= 0) {
-      const revived = await prisma.character.update({
-        where: {
-          id: character.id,
-        },
-        data: {
-          hp: character.maxHp,
-        },
-      });
-
-      playerHp = revived.hp;
-    }
-
-    const monster = spawnMonster(zone.key);
-
-    if (!monster) {
-      await interaction.reply({
-        content: '몬스터 생성에 실패했습니다. 다시 시도해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
-
-    const session = await prisma.combatSession.create({
-      data: {
-        characterId: character.id,
-        zone: zone.key,
-        monsterName: monster.name,
-        monsterHp: monster.hp,
-        monsterMaxHp: monster.hp,
-        monsterAttack: monster.attack,
-        monsterDefense: monster.defense,
-        monsterXpReward: monster.xpReward,
-        monsterGoldMin: monster.goldMin,
-        monsterGoldMax: monster.goldMax,
-        playerHp,
-        potionsRemaining: 3,
-      },
-    });
-
-    const embed = createCombatEmbed({
-      character: {
-        ...character,
-        hp: playerHp,
-      },
-      session,
-      battleLog: [
-        `${zone.emoji} ${zone.name}에 입장했습니다.`,
-        `👹 ${monster.name} 등장!`,
-        `🎯 ${localizeClassName(character.class)} ${character.name}, 전투 준비 완료!`,
-      ],
-      title: '💀 전투 시작!',
-      status: 'ongoing',
-    });
-
+    // 몬스터 선택 화면 보여주기
     await interaction.reply({
-      embeds: [embed],
-      components: [
-        createCombatActionRow(session.id, {
-          character: {
-            ...character,
-            hp: playerHp,
-          },
-        }),
-      ],
+      embeds: [createMonsterSelectionEmbed(zone)],
+      components: createMonsterSelectionActionRows(zoneKey, zone),
+      ephemeral: true,
     });
   },
   createZoneSelectionEmbed,
   createZoneSelectionActionRows,
+  createMonsterSelectionEmbed,
+  createMonsterSelectionActionRows,
+  MONSTER_SELECT_PREFIX,
+  PROFILE_ZONE_BUTTON_PREFIX,
 };

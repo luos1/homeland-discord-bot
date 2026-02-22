@@ -29,6 +29,7 @@ const { getPlayCreateClassChoice } = require('./commands/play');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
+const MONSTER_SELECT_PREFIX = 'monster_select:';
 const PROFILE_ZONE_KEYS = new Set(['zone1', 'zone2', 'zone3']);
 
 const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
@@ -273,6 +274,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      // 뒤로가기 버튼 (Zone 선택 화면으로)
+      if (interaction.customId === 'back_to_zones') {
+        const exploreCommand = client.commands.get('explore');
+
+        if (!exploreCommand) {
+          await interaction.reply({
+            content: '탐험 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        await interaction.update({
+          embeds: [exploreCommand.createZoneSelectionEmbed()],
+          components: exploreCommand.createZoneSelectionActionRows(),
+        });
+
+        return;
+      }
+
+      // Zone 선택 버튼 (몬스터 선택 화면으로)
       if (interaction.customId.startsWith(PROFILE_ZONE_BUTTON_PREFIX)) {
         const zoneKey = interaction.customId.slice(PROFILE_ZONE_BUTTON_PREFIX.length);
 
@@ -296,18 +319,150 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return;
         }
 
-        await exploreCommand.execute(
-          {
-            user: interaction.user,
-            options: {
-              getString(optionName) {
-                return optionName === 'zone' ? zoneKey : null;
-              },
-            },
-            reply: interaction.reply.bind(interaction),
+        const { getZone } = require('./game/monsters');
+        const zone = getZone(zoneKey);
+
+        if (!zone) {
+          await interaction.reply({
+            content: '유효하지 않은 탐험지입니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        // 레벨 체크
+        const character = await prisma.character.findUnique({
+          where: { userId: interaction.user.id },
+        });
+
+        if (!character) {
+          await interaction.reply({
+            content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        if (character.level < zone.minLevel) {
+          await interaction.reply({
+            content: `${zone.name}은(는) 레벨 ${zone.minLevel}+ 권장 구역입니다. 현재 레벨은 ${character.level}입니다.`,
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        // 몬스터 선택 화면 보여주기
+        await interaction.update({
+          embeds: [exploreCommand.createMonsterSelectionEmbed(zone)],
+          components: exploreCommand.createMonsterSelectionActionRows(zoneKey, zone),
+        });
+
+        return;
+      }
+
+      // 몬스터 선택 버튼 (전투 시작)
+      if (interaction.customId.startsWith(MONSTER_SELECT_PREFIX)) {
+        const [zoneKey, monsterKey] = interaction.customId
+          .slice(MONSTER_SELECT_PREFIX.length)
+          .split(':');
+
+        if (!zoneKey || !monsterKey) {
+          await interaction.reply({
+            content: '유효하지 않은 선택입니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const { getZone, MONSTERS } = require('./game/monsters');
+        const { createCombatEmbed, createCombatActionRow } = require('./game/combat');
+        const { localizeClassName } = require('./utils/ui');
+
+        const zone = getZone(zoneKey);
+        const monster = MONSTERS[monsterKey];
+
+        if (!zone || !monster) {
+          await interaction.reply({
+            content: '유효하지 않은 선택입니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const character = await prisma.character.findUnique({
+          where: { userId: interaction.user.id },
+          include: { combatSession: true },
+        });
+
+        if (!character) {
+          await interaction.reply({
+            content: '캐릭터가 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        if (character.combatSession) {
+          await interaction.reply({
+            content: '이미 진행 중인 전투가 있습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        // HP 체크 및 부활
+        let playerHp = character.hp;
+        if (playerHp <= 0) {
+          const revived = await prisma.character.update({
+            where: { id: character.id },
+            data: { hp: character.maxHp },
+          });
+          playerHp = revived.hp;
+        }
+
+        // 전투 세션 생성
+        const session = await prisma.combatSession.create({
+          data: {
+            characterId: character.id,
+            zone: zone.key,
+            monsterName: monster.name,
+            monsterHp: monster.hp,
+            monsterMaxHp: monster.hp,
+            monsterAttack: monster.attack,
+            monsterDefense: monster.defense,
+            monsterXpReward: monster.xpReward,
+            monsterGoldMin: monster.goldMin,
+            monsterGoldMax: monster.goldMax,
+            playerHp,
+            potionsRemaining: 3,
           },
-          { prisma, client },
-        );
+        });
+
+        const embed = createCombatEmbed({
+          character: { ...character, hp: playerHp },
+          session,
+          battleLog: [
+            `${zone.emoji} ${zone.name}에 입장했습니다.`,
+            `👹 ${monster.name} 등장!`,
+            `🎯 ${localizeClassName(character.class)} ${character.name}, 전투 준비 완료!`,
+          ],
+          title: '💀 전투 시작!',
+          status: 'ongoing',
+        });
+
+        await interaction.update({
+          embeds: [embed],
+          components: [createCombatActionRow(session.id, { character: { ...character, hp: playerHp } })],
+        });
+
+        return;
       }
     }
   } catch (error) {
