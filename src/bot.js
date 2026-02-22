@@ -543,7 +543,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         await interaction.update({
           embeds: [embed],
-          components: [createCombatActionRows(session.id, { character: { ...character, hp: playerHp } })],
+          components: createCombatActionRows(session.id, { character: { ...character, hp: playerHp } }),
         });
 
         return;
