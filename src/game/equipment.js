@@ -282,23 +282,33 @@ function calculateEquipmentStats(equipmentList) {
   return stats;
 }
 
-// 레시피에서 장비 생성
-function generateEquipmentFromRecipe(recipe) {
+// 레시피에서 장비 생성 (생산 레벨 보너스 적용)
+function generateEquipmentFromRecipe(recipe, productionLevel = 1) {
   const result = recipe.result;
   const typeData = EQUIPMENT_TYPES[result.equipmentType];
   const rarityData = RARITIES[result.rarity];
 
+  // 품질 보너스 (레벨당 +2%)
+  const qualityBonus = 1 + (productionLevel - 1) * 0.02;
+
   // 이름 생성
   let name = recipe.name;
+  
+  // 레벨이 높으면 이름에 등급 추가
+  if (productionLevel >= 10) {
+    name = `고급 ${name}`;
+  } else if (productionLevel >= 5) {
+    name = `정교한 ${name}`;
+  }
 
   return {
     name,
     type: result.equipmentType,
     rarity: result.rarity,
-    attack: result.attack || 0,
-    defense: result.defense || 0,
-    hp: result.hp || 0,
-    mana: result.mana || 0,
+    attack: Math.floor((result.attack || 0) * qualityBonus),
+    defense: Math.floor((result.defense || 0) * qualityBonus),
+    hp: Math.floor((result.hp || 0) * qualityBonus),
+    mana: Math.floor((result.mana || 0) * qualityBonus),
     effect: result.effect || null,
   };
 }

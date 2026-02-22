@@ -165,23 +165,50 @@ module.exports = {
 
         // 생산 경험치 획득 (티어 × 10)
         const xpGain = resourceData.tier * 10;
+        const { applyProductionExperience, getProductionLevelUpRewards } = require('../game/production-leveling');
+        
+        const levelingResult = applyProductionExperience(character, xpGain);
+        
         await tx.character.update({
           where: {
             id: character.id,
           },
           data: {
-            productionXp: character.productionXp + xpGain,
+            productionLevel: levelingResult.productionLevel,
+            productionXp: levelingResult.productionXp,
+            gold: levelingResult.levelsGained > 0 
+              ? character.gold + getProductionLevelUpRewards(levelingResult.productionLevel).gold
+              : character.gold,
           },
         });
       });
 
+      // 레벨업 체크
+      const { applyProductionExperience, getProductionLevelUpRewards } = require('../game/production-leveling');
+      const xpGain = resourceData.tier * 10;
+      const levelingResult = applyProductionExperience(character, xpGain);
+
+      const messages = [
+        `✅ 채집 완료!`,
+        '',
+        `${resourceData.emoji} **${resourceData.name}** x${session.quantity} 획득!`,
+        `📈 생산 경험치 +${xpGain}`,
+      ];
+
+      if (levelingResult.levelsGained > 0) {
+        const rewards = getProductionLevelUpRewards(levelingResult.productionLevel);
+        messages.push('');
+        messages.push(`🎊 생산 레벨 업! Lv.${character.productionLevel} → Lv.${levelingResult.productionLevel}`);
+        messages.push(`💰 보상 골드 +${rewards.gold}G`);
+        
+        if (rewards.message.length > 0) {
+          messages.push('');
+          messages.push(...rewards.message);
+        }
+      }
+
       await interaction.reply({
-        content: [
-          `✅ 채집 완료!`,
-          '',
-          `${resourceData.emoji} **${resourceData.name}** x${session.quantity} 획득!`,
-          `📈 생산 경험치 +${resourceData.tier * 10}`,
-        ].join('\n'),
+        content: messages.join('\n'),
         ephemeral: true,
       });
 

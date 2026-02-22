@@ -100,6 +100,18 @@ function createProfileEmbed(character) {
       ? `🛡️ 방어력: ${totalDefense} (기본 ${character.defense} + 장비 ${equipmentStats.defense})`
       : `🛡️ 방어력: ${character.defense}`;
 
+  // 생산 클래스 정보
+  let productionLine = null;
+  if (character.productionClass) {
+    const { PRODUCTION_CLASSES } = require('../game/production-classes');
+    const { getRequiredProductionXP } = require('../game/production-leveling');
+    const classData = PRODUCTION_CLASSES[character.productionClass];
+    const nextLevelXp = getRequiredProductionXP(character.productionLevel);
+    const productionProgress = Math.floor((character.productionXp / nextLevelXp) * 100);
+    
+    productionLine = `${classData.emoji} ${classData.name} Lv.${character.productionLevel} (${character.productionXp}/${nextLevelXp} | ${productionProgress}%)`;
+  }
+
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
     .setTitle(`⚔️ ${character.name}님의 ${localizeClassName(character.class)}`)
@@ -108,6 +120,7 @@ function createProfileEmbed(character) {
         createDivider(),
         `💎 레벨 ${character.level} | 💰 골드 ${formatNumber(character.gold)}G`,
         jobLine,
+        productionLine || null,
         streakLine || null,
         createDivider(),
         '',

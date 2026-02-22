@@ -164,9 +164,9 @@ module.exports = {
       await prisma.$transaction(async (tx) => {
         // 제작물 추가
         if (recipe.result.type === 'equipment') {
-          // 장비 생성
+          // 장비 생성 (생산 레벨 보너스 적용)
           const { generateEquipmentFromRecipe } = require('../game/equipment');
-          const equipment = generateEquipmentFromRecipe(recipe);
+          const equipment = generateEquipmentFromRecipe(recipe, character.productionLevel);
 
           await tx.equipment.create({
             data: {
@@ -203,28 +203,55 @@ module.exports = {
 
         // 생산 경험치 획득
         const xpGain = Math.floor(recipe.craftTime / 60); // 1분당 1 경험치
+        const { applyProductionExperience, getProductionLevelUpRewards } = require('../game/production-leveling');
+        
+        const levelingResult = applyProductionExperience(character, xpGain);
+        
         await tx.character.update({
           where: {
             id: character.id,
           },
           data: {
-            productionXp: character.productionXp + xpGain,
+            productionLevel: levelingResult.productionLevel,
+            productionXp: levelingResult.productionXp,
+            gold: levelingResult.levelsGained > 0 
+              ? character.gold + getProductionLevelUpRewards(levelingResult.productionLevel).gold
+              : character.gold + (recipe.result.type === 'consumable' ? 50 : 0),
           },
         });
       });
+
+      // 레벨업 체크
+      const { applyProductionExperience, getProductionLevelUpRewards } = require('../game/production-leveling');
+      const xpGain = Math.floor(recipe.craftTime / 60);
+      const levelingResult = applyProductionExperience(character, xpGain);
 
       const resultText =
         recipe.result.type === 'equipment'
           ? `${recipe.emoji} **${recipe.name}** 제작 완료! (인벤토리에 추가)`
           : `${recipe.emoji} **${recipe.name}** 제작 완료! (+50G)`;
 
+      const messages = [
+        `✅ 제작 완료!`,
+        '',
+        resultText,
+        `📈 생산 경험치 +${xpGain}`,
+      ];
+
+      if (levelingResult.levelsGained > 0) {
+        const rewards = getProductionLevelUpRewards(levelingResult.productionLevel);
+        messages.push('');
+        messages.push(`🎊 생산 레벨 업! Lv.${character.productionLevel} → Lv.${levelingResult.productionLevel}`);
+        messages.push(`💰 보상 골드 +${rewards.gold}G`);
+        
+        if (rewards.message.length > 0) {
+          messages.push('');
+          messages.push(...rewards.message);
+        }
+      }
+
       await interaction.reply({
-        content: [
-          `✅ 제작 완료!`,
-          '',
-          resultText,
-          `📈 생산 경험치 +${Math.floor(recipe.craftTime / 60)}`,
-        ].join('\n'),
+        content: messages.join('\n'),
         ephemeral: true,
       });
 
