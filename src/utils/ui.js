@@ -2,6 +2,7 @@ const EMBED_COLORS = {
   create: 0x16a34a,
   profile: 0x2563eb,
   combat: 0xff6600,
+  boss: 0x9b59b6,
   victory: 0x00ff00,
   defeat: 0xff0000,
   warning: 0xf59e0b,

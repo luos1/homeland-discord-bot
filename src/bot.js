@@ -21,6 +21,10 @@ const {
   parseCombatEndCustomId,
 } = require('./game/combat');
 const {
+  isBossCombatButton,
+  parseBossCombatCustomId,
+} = require('./game/boss-combat');
+const {
   PROFILE_BUTTON_IDS,
   createProfileActionRow,
   createProfileEmbed,
@@ -127,6 +131,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton()) {
       if (isCombatButton(interaction.customId)) {
         await handleCombatButton({ interaction, prisma });
+        return;
+      }
+
+      if (isBossCombatButton(interaction.customId)) {
+        const { handleBossCombatAction } = require('./game/boss-combat-handler');
+        await handleBossCombatAction({ interaction, prisma });
+        return;
+      }
+
+      // 보스 도전 확인 버튼
+      if (interaction.customId.startsWith('boss_challenge_confirm:')) {
+        const bossId = interaction.customId.split(':')[1];
+        const bossCommand = client.commands.get('boss');
+        if (bossCommand && bossCommand.handleBossConfirm) {
+          await bossCommand.handleBossConfirm(interaction, { prisma, bossId });
+        }
+        return;
+      }
+
+      if (interaction.customId === 'boss_challenge_cancel') {
+        await interaction.update({
+          content: '보스 도전을 취소했습니다.',
+          components: [],
+        });
+        return;
+      }
+
+      if (interaction.customId === 'boss_list') {
+        const bossCommand = client.commands.get('boss');
+        if (bossCommand) {
+          await bossCommand.execute(
+            {
+              ...interaction,
+              options: {
+                getSubcommand: () => 'list',
+              },
+              reply: (payload) => interaction.update(payload),
+            },
+            { prisma },
+          );
+        }
         return;
       }
 
