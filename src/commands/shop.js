@@ -15,7 +15,7 @@ const {
   createSkillUpgradeShopEmbed,
   createSkillUpgradeActionRow,
   calculateSkillUpgradeCost,
-} = require('./shop_skills');
+} = require('../game/shop-skills');
 
 const SHOP_BUTTON_PREFIX = 'shop:';
 const SHOP_ACTIONS = {
