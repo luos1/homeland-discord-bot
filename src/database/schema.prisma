@@ -20,10 +20,11 @@ model Character {
   userId           String             @unique
   user             User               @relation(fields: [userId], references: [discordId], onDelete: Cascade)
   name             String
-  class            String
-  advancedClass    String?
-  productionClass  String?
-  level            Int                @default(1)
+  class                    String
+  advancedClass            String?
+  productionClass          String?
+  advancedProductionClass  String?
+  level                    Int                @default(1)
   xp               Int                @default(0)
   hp               Int                @default(100)
   maxHp            Int                @default(100)

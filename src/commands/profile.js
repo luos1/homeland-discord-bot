@@ -9,6 +9,7 @@ const {
 const { LEVEL_CAP, progressToNextLevel } = require('../game/leveling');
 const { getZone } = require('../game/monsters');
 const { canJobChange, JOB_CHANGE_LEVEL } = require('../game/jobchange');
+const { canProductionJobChange } = require('../game/production-advanced-classes');
 const { calculateEquipmentStats } = require('../game/equipment');
 const { getStreakDisplay } = require('../game/streak');
 const { cleanupOldSessions } = require('../game/session-cleanup');
@@ -26,6 +27,7 @@ const PROFILE_BUTTON_IDS = {
   inventory: 'profile_inventory',
   shop: 'profile_shop',
   production: 'profile_production',
+  production_jobchange: 'profile_production_jobchange',
   stats: 'profile_stats',
   endCombat: 'profile_end_combat',
   boss: 'profile_boss',
@@ -113,7 +115,8 @@ function createProfileEmbed(character) {
     const nextLevelXp = getRequiredProductionXP(character.productionLevel) || 1;
     const productionProgress = Math.floor((character.productionXp / nextLevelXp) * 100);
     
-    productionLine = `${classData.emoji} ${classData.name} Lv.${character.productionLevel} (${character.productionXp}/${nextLevelXp} | ${productionProgress}%)`;
+    const className = character.advancedProductionClass || classData.name;
+    productionLine = `${classData.emoji} ${className} Lv.${character.productionLevel} (${character.productionXp}/${nextLevelXp} | ${productionProgress}%)`;
   }
 
   return new EmbedBuilder()
@@ -205,6 +208,21 @@ function createProfileActionRow(options = {}) {
           .setCustomId(PROFILE_BUTTON_IDS.jobchange)
           .setLabel('전직하기')
           .setEmoji('✨')
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(disabled),
+      );
+    }
+  }
+
+  // 생산 전직 가능하면 생산 전직 버튼 추가
+  if (character && !character.advancedProductionClass) {
+    const prodJobCheck = canProductionJobChange(character);
+    if (prodJobCheck.allowed) {
+      row2Buttons.push(
+        new ButtonBuilder()
+          .setCustomId(PROFILE_BUTTON_IDS.production_jobchange)
+          .setLabel('생산 전직')
+          .setEmoji('🔧')
           .setStyle(ButtonStyle.Success)
           .setDisabled(disabled),
       );

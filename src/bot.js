@@ -32,6 +32,7 @@ const {
 } = require('./commands/profile');
 const { getPlayCreateClassChoice } = require('./commands/play');
 const { JOBCHANGE_BUTTON_PREFIX } = require('./commands/jobchange');
+const { PRODUCTION_JOBCHANGE_BUTTON_PREFIX } = require('./commands/production_jobchange');
 const { INVENTORY_BUTTON_PREFIX } = require('./commands/inventory');
 const { SHOP_BUTTON_PREFIX } = require('./commands/shop');
 const { PRODUCTION_BUTTON_PREFIX } = require('./commands/production');
@@ -499,6 +500,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      // 생산 전직 버튼
+      if (interaction.customId === PROFILE_BUTTON_IDS.production_jobchange) {
+        // 버튼 interaction은 먼저 defer 처리
+        await interaction.deferUpdate();
+
+        const prodJobchangeCommand = client.commands.get('production_jobchange');
+
+        if (!prodJobchangeCommand) {
+          await interaction.followUp({
+            content: '생산 전직 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        // followUp으로 생산 전직 화면 표시
+        await prodJobchangeCommand.execute(
+          {
+            user: interaction.user,
+            reply: interaction.followUp.bind(interaction),
+          },
+          { prisma },
+        );
+
+        return;
+      }
+
       if (interaction.customId === PROFILE_BUTTON_IDS.stats) {
         const character = await getProfileCharacter(prisma, interaction.user.id);
 
@@ -917,6 +946,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         const handled = await jobchangeCommand.handleJobChangeButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      // 생산 전직 버튼
+      if (interaction.customId.startsWith(PRODUCTION_JOBCHANGE_BUTTON_PREFIX)) {
+        const prodJobchangeCommand = client.commands.get('production_jobchange');
+
+        if (!prodJobchangeCommand) {
+          await interaction.reply({
+            content: '생산 전직 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await prodJobchangeCommand.handleProductionJobChangeButton(interaction, {
+          prisma,
+        });
 
         if (handled) {
           return;
