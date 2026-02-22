@@ -451,6 +451,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      if (interaction.customId === PROFILE_BUTTON_IDS.jobchange) {
+        const jobchangeCommand = client.commands.get('jobchange');
+
+        if (!jobchangeCommand) {
+          await interaction.reply({
+            content: '전직 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        await jobchangeCommand.execute(
+          {
+            user: interaction.user,
+            reply: interaction.reply.bind(interaction),
+          },
+          { prisma },
+        );
+
+        return;
+      }
+
       if (interaction.customId === PROFILE_BUTTON_IDS.stats) {
         const character = await getProfileCharacter(prisma, interaction.user.id);
 

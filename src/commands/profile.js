@@ -29,6 +29,7 @@ const PROFILE_BUTTON_IDS = {
   stats: 'profile_stats',
   endCombat: 'profile_end_combat',
   boss: 'profile_boss',
+  jobchange: 'profile_jobchange',
 };
 
 async function getProfileCharacter(prisma, userId) {
@@ -193,6 +194,21 @@ function createProfileActionRow(options = {}) {
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
   ];
+
+  // 전직 가능하면 전직 버튼 추가
+  if (character && !character.advancedClass) {
+    const jobCheck = canJobChange(character);
+    if (jobCheck.allowed) {
+      row2Buttons.push(
+        new ButtonBuilder()
+          .setCustomId(PROFILE_BUTTON_IDS.jobchange)
+          .setLabel('전직하기')
+          .setEmoji('✨')
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(disabled),
+      );
+    }
+  }
 
   // 전투 중이면 전투 종료 버튼 추가
   if (hasCombat) {
