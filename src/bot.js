@@ -34,6 +34,7 @@ const { PRODUCTION_BUTTON_PREFIX } = require('./commands/production');
 const { GATHER_BUTTON_PREFIX } = require('./commands/gather');
 const { CRAFT_BUTTON_PREFIX } = require('./commands/craft');
 const { PSKILL_BUTTON_PREFIX } = require('./commands/production_skills');
+const { MARKET_BUTTON_PREFIX } = require('./commands/market');
 const { cleanupAllOldSessions } = require('./game/session-cleanup');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
@@ -883,6 +884,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       }
 
+      // 거래소 버튼
+      if (interaction.customId.startsWith(MARKET_BUTTON_PREFIX)) {
+        const marketCommand = client.commands.get('market');
+
+        if (!marketCommand) {
+          await interaction.reply({
+            content: '거래소 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await marketCommand.handleMarketButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
       // 몬스터 선택 버튼 (전투 시작)
       if (interaction.customId.startsWith(MONSTER_SELECT_PREFIX)) {
         const [zoneKey, monsterKey] = interaction.customId
@@ -986,6 +1007,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
 
         return;
+      }
+    }
+
+    // StringSelectMenu 핸들러
+    if (interaction.isStringSelectMenu()) {
+      // 거래소 셀렉트
+      if (interaction.customId.startsWith(MARKET_BUTTON_PREFIX)) {
+        const marketCommand = client.commands.get('market');
+
+        if (marketCommand) {
+          const handled = await marketCommand.handleMarketSelect(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+    }
+
+    // Modal 핸들러
+    if (interaction.isModalSubmit()) {
+      // 거래소 모달
+      if (interaction.customId.startsWith(MARKET_BUTTON_PREFIX)) {
+        const marketCommand = client.commands.get('market');
+
+        if (marketCommand) {
+          const handled = await marketCommand.handleMarketModal(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
       }
     }
   } catch (error) {

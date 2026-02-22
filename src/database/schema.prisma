@@ -42,6 +42,7 @@ model Character {
   resources        Resource[]
   gatherSessions   GatherSession[]
   craftingSessions CraftingSession[]
+  marketListings   MarketListing[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 }
@@ -118,6 +119,44 @@ model CraftingSession {
   quantity    Int       @default(1)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model MarketListing {
+  id          Int       @id @default(autoincrement())
+  sellerId    Int
+  seller      Character @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  itemType    String    // resource or equipment
+  itemKey     String    // resource type or equipment id
+  itemName    String
+  quantity    Int       @default(1)
+  pricePerUnit Int
+  totalPrice  Int
+  status      String    @default("active") // active, sold, cancelled
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  soldAt      DateTime?
+  buyerId     Int?
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([itemType])
+}
+
+model TradeHistory {
+  id          Int      @id @default(autoincrement())
+  sellerId    Int
+  buyerId     Int
+  itemType    String
+  itemKey     String
+  itemName    String
+  quantity    Int
+  price       Int
+  fee         Int
+  createdAt   DateTime @default(now())
+
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([createdAt])
 }
 
 model CombatSession {
