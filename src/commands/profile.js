@@ -25,6 +25,7 @@ const PROFILE_BUTTON_IDS = {
   explore: 'profile_explore',
   inventory: 'profile_inventory',
   shop: 'profile_shop',
+  production: 'profile_production',
   stats: 'profile_stats',
   endCombat: 'profile_end_combat',
 };
@@ -156,6 +157,12 @@ function createProfileActionRow(options = {}) {
       .setLabel('탐험')
       .setEmoji('⚔️')
       .setStyle(ButtonStyle.Primary)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId(PROFILE_BUTTON_IDS.production)
+      .setLabel('생산')
+      .setEmoji('🔨')
+      .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
     new ButtonBuilder()
       .setCustomId(PROFILE_BUTTON_IDS.inventory)

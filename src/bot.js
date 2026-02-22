@@ -378,6 +378,170 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      if (interaction.customId === PROFILE_BUTTON_IDS.production) {
+        const character = await prisma.character.findUnique({
+          where: {
+            userId: interaction.user.id,
+          },
+          include: {
+            gatherSessions: true,
+            craftingSessions: true,
+            resources: true,
+          },
+        });
+
+        if (!character) {
+          await interaction.reply({
+            content: '캐릭터가 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        // 생산 메뉴 임베드 생성
+        const { PRODUCTION_CLASSES } = require('./game/production-classes');
+        const { getRequiredProductionXP } = require('./game/production-leveling');
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        const { EMBED_COLORS, createDivider } = require('./utils/ui');
+
+        let embed;
+        const buttons = [];
+
+        if (!character.productionClass) {
+          // 생산 직업이 없는 경우
+          embed = new EmbedBuilder()
+            .setColor(EMBED_COLORS.profile)
+            .setTitle('🔨 생산 시스템')
+            .setDescription(
+              [
+                createDivider(),
+                '생산 직업을 선택하지 않았습니다',
+                '',
+                '📦 채집 직업으로 자원을 모으거나',
+                '⚒️ 제작 직업으로 아이템을 만들 수 있습니다',
+                '',
+                '💡 `/production` 명령어로 직업을 선택하세요',
+                '',
+                createDivider(),
+              ].join('\n'),
+            );
+        } else {
+          const classData = PRODUCTION_CLASSES[character.productionClass];
+          const nextLevelXp = getRequiredProductionXP(character.productionLevel);
+          const progress = Math.floor((character.productionXp / nextLevelXp) * 100);
+
+          const isGathering = classData.category === 'gathering';
+          const isCrafting = classData.category === 'crafting';
+
+          const sessionInfo = [];
+          if (character.gatherSessions.length > 0) {
+            const session = character.gatherSessions[0];
+            const now = new Date();
+            const completesAt = new Date(session.completesAt);
+            const remainingMs = Math.max(0, completesAt - now);
+            const remainingMin = Math.ceil(remainingMs / 1000 / 60);
+
+            if (remainingMs > 0) {
+              sessionInfo.push(`⏱️ 채집 중... (${remainingMin}분 남음)`);
+            } else {
+              sessionInfo.push(`✅ 채집 완료! /gather로 수령하세요`);
+            }
+          }
+
+          if (character.craftingSessions.length > 0) {
+            const session = character.craftingSessions[0];
+            const now = new Date();
+            const completesAt = new Date(session.completesAt);
+            const remainingMs = Math.max(0, completesAt - now);
+            const remainingMin = Math.ceil(remainingMs / 1000 / 60);
+
+            if (remainingMs > 0) {
+              sessionInfo.push(`⏱️ 제작 중... (${remainingMin}분 남음)`);
+            } else {
+              sessionInfo.push(`✅ 제작 완료! /craft로 수령하세요`);
+            }
+          }
+
+          const resourceCount = character.resources.length;
+
+          embed = new EmbedBuilder()
+            .setColor(EMBED_COLORS.profile)
+            .setTitle(`${classData.emoji} ${classData.name}`)
+            .setDescription(
+              [
+                createDivider(),
+                `📊 레벨: ${character.productionLevel}`,
+                `📈 경험치: ${character.productionXp}/${nextLevelXp} (${progress}%)`,
+                '',
+                `📦 보유 자원: ${resourceCount}종`,
+                '',
+                sessionInfo.length > 0 ? sessionInfo.join('\n') : '💡 현재 진행 중인 작업이 없습니다',
+                '',
+                createDivider(),
+                '',
+                '🔨 생산 메뉴',
+                isGathering ? '📦 채집 - 자원을 수집합니다' : '',
+                isCrafting ? '⚒️ 제작 - 아이템을 만듭니다' : '',
+                '📊 자원 - 보유 자원을 확인합니다',
+                '👤 프로필 - 돌아가기',
+                '',
+              ]
+                .filter(Boolean)
+                .join('\n'),
+            )
+            .setFooter({
+              text: '아래 버튼으로 생산 활동을 시작하세요',
+            });
+
+          // 버튼 추가
+          if (isGathering) {
+            buttons.push(
+              new ButtonBuilder()
+                .setCustomId('production_menu_gather')
+                .setLabel('채집')
+                .setEmoji('📦')
+                .setStyle(ButtonStyle.Primary),
+            );
+          }
+
+          if (isCrafting) {
+            buttons.push(
+              new ButtonBuilder()
+                .setCustomId('production_menu_craft')
+                .setLabel('제작')
+                .setEmoji('⚒️')
+                .setStyle(ButtonStyle.Primary),
+            );
+          }
+
+          buttons.push(
+            new ButtonBuilder()
+              .setCustomId('production_menu_resources')
+              .setLabel('자원')
+              .setEmoji('📊')
+              .setStyle(ButtonStyle.Secondary),
+          );
+        }
+
+        buttons.push(
+          new ButtonBuilder()
+            .setCustomId('production_menu_back')
+            .setLabel('프로필')
+            .setEmoji('👤')
+            .setStyle(ButtonStyle.Secondary),
+        );
+
+        const components = buttons.length > 0 ? [new ActionRowBuilder().addComponents(buttons)] : [];
+
+        await interaction.update({
+          embeds: [embed],
+          components,
+        });
+
+        return;
+      }
+
       if (interaction.customId === PROFILE_BUTTON_IDS.endCombat) {
         const character = await prisma.character.findUnique({
           where: {
@@ -445,6 +609,51 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({
           embeds: [successEmbed],
           components: [createProfileActionRow({ character: refreshedCharacter })],
+        });
+
+        return;
+      }
+
+      // 생산 메뉴 버튼 핸들러
+      if (interaction.customId === 'production_menu_gather') {
+        const gatherCommand = client.commands.get('gather');
+        if (gatherCommand) {
+          await gatherCommand.execute(interaction, { prisma });
+        }
+        return;
+      }
+
+      if (interaction.customId === 'production_menu_craft') {
+        const craftCommand = client.commands.get('craft');
+        if (craftCommand) {
+          await craftCommand.execute(interaction, { prisma });
+        }
+        return;
+      }
+
+      if (interaction.customId === 'production_menu_resources') {
+        const resourcesCommand = client.commands.get('resources');
+        if (resourcesCommand) {
+          await resourcesCommand.execute(interaction, { prisma });
+        }
+        return;
+      }
+
+      if (interaction.customId === 'production_menu_back') {
+        const character = await getProfileCharacter(prisma, interaction.user.id);
+
+        if (!character) {
+          await interaction.reply({
+            content: '캐릭터가 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        await interaction.update({
+          embeds: [createProfileEmbed(character)],
+          components: [createProfileActionRow({ character })],
         });
 
         return;
