@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homeland RPG - 디스코드 턴제 RPG 봇</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            opacity: 0.9;
+        }
+
+        .invite-button {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: #5865F2;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .invite-button:hover {
+            background: #4752C4;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .content {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin: 40px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            color: #667eea;
+            margin: 30px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            font-size: 2em;
+        }
+
+        h3 {
+            color: #764ba2;
+            margin: 25px 0 15px 0;
+            font-size: 1.5em;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 10px;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-card h3 {
+            margin-top: 0;
+        }
+
+        .command-list {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .command {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .command code {
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        .class-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .class-card {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .class-card.production {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        .tier-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .tier-common { background: #95a5a6; color: white; }
+        .tier-uncommon { background: #27ae60; color: white; }
+        .tier-rare { background: #3498db; color: white; }
+        .tier-epic { background: #9b59b6; color: white; }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: white;
+            opacity: 0.8;
+        }
+
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .production-info {
+            background: #e8f5e9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #4caf50;
+        }
+
+        .recipe-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .recipe-table th,
+        .recipe-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .recipe-table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .recipe-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .nav {
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav a {
+            margin: 0 15px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+
+            .feature-grid,
+            .class-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>⚔️ Homeland RPG</h1>
+            <p class="subtitle">디스코드에서 즐기는 턴제 RPG 게임</p>
+            <a href="#" class="invite-button">봇 초대하기</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="nav">
+            <a href="#features">주요 기능</a>
+            <a href="#combat">전투 시스템</a>
+            <a href="#production">생산 시스템</a>
+            <a href="#economy">경제 시스템</a>
+            <a href="#commands">명령어</a>
+        </nav>
+
+        <div class="content">
+            <section id="features">
+                <h2>🎮 주요 기능</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>⚔️ 전투 시스템</h3>
+                        <p>8개의 전투 클래스와 전직 시스템으로 자신만의 전투 스타일을 만들어보세요.</p>
+                        <ul>
+                            <li>턴제 전투 시스템</li>
+                            <li>스킬 업그레이드</li>
+                            <li>장비 강화 (최대 +10)</li>
+                            <li>보스 전투</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h3>🛠️ 생산 시스템</h3>
+                        <p>9개의 생산 직업으로 자원을 모으고 아이템을 제작하세요.</p>
+                        <ul>
+                            <li>5개 채집 직업</li>
+                            <li>4개 제작 직업</li>
+                            <li>타이머 기반 비동기 시스템</li>
+                            <li>품질 시스템</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h3>💰 경제 시스템</h3>
+                        <p>플레이어 간 거래로 활발한 경제 생태계를 만들어보세요.</p>
+                        <ul>
+                            <li>자원 거래소</li>
+                            <li>장비 가챠</li>
+                            <li>스킬 상점</li>
+                            <li>소모품 제작 & 사용</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section id="combat">
+                <h2>⚔️ 전투 시스템</h2>
+                
+                <h3>기본 클래스 (8종)</h3>
+                <div class="class-grid">
+                    <div class="class-card">
+                        <h4>⚔️ 전사 (Warrior)</h4>
+                        <p>높은 체력과 방어력</p>
+                        <p><small>전직: 버서커</small></p>
+                    </div>
+                    <div class="class-card">
+                        <h4>🏹 궁수 (Archer)</h4>
+                        <p>민첩한 원거리 공격</p>
+                        <p><small>전직: 스나이퍼</small></p>
+                    </div>
+                    <div class="class-card">
+                        <h4>🔮 마법사 (Mage)</h4>
+                        <p>강력한 마법 공격</p>
+                        <p><small>전직: 아크메이지</small></p>
+                    </div>
+                    <div class="class-card">
+                        <h4>🛡️ 성기사 (Paladin)</h4>
+                        <p>방어와 힐의 균형</p>
+                        <p><small>전직: 미구현</small></p>
+                    </div>
+                    <div class="class-card">
+                        <h4>🗡️ 로그 (Rogue)</h4>
+                        <p>빠른 연속 공격</p>
+                        <p><small>전직: 미구현</small></p>
+                    </div>
+                    <div class="class-card">
+                        <h4>⚡ 사제 (Priest)</h4>
+                        <p>회복과 버프 전문</p>
+                        <p><small>전직: 미구현</small></p>
+                    </div>
+                    <div class="class-card">
+                        <h4>🌿 드루이드 (Druid)</h4>
+                        <p>자연의 힘</p>
+                        <p><small>전직: 미구현</small></p>
+                    </div>
+                    <div class="class-card">
+                        <h4>💀 네크로맨서 (Necromancer)</h4>
+                        <p>어둠의 마법</p>
+                        <p><small>전직: 미구현</small></p>
+                    </div>
+                </div>
+
+                <h3>장비 시스템</h3>
+                <p>4개 등급의 장비를 획득하고 강화하세요:</p>
+                <div>
+                    <span class="tier-badge tier-common">Common (일반)</span>
+                    <span class="tier-badge tier-uncommon">Uncommon (고급)</span>
+                    <span class="tier-badge tier-rare">Rare (희귀)</span>
+                    <span class="tier-badge tier-epic">Epic (영웅)</span>
+                </div>
+                <ul style="margin-top: 15px;">
+                    <li><strong>장비 강화:</strong> 최대 +10까지 강화 가능 (성공률 65%)</li>
+                    <li><strong>장비 가챠:</strong> 골드로 랜덤 장비 획득</li>
+                    <li><strong>장비 판매:</strong> 불필요한 장비 판매</li>
+                </ul>
+
+                <h3>스킬 시스템</h3>
+                <ul>
+                    <li><strong>기본 스킬:</strong> 각 클래스 고유 스킬</li>
+                    <li><strong>상급 스킬:</strong> 레벨 5부터 상점에서 구매 가능 (5개)</li>
+                    <li><strong>마스터 스킬:</strong> 보스 드랍 (2개)</li>
+                    <li><strong>스킬 업그레이드:</strong> 100% 성공률</li>
+                </ul>
+            </section>
+
+            <section id="production">
+                <h2>🛠️ 생산 시스템</h2>
+                
+                <div class="production-info">
+                    <p><strong>📌 생산 시스템 특징:</strong></p>
+                    <ul>
+                        <li>전투 클래스와 별도로 1개의 생산 클래스 선택 가능</li>
+                        <li>타이머 기반 비동기 시스템 (채집: 20-40분, 제작: 10-120분)</li>
+                        <li>레벨업으로 효율 증가 (시간 단축, 품질 향상)</li>
+                        <li>제작 품질은 생산 레벨에 비례 (+2% per level)</li>
+                    </ul>
+                </div>
+
+                <h3>채집 직업 (5종)</h3>
+                <div class="class-grid">
+                    <div class="class-card production">
+                        <h4>🪓 벌목공 (Lumberjack)</h4>
+                        <p>나무 채집</p>
+                    </div>
+                    <div class="class-card production">
+                        <h4>⛏️ 광부 (Miner)</h4>
+                        <p>광석 채집</p>
+                    </div>
+                    <div class="class-card production">
+                        <h4>🌿 약초상 (Herbalist)</h4>
+                        <p>약초 채집</p>
+                    </div>
+                    <div class="class-card production">
+                        <h4>🦌 사냥꾼 (Hunter)</h4>
+                        <p>가죽/뼈/고기 채집</p>
+                    </div>
+                    <div class="class-card production">
+                        <h4>🎣 어부 (Fisher)</h4>
+                        <p>물고기 채집</p>
+                    </div>
+                </div>
+
+                <h3>제작 직업 (4종)</h3>
+                <div class="class-grid">
+                    <div class="class-card production">
+                        <h4>⚒️ 대장장이 (Blacksmith)</h4>
+                        <p>무기/방어구 제작</p>
+                        <p><small>T3/T4 장비 제작 가능</small></p>
+                    </div>
+                    <div class="class-card production">
+                        <h4>⚗️ 연금술사 (Alchemist)</h4>
+                        <p>포션 제작</p>
+                    </div>
+                    <div class="class-card production">
+                        <h4>🍳 요리사 (Cook)</h4>
+                        <p>음식 제작</p>
+                    </div>
+                    <div class="class-card production">
+                        <h4>🪡 재봉사 (Tailor)</h4>
+                        <p>옷/가방 제작</p>
+                    </div>
+                </div>
+
+                <h3>생산 스킬</h3>
+                <ul>
+                    <li><strong>상급 기술:</strong> 레벨 5 달성 시 구매 가능 (600-1000G)</li>
+                    <li><strong>마스터 기술:</strong> 레벨 10 달성 시 구매 가능 (2000-3000G)</li>
+                    <li><strong>효과:</strong> T3/T4 레시피 해금 + 제작 시간 추가 단축</li>
+                </ul>
+
+                <h3>레시피 티어</h3>
+                <table class="recipe-table">
+                    <thead>
+                        <tr>
+                            <th>티어</th>
+                            <th>등급</th>
+                            <th>필요 스킬</th>
+                            <th>제작 시간</th>
+                            <th>예시</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>T1</td>
+                            <td class="tier-badge tier-common">일반</td>
+                            <td>없음</td>
+                            <td>10-20분</td>
+                            <td>체력 포션 (소), 빵</td>
+                        </tr>
+                        <tr>
+                            <td>T2</td>
+                            <td class="tier-badge tier-uncommon">고급</td>
+                            <td>없음</td>
+                            <td>30-40분</td>
+                            <td>체력 포션 (중), 구운 생선</td>
+                        </tr>
+                        <tr>
+                            <td>T3</td>
+                            <td class="tier-badge tier-rare">희귀</td>
+                            <td>상급 기술</td>
+                            <td>60-80분</td>
+                            <td>체력 포션 (대), 검</td>
+                        </tr>
+                        <tr>
+                            <td>T4</td>
+                            <td class="tier-badge tier-epic">영웅</td>
+                            <td>마스터 기술</td>
+                            <td>100-120분</td>
+                            <td>전설 포션, 갑옷</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="economy">
+                <h2>💰 경제 시스템</h2>
+                
+                <h3>자원 거래소</h3>
+                <p>플레이어 간 자원을 자유롭게 거래할 수 있습니다.</p>
+                <ul>
+                    <li><strong>판매:</strong> 자원 등록 (수량 + 개당 가격 설정)</li>
+                    <li><strong>구매:</strong> 등록된 자원 구매</li>
+                    <li><strong>수수료:</strong> 판매 금액의 10%</li>
+                    <li><strong>취소:</strong> 판매 취소 시 전액 환불</li>
+                </ul>
+
+                <h3>소모품 시스템</h3>
+                <p>제작한 소모품을 사용하여 캐릭터를 강화하세요.</p>
+                <ul>
+                    <li><strong>포션:</strong> 체력/마나 회복</li>
+                    <li><strong>음식:</strong> 일시적인 스탯 버프</li>
+                    <li><strong>엘릭서:</strong> 강력한 버프 효과</li>
+                </ul>
+
+                <h3>골드 획득 방법</h3>
+                <ul>
+                    <li>전투 승리 시 골드 획득</li>
+                    <li>생산 레벨업 시 보상 (레벨 × 100G, 5레벨마다 +50G)</li>
+                    <li>장비 판매</li>
+                    <li>자원 거래</li>
+                </ul>
+            </section>
+
+            <section id="commands">
+                <h2>📝 주요 명령어</h2>
+                
+                <h3>기본 명령어</h3>
+                <div class="command-list">
+                    <div class="command">
+                        <code>/start</code> - 게임 시작 및 클래스 선택
+                    </div>
+                    <div class="command">
+                        <code>/profile</code> - 캐릭터 정보 확인
+                    </div>
+                    <div class="command">
+                        <code>/reset</code> - 클래스 초기화 (HP/MP 전체 회복)
+                    </div>
+                </div>
+
+                <h3>전투 명령어</h3>
+                <div class="command-list">
+                    <div class="command">
+                        <code>/hunt [지역]</code> - 전투 시작
+                    </div>
+                    <div class="command">
+                        <code>/inventory</code> - 인벤토리 확인
+                    </div>
+                    <div class="command">
+                        <code>/shop</code> - 상점 (장비 가챠, 강화, 판매)
+                    </div>
+                    <div class="command">
+                        <code>/shop_skills</code> - 스킬 상점
+                    </div>
+                </div>
+
+                <h3>생산 명령어</h3>
+                <div class="command-list">
+                    <div class="command">
+                        <code>/production</code> - 생산 직업 선택
+                    </div>
+                    <div class="command">
+                        <code>/gather</code> - 자원 채집 시작
+                    </div>
+                    <div class="command">
+                        <code>/craft</code> - 아이템 제작 시작
+                    </div>
+                    <div class="command">
+                        <code>/resources</code> - 자원 인벤토리
+                    </div>
+                    <div class="command">
+                        <code>/production_skills</code> - 생산 스킬 상점
+                    </div>
+                </div>
+
+                <h3>경제 명령어</h3>
+                <div class="command-list">
+                    <div class="command">
+                        <code>/market</code> - 자원 거래소
+                    </div>
+                </div>
+            </section>
+
+            <section id="tips">
+                <h2>💡 초보자 가이드</h2>
+                
+                <h3>게임 시작하기</h3>
+                <ol>
+                    <li><code>/start</code>로 캐릭터 생성 및 클래스 선택</li>
+                    <li><code>/hunt 1</code>으로 초보자 숲에서 전투 시작</li>
+                    <li>골드를 모아 <code>/shop</code>에서 장비 구매</li>
+                    <li>레벨 5가 되면 <code>/shop_skills</code>에서 스킬 구매</li>
+                </ol>
+
+                <h3>효율적인 플레이</h3>
+                <ul>
+                    <li><strong>생산 직업 병행:</strong> <code>/production</code>으로 생산 직업을 선택하여 자원을 모으세요</li>
+                    <li><strong>타이머 활용:</strong> 채집/제작 타이머를 활용하여 AFK 시간에도 자원을 모으세요</li>
+                    <li><strong>거래소 활용:</strong> 필요한 자원은 <code>/market</code>에서 구매하세요</li>
+                    <li><strong>장비 강화:</strong> 골드가 충분해지면 장비를 강화하여 전투력을 높이세요</li>
+                </ul>
+
+                <h3>주의사항</h3>
+                <ul>
+                    <li>클래스 변경 시 <code>/reset</code>을 사용하세요 (HP/MP 완전 회복)</li>
+                    <li>장비 강화는 실패할 수 있습니다 (65% 성공률)</li>
+                    <li>스킬 업그레이드는 100% 성공합니다</li>
+                    <li>거래소 판매 시 10% 수수료가 부과됩니다</li>
+                </ul>
+            </section>
+        </div>
+
+        <footer>
+            <p>Homeland RPG © 2025</p>
+            <p>
+                <a href="https://github.com/luos1/homeland-discord-bot" style="color: white;">GitHub</a> |
+                <a href="https://discord.gg/your-support-server" style="color: white;">Support Server</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
