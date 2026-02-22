@@ -72,6 +72,8 @@ const ZONES = {
     rewardStars: '⭐',
     description: '첫 모험가를 위한 숲. 비교적 안전하지만 방심은 금물입니다.',
     monsterKeys: ['skeletonGrunt', 'direWolf'],
+    resourceDrops: ['wood', 'herb', 'meat'],
+    dropChance: 0.3,
   },
   zone2: {
     key: 'zone2',
@@ -83,6 +85,8 @@ const ZONES = {
     rewardStars: '⭐⭐',
     description: '암흑 마력이 흐르는 동굴. 전열 정비 없이 진입하면 위험합니다.',
     monsterKeys: ['undeadKnight', 'goblinShaman'],
+    resourceDrops: ['iron_ore', 'copper_ore', 'bone', 'leather'],
+    dropChance: 0.35,
   },
   zone3: {
     key: 'zone3',
@@ -94,6 +98,8 @@ const ZONES = {
     rewardStars: '⭐⭐⭐',
     description: '영웅만이 살아남는 산맥. 강력한 보상만큼 치명적인 위험이 따릅니다.',
     monsterKeys: ['ancientDragon', 'lich'],
+    resourceDrops: ['silver_ore', 'gold_ore', 'rare_herb', 'fur'],
+    dropChance: 0.4,
   },
 };
 

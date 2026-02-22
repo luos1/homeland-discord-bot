@@ -291,6 +291,7 @@ function buildVictoryDescription({
   rewards,
   levelUpDetails,
   droppedEquipment,
+  droppedResource,
 }) {
   const playerHpBar = createHPBar(session.playerHp, character.maxHp, 10);
   const currentMana = character.mana ?? 0;
@@ -333,6 +334,16 @@ function buildVictoryDescription({
       const { EFFECTS } = require('./equipment');
       const effectData = EFFECTS[droppedEquipment.effect];
       lines.push(`   ✨ ${effectData.emoji} ${effectData.name}`);
+    }
+  }
+
+  if (droppedResource) {
+    const { RESOURCES } = require('./production-classes');
+    const resourceData = RESOURCES[droppedResource.type];
+    if (resourceData) {
+      lines.push('');
+      lines.push('📦 자원 획득!');
+      lines.push(`${resourceData.emoji} **${resourceData.name}** x${droppedResource.quantity}개`);
     }
   }
 
@@ -470,6 +481,7 @@ function createCombatEmbed({
   rewards = null,
   levelUpDetails = null,
   droppedEquipment = null,
+  droppedResource = null,
 }) {
   const resolvedTitle = title ?? combatResultTitle(status, session.monsterName);
 
@@ -487,6 +499,7 @@ function createCombatEmbed({
       rewards,
       levelUpDetails,
       droppedEquipment,
+      droppedResource,
     });
   }
 
@@ -775,6 +788,31 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       battleLog.push(`${droppedEquipment.name}을(를) 획득했습니다!`);
     }
 
+    // 자원 드롭 체크
+    let droppedResource = null;
+    const zone = getZone(session.zone);
+    if (zone && zone.resourceDrops && zone.resourceDrops.length > 0) {
+      const dropRoll = Math.random();
+      if (dropRoll < (zone.dropChance || 0.3)) {
+        // 랜덤 자원 선택
+        const resourceType = zone.resourceDrops[randomInt(0, zone.resourceDrops.length - 1)];
+        const quantity = randomInt(1, 3);
+
+        droppedResource = {
+          type: resourceType,
+          quantity,
+        };
+
+        const { RESOURCES } = require('./production-classes');
+        const resourceData = RESOURCES[resourceType];
+        if (resourceData) {
+          battleLog.push('');
+          battleLog.push('📦 자원 획득!');
+          battleLog.push(`${resourceData.emoji} ${resourceData.name} x${quantity}개`);
+        }
+      }
+    }
+
     return {
       status: 'victory',
       battleLog,
@@ -792,6 +830,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
         levelsGained: leveling.levelsGained,
       },
       droppedEquipment,
+      droppedResource,
     };
   }
 
@@ -988,6 +1027,41 @@ async function handleCombatButton({ interaction, prisma }) {
       });
     }
 
+    // 자원 드롭이 있으면 인벤토리에 추가
+    if (outcome.droppedResource) {
+      const { RESOURCES } = require('./production-classes');
+      const resourceData = RESOURCES[outcome.droppedResource.type];
+
+      const existing = await tx.resource.findUnique({
+        where: {
+          characterId_type: {
+            characterId: session.characterId,
+            type: outcome.droppedResource.type,
+          },
+        },
+      });
+
+      if (existing) {
+        await tx.resource.update({
+          where: {
+            id: existing.id,
+          },
+          data: {
+            quantity: existing.quantity + outcome.droppedResource.quantity,
+          },
+        });
+      } else {
+        await tx.resource.create({
+          data: {
+            characterId: session.characterId,
+            type: outcome.droppedResource.type,
+            name: resourceData.name,
+            quantity: outcome.droppedResource.quantity,
+          },
+        });
+      }
+    }
+
     if (outcome.status === 'ongoing') {
       await tx.combatSession.update({
         where: {
@@ -1032,6 +1106,7 @@ async function handleCombatButton({ interaction, prisma }) {
     rewards: outcome.rewards,
     levelUpDetails,
     droppedEquipment: outcome.droppedEquipment,
+    droppedResource: outcome.droppedResource,
   });
 
   const components = ended
