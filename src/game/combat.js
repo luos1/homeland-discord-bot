@@ -6,7 +6,7 @@ const {
 } = require('discord.js');
 
 const { applyExperience, progressToNextLevel } = require('./leveling');
-const { MONSTERS, getZone, randomInt, rollRareMonster, applyRareModifier } = require('./monsters');
+const { MONSTERS, getZone, getZoneWithTypeData, randomInt, rollRareMonster, applyRareModifier } = require('./monsters');
 const { getCombatSkill, getAvailableSkills, getSkillByKey, canUseSkill } = require('./skills');
 const { shouldDropEquipment, generateEquipment } = require('./equipment');
 const { calculateStreakBonus, updateWinStreak, resetWinStreak } = require('./streak');
@@ -736,15 +736,20 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
     const streakResult = updateWinStreak(character);
     const streakBonus = calculateStreakBonus(streakResult.newStreak);
 
-    // 연승 보너스 적용
+    // 존별 보상 배율
+    const zoneData = getZoneWithTypeData(session.zone);
+    const zoneGoldMult = zoneData?.typeData?.goldMultiplier || 1.0;
+    const zoneXpMult = zoneData?.typeData?.xpMultiplier || 1.0;
+
+    // 연승 + 존 보너스 적용
     let baseXpReward = session.monsterXpReward;
     let baseGoldReward = randomInt(session.monsterGoldMin, session.monsterGoldMax);
 
     const xpReward = Math.floor(
-      baseXpReward * (1 + streakBonus.xpBonus) + streakBonus.specialRewards.xp,
+      baseXpReward * zoneXpMult * (1 + streakBonus.xpBonus) + streakBonus.specialRewards.xp,
     );
     const goldReward = Math.floor(
-      baseGoldReward * (1 + streakBonus.goldBonus) + streakBonus.specialRewards.gold,
+      baseGoldReward * zoneGoldMult * (1 + streakBonus.goldBonus) + streakBonus.specialRewards.gold,
     );
 
     // 전투 종료 화면에서 레벨업 수치를 즉시 보여주기 위해 XP를 바로 반영한다.

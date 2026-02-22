@@ -1010,20 +1010,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return;
         }
 
-        const { getZone, MONSTERS } = require('./game/monsters');
+        const { getZone, getZoneWithTypeData, MONSTERS, spawnMonster, rollRareMonster, applyRareModifier } = require('./game/monsters');
         const { createCombatEmbed, createCombatActionRows } = require('./game/combat');
         const { localizeClassName } = require('./utils/ui');
 
         const zone = getZone(zoneKey);
-        const monster = MONSTERS[monsterKey];
+        const baseMonster = MONSTERS[monsterKey];
 
-        if (!zone || !monster) {
+        if (!zone || !baseMonster) {
           await interaction.reply({
             content: '유효하지 않은 선택입니다.',
             ephemeral: true,
           });
 
           return;
+        }
+
+        // 존별 능력치 적용 + 레어 체크
+        const zoneData = getZoneWithTypeData(zoneKey);
+        const statMult = zoneData?.typeData?.statMultiplier || 1.0;
+        
+        let monster = {
+          ...baseMonster,
+          hp: Math.floor(baseMonster.hp * statMult),
+          attack: Math.floor(baseMonster.attack * statMult),
+          defense: Math.floor(baseMonster.defense * statMult),
+        };
+
+        // 레어 몬스터 체크 (존별 확률)
+        const rareType = rollRareMonster(zoneKey);
+        if (rareType) {
+          monster = applyRareModifier(monster, rareType);
         }
 
         const character = await prisma.character.findUnique({

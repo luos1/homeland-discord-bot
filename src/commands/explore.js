@@ -10,9 +10,11 @@ const { createCombatActionRows, createCombatEmbed } = require('../game/combat');
 const {
   MONSTERS,
   getZone,
+  getZoneWithTypeData,
   listZoneChoices,
   listZones,
   spawnMonster,
+  ZONE_TYPES,
 } = require('../game/monsters');
 const { PROFILE_BUTTON_IDS } = require('./profile');
 const { EMBED_COLORS, createDivider, localizeClassName } = require('../utils/ui');
@@ -31,14 +33,24 @@ function createZoneSelectionEmbed() {
   const zoneDescriptions = listZones()
     .map((zone) => {
       const monsterNames = zone.monsterKeys.map((key) => MONSTERS[key].name).join(', ');
+      const zoneTypeData = ZONE_TYPES[zone.zoneType];
+      
+      const typeInfo = zoneTypeData
+        ? `${zoneTypeData.emoji} ${zoneTypeData.name} - ${zoneTypeData.description}`
+        : '';
+
+      const bonusInfo = zoneTypeData
+        ? `보상: 골드 x${zoneTypeData.goldMultiplier}, 경험치 x${zoneTypeData.xpMultiplier}, 레어 x${zoneTypeData.rareChanceMultiplier}`
+        : '';
 
       return [
-        `${zone.emoji} ${zone.name} (${zone.label})`,
-        `   설명: ${zone.description}`,
+        `${zone.emoji} **${zone.name}** (${zone.label})`,
+        typeInfo ? `   ${typeInfo}` : '',
+        `   ${zone.description}`,
         `   권장 레벨: ${zone.recommendedLevel}`,
         `   몬스터: ${monsterNames}`,
-        `   보상: ${zone.rewardStars}`,
-      ].join('\n');
+        bonusInfo ? `   ${bonusInfo}` : '',
+      ].filter(Boolean).join('\n');
     })
     .join('\n\n');
 
