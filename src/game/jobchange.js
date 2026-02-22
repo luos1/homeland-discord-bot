@@ -1,5 +1,5 @@
 // 전직 시스템
-const JOB_CHANGE_LEVEL = 10;
+const JOB_CHANGE_LEVEL = 5;
 
 const ADVANCED_CLASSES = {
   // 전사 전직

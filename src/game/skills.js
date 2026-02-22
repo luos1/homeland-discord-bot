@@ -1,147 +1,226 @@
-const CLASS_KEY_MAP = {
-  warrior: 'warrior',
-  Warrior: 'warrior',
-  전사: 'warrior',
-  ranger: 'ranger',
-  Ranger: 'ranger',
-  궁수: 'ranger',
-  sorcerer: 'sorcerer',
-  Sorcerer: 'sorcerer',
-  마법사: 'sorcerer',
-};
+const { randomInt } = require('./monsters');
 
-const CLASS_SKILLS = {
+// 각 직업별 스킬 3개 (Lv.1, Lv.3, Lv.5)
+const SKILLS = {
   warrior: [
     {
-      id: 'shield_bash',
-      name: '실드 배시',
-      emoji: '🛡️',
+      key: 'power_strike',
+      name: '강타',
+      emoji: '💥',
+      description: '강력한 일격을 날립니다',
+      manaCost: 10,
       unlockLevel: 1,
-      manaCost: 14,
-      damageMultiplier: 1.45,
-      critChanceBonus: 0.05,
-      critMultiplier: 1.7,
+      effect: (character, monster) => {
+        const baseDamage = Math.floor(character.attack * 1.5);
+        const damage = Math.max(1, baseDamage - monster.defense);
+        return {
+          damage,
+          message: `💥 ${character.name}의 강타!`,
+        };
+      },
     },
     {
-      id: 'power_strike',
-      name: '파워 스트라이크',
-      emoji: '🔥',
-      unlockLevel: 8,
-      manaCost: 18,
-      damageMultiplier: 1.75,
-      critChanceBonus: 0.06,
-      critMultiplier: 1.8,
+      key: 'charge',
+      name: '돌진',
+      emoji: '⚡',
+      description: '적에게 돌진하여 큰 피해를 입힙니다',
+      manaCost: 15,
+      unlockLevel: 3,
+      effect: (character, monster) => {
+        const baseDamage = Math.floor(character.attack * 2.0);
+        const damage = Math.max(1, baseDamage - monster.defense);
+        return {
+          damage,
+          message: `⚡ ${character.name}의 돌진 공격!`,
+        };
+      },
     },
     {
-      id: 'whirlwind',
-      name: '휘몰아치기',
-      emoji: '🌪️',
-      unlockLevel: 18,
-      manaCost: 24,
-      damageMultiplier: 2.1,
-      critChanceBonus: 0.08,
-      critMultiplier: 1.9,
+      key: 'war_cry',
+      name: '전쟁의 함성',
+      emoji: '📢',
+      description: '아군의 공격력을 증가시킵니다',
+      manaCost: 20,
+      unlockLevel: 5,
+      effect: (character, monster) => {
+        const baseDamage = Math.floor(character.attack * 1.8);
+        const damage = Math.max(1, baseDamage - monster.defense);
+        const buffAmount = Math.floor(character.attack * 0.2);
+        return {
+          damage,
+          buff: { attack: buffAmount, duration: 3 },
+          message: `📢 ${character.name}의 전쟁의 함성! 공격력이 상승합니다!`,
+        };
+      },
     },
   ],
+
   ranger: [
     {
-      id: 'precise_shot',
-      name: '정밀 사격',
-      emoji: '🏹',
-      unlockLevel: 1,
-      manaCost: 12,
-      damageMultiplier: 1.5,
-      critChanceBonus: 0.08,
-      critMultiplier: 1.75,
-    },
-    {
-      id: 'weakness_shot',
-      name: '약점 공격',
+      key: 'aimed_shot',
+      name: '정조준',
       emoji: '🎯',
-      unlockLevel: 8,
-      manaCost: 16,
-      damageMultiplier: 1.8,
-      critChanceBonus: 0.1,
-      critMultiplier: 1.85,
+      description: '정확한 조준으로 치명타 확률 증가',
+      manaCost: 8,
+      unlockLevel: 1,
+      effect: (character, monster) => {
+        const critChance = 0.5; // 50% 크리티컬 확률
+        const isCrit = Math.random() < critChance;
+        const baseDamage = Math.floor(character.attack * (isCrit ? 2.5 : 1.3));
+        const damage = Math.max(1, baseDamage - monster.defense);
+        return {
+          damage,
+          critical: isCrit,
+          message: isCrit
+            ? `🎯💥 ${character.name}의 완벽한 조준! 치명타!`
+            : `🎯 ${character.name}의 정조준 사격!`,
+        };
+      },
     },
     {
-      id: 'rapid_fire',
-      name: '연발 사격',
-      emoji: '🔫',
-      unlockLevel: 18,
-      manaCost: 22,
-      damageMultiplier: 2.05,
-      critChanceBonus: 0.12,
-      critMultiplier: 2.0,
+      key: 'multi_shot',
+      name: '연속 사격',
+      emoji: '🏹',
+      description: '빠르게 여러 발을 발사합니다',
+      manaCost: 12,
+      unlockLevel: 3,
+      effect: (character, monster) => {
+        const hits = 3;
+        const baseDamagePerHit = Math.floor(character.attack * 0.7);
+        const damagePerHit = Math.max(1, baseDamagePerHit - Math.floor(monster.defense * 0.7));
+        const totalDamage = damagePerHit * hits;
+        return {
+          damage: totalDamage,
+          message: `🏹 ${character.name}의 연속 사격! (${hits}회 명중)`,
+        };
+      },
+    },
+    {
+      key: 'poison_arrow',
+      name: '맹독 화살',
+      emoji: '☠️',
+      description: '독이 발린 화살로 지속 피해를 입힙니다',
+      manaCost: 18,
+      unlockLevel: 5,
+      effect: (character, monster) => {
+        const baseDamage = Math.floor(character.attack * 1.5);
+        const damage = Math.max(1, baseDamage - monster.defense);
+        const poisonDamage = Math.floor(character.attack * 0.3);
+        return {
+          damage,
+          poison: { damage: poisonDamage, duration: 3 },
+          message: `☠️ ${character.name}의 맹독 화살! 적이 중독되었습니다!`,
+        };
+      },
     },
   ],
+
   sorcerer: [
     {
-      id: 'ice_bolt',
-      name: '아이스 볼트',
-      emoji: '❄️',
-      unlockLevel: 1,
-      manaCost: 16,
-      damageMultiplier: 1.65,
-      critChanceBonus: 0.06,
-      critMultiplier: 1.8,
-    },
-    {
-      id: 'fireball',
+      key: 'fireball',
       name: '파이어볼',
       emoji: '🔥',
-      unlockLevel: 8,
-      manaCost: 20,
-      damageMultiplier: 1.95,
-      critChanceBonus: 0.08,
-      critMultiplier: 1.9,
+      description: '화염구를 발사하여 큰 피해를 입힙니다',
+      manaCost: 12,
+      unlockLevel: 1,
+      effect: (character, monster) => {
+        const baseDamage = Math.floor(character.attack * 1.8);
+        const damage = Math.max(1, baseDamage - Math.floor(monster.defense * 0.5));
+        return {
+          damage,
+          message: `🔥 ${character.name}의 파이어볼!`,
+        };
+      },
     },
     {
-      id: 'meteor',
+      key: 'ice_lance',
+      name: '얼음 창',
+      emoji: '❄️',
+      description: '얼음 창으로 적을 공격하고 빙결시킵니다',
+      manaCost: 15,
+      unlockLevel: 3,
+      effect: (character, monster) => {
+        const baseDamage = Math.floor(character.attack * 1.6);
+        const damage = Math.max(1, baseDamage - Math.floor(monster.defense * 0.5));
+        const freezeChance = 0.4; // 40% 빙결 확률
+        const isFrozen = Math.random() < freezeChance;
+        return {
+          damage,
+          freeze: isFrozen,
+          message: isFrozen
+            ? `❄️ ${character.name}의 얼음 창! 적이 얼어붙었습니다!`
+            : `❄️ ${character.name}의 얼음 창!`,
+        };
+      },
+    },
+    {
+      key: 'meteor',
       name: '메테오',
-      emoji: '💫',
-      unlockLevel: 18,
-      manaCost: 28,
-      damageMultiplier: 2.3,
-      critChanceBonus: 0.1,
-      critMultiplier: 2.0,
+      emoji: '☄️',
+      description: '하늘에서 운석을 떨어뜨립니다',
+      manaCost: 25,
+      unlockLevel: 5,
+      effect: (character, monster) => {
+        const baseDamage = Math.floor(character.attack * 3.0);
+        const damage = Math.max(1, baseDamage - Math.floor(monster.defense * 0.3));
+        return {
+          damage,
+          message: `☄️💥 ${character.name}의 메테오! 하늘에서 운석이 떨어집니다!`,
+        };
+      },
     },
   ],
 };
 
-function normalizeClassKey(className) {
-  return CLASS_KEY_MAP[className] ?? null;
+// 캐릭터가 사용 가능한 스킬 목록 반환
+function getAvailableSkills(character) {
+  const classSkills = SKILLS[character.class] || [];
+  return classSkills.filter((skill) => character.level >= skill.unlockLevel);
 }
 
-function getClassSkills(className) {
-  const classKey = normalizeClassKey(className);
-
-  if (!classKey) {
-    return [];
-  }
-
-  return CLASS_SKILLS[classKey] ?? [];
-}
-
-function getUnlockedClassSkills(className, level = 1) {
-  return getClassSkills(className).filter((skill) => level >= skill.unlockLevel);
-}
-
+// 전투에서 기본으로 사용할 스킬 (가장 높은 레벨의 스킬)
 function getCombatSkill(character) {
-  const unlocked = getUnlockedClassSkills(character.class, character.level);
+  const available = getAvailableSkills(character);
+  if (available.length === 0) return null;
 
-  if (unlocked.length === 0) {
-    return null;
+  // 가장 높은 unlockLevel의 스킬 반환
+  return available.reduce((highest, skill) =>
+    skill.unlockLevel > highest.unlockLevel ? skill : highest,
+  );
+}
+
+// 스킬 키로 스킬 찾기
+function getSkillByKey(character, skillKey) {
+  const classSkills = SKILLS[character.class] || [];
+  return classSkills.find((skill) => skill.key === skillKey);
+}
+
+// 스킬 사용 가능 여부 체크
+function canUseSkill(character, skill) {
+  if (!skill) return { allowed: false, reason: '스킬이 존재하지 않습니다.' };
+
+  if (character.level < skill.unlockLevel) {
+    return {
+      allowed: false,
+      reason: `이 스킬은 레벨 ${skill.unlockLevel}부터 사용할 수 있습니다.`,
+    };
   }
 
-  // 가장 최근에 해금된 스킬을 전투 버튼에 연결한다.
-  return unlocked[unlocked.length - 1];
+  const currentMana = character.mana ?? 0;
+  if (currentMana < skill.manaCost) {
+    return {
+      allowed: false,
+      reason: `마나가 부족합니다. (필요: ${skill.manaCost}, 현재: ${currentMana})`,
+    };
+  }
+
+  return { allowed: true };
 }
 
 module.exports = {
-  CLASS_SKILLS,
-  normalizeClassKey,
-  getClassSkills,
-  getUnlockedClassSkills,
+  SKILLS,
+  getAvailableSkills,
   getCombatSkill,
+  getSkillByKey,
+  canUseSkill,
 };

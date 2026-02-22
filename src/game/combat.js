@@ -7,7 +7,7 @@ const {
 
 const { applyExperience, progressToNextLevel } = require('./leveling');
 const { MONSTERS, getZone, randomInt } = require('./monsters');
-const { getCombatSkill } = require('./skills');
+const { getCombatSkill, getAvailableSkills, getSkillByKey, canUseSkill } = require('./skills');
 const { shouldDropEquipment, generateEquipment } = require('./equipment');
 const {
   EMBED_COLORS,
@@ -33,7 +33,10 @@ const COMBAT_END_ACTIONS = {
   zones: 'zones',
 };
 
-function buildCombatCustomId(action, sessionId) {
+function buildCombatCustomId(action, sessionId, skillKey = null) {
+  if (skillKey) {
+    return `${COMBAT_PREFIX}:${action}:${sessionId}:${skillKey}`;
+  }
   return `${COMBAT_PREFIX}:${action}:${sessionId}`;
 }
 
@@ -44,11 +47,11 @@ function parseCombatCustomId(customId) {
 
   const parts = customId.split(':');
 
-  if (parts.length !== 3) {
+  if (parts.length < 3) {
     return null;
   }
 
-  const [, action, sessionId] = parts;
+  const [, action, sessionId, skillKey] = parts;
 
   if (!COMBAT_ACTIONS[action] || !sessionId) {
     return null;
@@ -57,6 +60,7 @@ function parseCombatCustomId(customId) {
   return {
     action,
     sessionId,
+    skillKey: skillKey || null,
   };
 }
 
@@ -95,16 +99,13 @@ function isCombatEndButton(customId) {
   return customId.startsWith(`${COMBAT_END_PREFIX}:`);
 }
 
-function createCombatActionRow(sessionId, options = {}) {
+function createCombatActionRows(sessionId, options = {}) {
   const disabled = options.disabled ?? false;
   const character = options.character ?? null;
-  const skill = character ? getCombatSkill(character) : null;
   const currentMana = character?.mana ?? 0;
-  const skillDisabled = disabled || !skill || currentMana < skill.manaCost;
-  const skillLabel = skill?.name ?? '스킬 없음';
-  const skillEmoji = skill?.emoji ?? '✨';
 
-  return new ActionRowBuilder().addComponents(
+  // 첫 번째 줄: 기본 액션
+  const mainRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.attack, sessionId))
       .setLabel('공격')
@@ -124,18 +125,35 @@ function createCombatActionRow(sessionId, options = {}) {
       .setStyle(ButtonStyle.Success)
       .setDisabled(disabled),
     new ButtonBuilder()
-      .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.skill, sessionId))
-      .setLabel(skillLabel)
-      .setEmoji(skillEmoji)
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(skillDisabled),
-    new ButtonBuilder()
       .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.flee, sessionId))
       .setLabel('도망')
       .setEmoji('🏃')
       .setStyle(ButtonStyle.Danger)
       .setDisabled(disabled),
   );
+
+  const rows = [mainRow];
+
+  // 두 번째 줄: 스킬 (사용 가능한 스킬만)
+  if (character) {
+    const availableSkills = getAvailableSkills(character);
+    if (availableSkills.length > 0) {
+      const skillButtons = availableSkills.map((skill) => {
+        const canUse = currentMana >= skill.manaCost;
+        return new ButtonBuilder()
+          .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.skill, sessionId, skill.key))
+          .setLabel(`${skill.name} (${skill.manaCost} MP)`)
+          .setEmoji(skill.emoji)
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(disabled || !canUse);
+      });
+
+      const skillRow = new ActionRowBuilder().addComponents(skillButtons);
+      rows.push(skillRow);
+    }
+  }
+
+  return rows;
 }
 
 function createCombatEndActionRow(zoneKey, options = {}) {
@@ -206,9 +224,19 @@ function buildOngoingDescription({ character, session, battleLog }) {
   }
   
   lines.push(`⚔️ 공격력: ${character.attack} | 🛡️ 방어력: ${character.defense}`);
-  if (combatSkill) {
-    lines.push(`${combatSkill.emoji} 스킬: ${combatSkill.name} (${combatSkill.manaCost} MP)`);
+  
+  // 사용 가능한 스킬 목록
+  const availableSkills = getAvailableSkills(character);
+  if (availableSkills.length > 0) {
+    const skillsText = availableSkills
+      .map(
+        (s) =>
+          `${s.emoji} ${s.name} (${s.manaCost} MP)${currentMana < s.manaCost ? ' ❌' : ''}`,
+      )
+      .join(', ');
+    lines.push(`✨ 스킬: ${skillsText}`);
   }
+  
   lines.push(`💊 포션: ${session.potionsRemaining}개`);
   lines.push('');
   lines.push(createDivider());
@@ -442,7 +470,7 @@ function rollDamage(attackPower, defenseValue, options = {}) {
   };
 }
 
-function resolveCombatTurn({ character, session, action }) {
+function resolveCombatTurn({ character, session, action, skillKey = null }) {
   let playerHp = session.playerHp;
   let playerMana = Math.max(character.mana ?? 0, 0);
   const maxMana = Math.max(character.maxMana ?? playerMana, 0);
@@ -478,38 +506,39 @@ function resolveCombatTurn({ character, session, action }) {
   }
 
   if (action === COMBAT_ACTIONS.skill) {
-    const skill = getCombatSkill(character);
+    // skillKey가 주어지면 해당 스킬, 없으면 가장 높은 레벨의 스킬
+    const skill = skillKey ? getSkillByKey(character, skillKey) : getCombatSkill(character);
 
     if (!skill) {
       battleLog.push('❌ 아직 사용할 수 있는 스킬이 없습니다.');
-    } else if (playerMana < skill.manaCost) {
-      battleLog.push(`❌ 마나가 부족합니다. (${playerMana}/${skill.manaCost} MP)`);
     } else {
-      playerMana -= skill.manaCost;
+      const skillCheck = canUseSkill(character, skill);
+      if (!skillCheck.allowed) {
+        battleLog.push(`❌ ${skillCheck.reason}`);
+      } else {
+        playerMana -= skill.manaCost;
 
-      const skillStrike = rollDamage(
-        Math.round(character.attack * skill.damageMultiplier),
-        Math.floor(session.monsterDefense * 0.7),
-        {
-          critChance: Math.min(0.45, 0.12 + (skill.critChanceBonus ?? 0)),
-          critMultiplier: skill.critMultiplier ?? 1.75,
-        },
-      );
+        // 스킬 효과 실행
+        const skillEffect = skill.effect(character, {
+          hp: monsterHp,
+          maxHp: session.monsterMaxHp,
+          attack: session.monsterAttack,
+          defense: session.monsterDefense,
+        });
 
-      monsterHp = Math.max(monsterHp - skillStrike.damage, 0);
-      battleLog.push(`${skill.emoji} ${skill.name} 시전! (${skill.manaCost} MP 소모)`);
+        monsterHp = Math.max(monsterHp - skillEffect.damage, 0);
+        battleLog.push(skillEffect.message);
+        battleLog.push(`💔 ${session.monsterName}에게 ${skillEffect.damage} 데미지!`);
 
-      if (skillStrike.isCritical) {
-        battleLog.push('');
-        battleLog.push('✨✨✨ 스킬 크리티컬! ✨✨✨');
-        battleLog.push('🌟 SKILL CRITICAL 🌟');
-        battleLog.push('');
-      }
+        if (skillEffect.critical) {
+          battleLog.push('');
+          battleLog.push('✨✨✨ 완벽한 일격! ✨✨✨');
+          battleLog.push('');
+        }
 
-      battleLog.push(`💔 ${session.monsterName}에게 ${skillStrike.damage} 스킬 데미지!`);
-      
-      if (monsterHp <= 0) {
-        battleLog.push(`🔥 ${skill.name}의 위력으로 적을 쓰러뜨렸습니다!`);
+        if (monsterHp <= 0) {
+          battleLog.push(`🔥 ${skill.name}의 위력으로 적을 쓰러뜨렸습니다!`);
+        }
       }
     }
   }
@@ -784,6 +813,7 @@ async function handleCombatButton({ interaction, prisma }) {
     character: session.character,
     session,
     action: parsed.action,
+    skillKey: parsed.skillKey,
   });
 
   // 캐릭터/세션 상태는 항상 함께 갱신되어야 하므로 트랜잭션으로 처리한다.
@@ -861,7 +891,7 @@ async function handleCombatButton({ interaction, prisma }) {
 
   const components = ended
     ? [createCombatEndActionRow(session.zone)]
-    : [createCombatActionRow(session.id, { character: refreshedCharacter })];
+    : createCombatActionRows(session.id, { character: refreshedCharacter });
 
   await interaction.editReply({
     embeds: [embed],
@@ -877,7 +907,7 @@ module.exports = {
   parseCombatCustomId,
   isCombatEndButton,
   parseCombatEndCustomId,
-  createCombatActionRow,
+  createCombatActionRows,
   createCombatEndActionRow,
   createCombatEmbed,
   resolveCombatTurn,
