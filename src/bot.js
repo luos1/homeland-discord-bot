@@ -28,6 +28,7 @@ const {
 const { getPlayCreateClassChoice } = require('./commands/play');
 const { JOBCHANGE_BUTTON_PREFIX } = require('./commands/jobchange');
 const { INVENTORY_BUTTON_PREFIX } = require('./commands/inventory');
+const { cleanupAllOldSessions } = require('./game/session-cleanup');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
@@ -85,6 +86,16 @@ client.once(Events.ClientReady, async (readyClient) => {
     await registerCommands();
   } catch (error) {
     console.error('슬래시 명령어 등록에 실패했습니다:', error);
+  }
+
+  // 봇 시작 시 오래된 전투 세션 정리
+  try {
+    const cleaned = await cleanupAllOldSessions(prisma);
+    if (cleaned > 0) {
+      console.log(`🧹 봇 시작: ${cleaned}개의 오래된 전투 세션을 정리했습니다.`);
+    }
+  } catch (error) {
+    console.error('세션 정리 중 오류:', error);
   }
 });
 

@@ -11,6 +11,7 @@ const { getZone } = require('../game/monsters');
 const { canJobChange, JOB_CHANGE_LEVEL } = require('../game/jobchange');
 const { calculateEquipmentStats } = require('../game/equipment');
 const { getStreakDisplay } = require('../game/streak');
+const { cleanupOldSessions } = require('../game/session-cleanup');
 const {
   EMBED_COLORS,
   createDivider,
@@ -28,6 +29,12 @@ const PROFILE_BUTTON_IDS = {
 };
 
 async function getProfileCharacter(prisma, userId) {
+  // 오래된 세션 자동 정리 (30분 이상)
+  const cleaned = await cleanupOldSessions(prisma, userId);
+  if (cleaned > 0) {
+    console.log(`🧹 Cleaned ${cleaned} old session(s) for user ${userId}`);
+  }
+
   return prisma.character.findUnique({
     where: {
       userId,

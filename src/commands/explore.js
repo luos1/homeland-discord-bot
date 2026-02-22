@@ -6,7 +6,7 @@ const {
   SlashCommandBuilder,
 } = require('discord.js');
 
-const { createCombatActionRow, createCombatEmbed } = require('../game/combat');
+const { createCombatActionRows, createCombatEmbed } = require('../game/combat');
 const {
   MONSTERS,
   getZone,
@@ -16,6 +16,7 @@ const {
 } = require('../game/monsters');
 const { PROFILE_BUTTON_IDS } = require('./profile');
 const { EMBED_COLORS, createDivider, localizeClassName } = require('../utils/ui');
+const { cleanupOldSessions } = require('../game/session-cleanup');
 
 const zoneChoices = listZoneChoices();
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
@@ -154,6 +155,12 @@ module.exports = {
       return;
     }
 
+    // 오래된 세션 자동 정리 (30분 이상)
+    const cleaned = await cleanupOldSessions(prisma, interaction.user.id);
+    if (cleaned > 0) {
+      console.log(`🧹 Cleaned ${cleaned} old session(s) for user ${interaction.user.id}`);
+    }
+
     const character = await prisma.character.findUnique({
       where: {
         userId: interaction.user.id,
@@ -183,7 +190,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
-        components: [createCombatActionRow(character.combatSession.id, { character })],
+        components: createCombatActionRows(character.combatSession.id, { character }),
         ephemeral: true,
       });
 
