@@ -188,13 +188,19 @@ function createEquipmentShopEmbed(character) {
         createDivider(),
         `💰 보유 골드: ${character.gold}G`,
         '',
-        '📦 등급별 장비 뽑기',
+        '📦 등급 구간 뽑기 (확률형)',
         '',
-        `${RARITIES.common.emoji} **일반 장비** - 100G`,
-        `${RARITIES.uncommon.emoji} **고급 장비** - 300G`,
-        `${RARITIES.rare.emoji} **희귀 장비** - 800G`,
-        `${RARITIES.epic.emoji} **영웅 장비** - 2,000G`,
-        `${RARITIES.legendary.emoji} **전설 장비** - 5,000G`,
+        `🎲 **일반 뽑기** - 100G`,
+        `   일반 80% | 고급 20%`,
+        '',
+        `🎲 **고급 뽑기** - 300G`,
+        `   일반 40% | 고급 45% | 희귀 15%`,
+        '',
+        `🎲 **희귀 뽑기** - 800G`,
+        `   고급 30% | 희귀 50% | 영웅 20%`,
+        '',
+        `🎲 **영웅 뽑기** - 2,000G`,
+        `   희귀 30% | 영웅 60% | 전설 10%`,
         '',
         '💡 캐릭터 레벨에 맞는 장비가 생성됩니다',
         '',
@@ -563,8 +569,8 @@ module.exports = {
 
     // 장비 구매
     if (action === SHOP_ACTIONS.buyEquipment) {
-      const rarity = param;
-      const priceKey = `equipment${rarity.charAt(0).toUpperCase()}${rarity.slice(1)}`;
+      const tier = param; // common, uncommon, rare, epic
+      const priceKey = `equipment${tier.charAt(0).toUpperCase()}${tier.slice(1)}`;
       const price = PRICES[priceKey];
 
       if (character.gold < price) {
@@ -576,8 +582,44 @@ module.exports = {
         return true;
       }
 
+      // 확률형 뽑기
+      const rarityPools = {
+        common: [
+          { rarity: 'common', weight: 80 },
+          { rarity: 'uncommon', weight: 20 },
+        ],
+        uncommon: [
+          { rarity: 'common', weight: 40 },
+          { rarity: 'uncommon', weight: 45 },
+          { rarity: 'rare', weight: 15 },
+        ],
+        rare: [
+          { rarity: 'uncommon', weight: 30 },
+          { rarity: 'rare', weight: 50 },
+          { rarity: 'epic', weight: 20 },
+        ],
+        epic: [
+          { rarity: 'rare', weight: 30 },
+          { rarity: 'epic', weight: 60 },
+          { rarity: 'legendary', weight: 10 },
+        ],
+      };
+
+      const pool = rarityPools[tier];
+      const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+      let random = Math.random() * totalWeight;
+      let selectedRarity = 'common';
+
+      for (const item of pool) {
+        random -= item.weight;
+        if (random <= 0) {
+          selectedRarity = item.rarity;
+          break;
+        }
+      }
+
       // 장비 생성
-      const newEquipment = generateEquipment(character.level, { rarity });
+      const newEquipment = generateEquipment(character.level, { rarity: selectedRarity });
 
       await prisma.$transaction(async (tx) => {
         await tx.character.update({
@@ -605,7 +647,7 @@ module.exports = {
         });
       });
 
-      const rarityData = RARITIES[rarity];
+      const rarityData = RARITIES[selectedRarity];
 
       await interaction.reply({
         content: [
