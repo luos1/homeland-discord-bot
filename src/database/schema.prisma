@@ -35,6 +35,7 @@ model Character {
   maxWinStreak  Int            @default(0)
   combatSession CombatSession?
   equipment     Equipment[]
+  skills        Skill[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -56,6 +57,21 @@ model Equipment {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  @@index([characterId])
+  @@index([equipped])
+}
+
+model Skill {
+  id           Int       @id @default(autoincrement())
+  characterId  Int
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  skillKey     String
+  skillLevel   Int       @default(1)
+  equipped     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([characterId, skillKey])
   @@index([characterId])
   @@index([equipped])
 }

@@ -8,6 +8,14 @@ const {
 
 const { RARITIES, generateEquipment } = require('../game/equipment');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { getAdvancedSkillByKey } = require('../game/advanced-skills');
+const {
+  createSkillShopEmbed,
+  createSkillShopActionRow,
+  createSkillUpgradeShopEmbed,
+  createSkillUpgradeActionRow,
+  calculateSkillUpgradeCost,
+} = require('./shop_skills');
 
 const SHOP_BUTTON_PREFIX = 'shop:';
 const SHOP_ACTIONS = {
@@ -15,10 +23,14 @@ const SHOP_ACTIONS = {
   equipment: 'equipment',
   sell: 'sell',
   upgrade: 'upgrade',
+  skills: 'skills',
+  upgradeSkill: 'upgrade_skill_menu',
   buyPotion: 'buy_potion',
   buyEquipment: 'buy_equipment',
   sellEquipment: 'sell_equipment',
   upgradeEquipment: 'upgrade_equipment',
+  buySkill: 'buy_skill',
+  upgradeSkillAction: 'upgrade_skill',
 };
 
 // 가격 설정
@@ -40,41 +52,51 @@ const SELL_RATIO = 0.3;
 const UPGRADE_SUCCESS_RATE = 0.65;
 
 function createShopMainEmbed(character) {
+  const hasAdvancedClass = !!character.advancedClass;
+  
+  const description = [
+    createDivider(),
+    `💰 보유 골드: ${character.gold}G`,
+    '',
+    '📦 상점 메뉴',
+    '',
+    '🧪 **포션 상점**',
+    '체력 회복 포션과 마나 회복 포션을 구매하세요',
+    '',
+    '⚔️ **장비 뽑기**',
+    '등급별 랜덤 장비를 획득하세요',
+    '',
+    '💰 **장비 판매**',
+    '보유한 장비를 골드로 판매하세요',
+    '',
+    '✨ **장비 강화**',
+    '장비를 강화하여 능력치를 향상시키세요',
+  ];
+
+  if (hasAdvancedClass) {
+    description.push(
+      '',
+      '📚 **스킬 상점**',
+      '전직 전용 스킬을 구매하고 강화하세요',
+    );
+  }
+
+  description.push('', createDivider());
+
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
     .setTitle('🏪 홈랜드 상점')
-    .setDescription(
-      [
-        createDivider(),
-        `💰 보유 골드: ${character.gold}G`,
-        '',
-        '📦 상점 메뉴',
-        '',
-        '🧪 **포션 상점**',
-        '체력 회복 포션과 마나 회복 포션을 구매하세요',
-        '',
-        '⚔️ **장비 뽑기**',
-        '등급별 랜덤 장비를 획득하세요',
-        '',
-        '💰 **장비 판매**',
-        '보유한 장비를 골드로 판매하세요',
-        '',
-        '✨ **장비 강화**',
-        '장비를 강화하여 능력치를 향상시키세요',
-        '',
-        createDivider(),
-      ].join('\n'),
-    )
+    .setDescription(description.join('\n'))
     .setFooter({
-      text: '원하는 메뉴를 선택하세요',
+      text: hasAdvancedClass ? '원하는 메뉴를 선택하세요' : '전직 후 스킬 상점을 이용할 수 있습니다',
     });
 }
 
-function createShopMainActionRow() {
-  return new ActionRowBuilder().addComponents(
+function createShopMainActionRow(character) {
+  const buttons = [
     new ButtonBuilder()
       .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.potions}`)
-      .setLabel('포션 상점')
+      .setLabel('포션')
       .setEmoji('🧪')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
@@ -84,7 +106,7 @@ function createShopMainActionRow() {
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.sell}`)
-      .setLabel('장비 판매')
+      .setLabel('판매')
       .setEmoji('💰')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
@@ -92,7 +114,19 @@ function createShopMainActionRow() {
       .setLabel('장비 강화')
       .setEmoji('✨')
       .setStyle(ButtonStyle.Primary),
-  );
+  ];
+
+  if (character.advancedClass) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.skills}`)
+        .setLabel('스킬')
+        .setEmoji('📚')
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
+
+  return new ActionRowBuilder().addComponents(buttons);
 }
 
 function createPotionShopEmbed(character) {
@@ -378,7 +412,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
-      components: [createShopMainActionRow()],
+      components: [createShopMainActionRow(character)],
     });
   },
 
@@ -414,7 +448,39 @@ module.exports = {
     if (action === 'main') {
       await interaction.update({
         embeds: [createShopMainEmbed(character)],
-        components: [createShopMainActionRow()],
+        components: [createShopMainActionRow(character)],
+      });
+
+      return true;
+    }
+
+    // 스킬 상점
+    if (action === SHOP_ACTIONS.skills) {
+      const learnedSkills = await prisma.skill.findMany({
+        where: {
+          characterId: character.id,
+        },
+      });
+
+      await interaction.update({
+        embeds: [createSkillShopEmbed(character, learnedSkills)],
+        components: [createSkillShopActionRow(character, learnedSkills)],
+      });
+
+      return true;
+    }
+
+    // 스킬 강화 메뉴
+    if (action === SHOP_ACTIONS.upgradeSkill) {
+      const learnedSkills = await prisma.skill.findMany({
+        where: {
+          characterId: character.id,
+        },
+      });
+
+      await interaction.update({
+        embeds: [createSkillUpgradeShopEmbed(character, learnedSkills)],
+        components: [createSkillUpgradeActionRow(character, learnedSkills)],
       });
 
       return true;
@@ -711,6 +777,167 @@ module.exports = {
           ephemeral: true,
         });
       }
+
+      return true;
+    }
+
+    // 스킬 구매
+    if (action === SHOP_ACTIONS.buySkill) {
+      const skillKey = param;
+
+      if (!character.advancedClass) {
+        await interaction.reply({
+          content: '⚠️ 전직 후에 스킬을 구매할 수 있습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      const skillData = getAdvancedSkillByKey(character.advancedClass, skillKey);
+
+      if (!skillData || skillData.type !== 'shop') {
+        await interaction.reply({
+          content: '❌ 구매할 수 없는 스킬입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      // 이미 배웠는지 확인
+      const existing = await prisma.skill.findUnique({
+        where: {
+          characterId_skillKey: {
+            characterId: character.id,
+            skillKey,
+          },
+        },
+      });
+
+      if (existing) {
+        await interaction.reply({
+          content: '⚠️ 이미 배운 스킬입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      if (character.gold < skillData.shopPrice) {
+        await interaction.reply({
+          content: `💰 골드가 부족합니다. (필요: ${skillData.shopPrice}G)`,
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      // 스킬 구매
+      await prisma.$transaction(async (tx) => {
+        await tx.character.update({
+          where: {
+            id: character.id,
+          },
+          data: {
+            gold: character.gold - skillData.shopPrice,
+          },
+        });
+
+        await tx.skill.create({
+          data: {
+            characterId: character.id,
+            skillKey,
+            skillLevel: 1,
+            equipped: false,
+          },
+        });
+      });
+
+      await interaction.reply({
+        content: [
+          `✨ 스킬 습득 성공! (-${skillData.shopPrice}G)`,
+          '',
+          `${skillData.emoji} **${skillData.name}** 습득!`,
+          `${skillData.description}`,
+          `마나 소모: ${skillData.manaCost}`,
+        ].join('\n'),
+        ephemeral: true,
+      });
+
+      return true;
+    }
+
+    // 스킬 강화
+    if (action === SHOP_ACTIONS.upgradeSkillAction) {
+      const skillId = parseInt(param, 10);
+
+      const skill = await prisma.skill.findUnique({
+        where: {
+          id: skillId,
+        },
+      });
+
+      if (!skill || skill.characterId !== character.id) {
+        await interaction.reply({
+          content: '❌ 스킬을 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      if (skill.skillLevel >= 5) {
+        await interaction.reply({
+          content: '⚠️ 이미 최대 레벨입니다. (+5)',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      const upgradeCost = calculateSkillUpgradeCost(skill.skillLevel);
+
+      if (character.gold < upgradeCost) {
+        await interaction.reply({
+          content: `💰 골드가 부족합니다. (필요: ${upgradeCost}G)`,
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      const skillData = getAdvancedSkillByKey(character.advancedClass, skill.skillKey);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.character.update({
+          where: {
+            id: character.id,
+          },
+          data: {
+            gold: character.gold - upgradeCost,
+          },
+        });
+
+        await tx.skill.update({
+          where: {
+            id: skillId,
+          },
+          data: {
+            skillLevel: skill.skillLevel + 1,
+          },
+        });
+      });
+
+      await interaction.reply({
+        content: [
+          `✨ 스킬 강화 성공! (-${upgradeCost}G)`,
+          '',
+          `${skillData.emoji} ${skillData.name} +${skill.skillLevel} → +${skill.skillLevel + 1}`,
+          `효과 20% 증가!`,
+        ].join('\n'),
+        ephemeral: true,
+      });
 
       return true;
     }
