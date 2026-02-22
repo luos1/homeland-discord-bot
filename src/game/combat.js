@@ -27,6 +27,7 @@ const COMBAT_ACTIONS = {
   potion: 'potion',
   skill: 'skill',
   flee: 'flee',
+  reset: 'reset',
 };
 
 const COMBAT_END_ACTIONS = {
@@ -153,6 +154,17 @@ function createCombatActionRows(sessionId, options = {}) {
       rows.push(skillRow);
     }
   }
+
+  // 마지막 줄: 리셋 버튼
+  const resetRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.reset, sessionId))
+      .setLabel('전투 리셋 (HP/MP 회복)')
+      .setEmoji('🔄')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(disabled),
+  );
+  rows.push(resetRow);
 
   return rows;
 }
@@ -378,6 +390,28 @@ function buildFledDescription({ character, session, battleLog }) {
   return lines.join('\n');
 }
 
+function buildResetDescription({ character, session, battleLog }) {
+  const hpBar = createHPBar(session.playerHp, character.maxHp, 10);
+  const currentMana = character.mana ?? 0;
+  const maxMana = character.maxMana ?? Math.max(currentMana, 1);
+  const manaBar = createHPBar(currentMana, maxMana, 10);
+  const lines = [];
+
+  appendBattleLog(lines, battleLog);
+
+  lines.push(createDivider());
+  lines.push('🔄 전투 리셋 완료');
+  lines.push(`❤️ 체력: ${hpBar} ${session.playerHp}/${character.maxHp} HP`);
+  lines.push(`🔷 마나: ${manaBar} ${currentMana}/${maxMana} MP`);
+  lines.push('');
+  lines.push('💊 체력과 마나가 완전히 회복되었습니다!');
+  lines.push('');
+  lines.push(createDivider());
+  lines.push('✨ 다시 탐험을 시작하세요!');
+
+  return lines.join('\n');
+}
+
 function resolveCombatColor(status, levelUpDetails) {
   if (status === 'victory' && levelUpDetails) {
     return EMBED_COLORS.levelUp;
@@ -392,6 +426,10 @@ function resolveCombatColor(status, levelUpDetails) {
   }
 
   if (status === 'fled') {
+    return EMBED_COLORS.warning;
+  }
+
+  if (status === 'reset') {
     return EMBED_COLORS.warning;
   }
 
@@ -437,6 +475,14 @@ function createCombatEmbed({
 
   if (status === 'fled') {
     description = buildFledDescription({
+      character,
+      session,
+      battleLog,
+    });
+  }
+
+  if (status === 'reset') {
+    description = buildResetDescription({
       character,
       session,
       battleLog,
@@ -564,6 +610,32 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       potionsRemaining -= 1;
       battleLog.push(`💊 포션 사용! 체력 ${healing} 회복`);
     }
+  }
+
+  if (action === COMBAT_ACTIONS.reset) {
+    // 전투 강제 리셋: 즉시 종료하고 완전 회복
+    playerHp = character.maxHp;
+    playerMana = maxMana;
+    battleLog.push('🔄 전투를 리셋했습니다.');
+    battleLog.push('💊 체력과 마나가 완전히 회복되었습니다.');
+    battleLog.push(`❤️ HP: ${playerHp}/${character.maxHp}`);
+    battleLog.push(`🔷 MP: ${playerMana}/${maxMana}`);
+
+    return {
+      status: 'reset',
+      battleLog,
+      sessionUpdate: {
+        monsterHp,
+        playerHp,
+        potionsRemaining,
+        playerDefending: false,
+        turn: session.turn + 1,
+      },
+      characterUpdate: {
+        hp: playerHp,
+        mana: playerMana,
+      },
+    };
   }
 
   if (action === COMBAT_ACTIONS.flee) {
@@ -770,6 +842,10 @@ function combatResultTitle(status, monsterName) {
 
   if (status === 'fled') {
     return '🏃 전투에서 도망쳤습니다!';
+  }
+
+  if (status === 'reset') {
+    return '🔄 전투 리셋 완료!';
   }
 
   return `💀 전투 시작! - ${monsterName}`;
