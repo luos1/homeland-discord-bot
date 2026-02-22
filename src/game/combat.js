@@ -10,6 +10,7 @@ const { MONSTERS, getZone, randomInt, rollRareMonster, applyRareModifier } = req
 const { getCombatSkill, getAvailableSkills, getSkillByKey, canUseSkill } = require('./skills');
 const { shouldDropEquipment, generateEquipment } = require('./equipment');
 const { calculateStreakBonus, updateWinStreak, resetWinStreak } = require('./streak');
+const { getAdvancedSkillByKey } = require('./advanced-skills');
 const {
   EMBED_COLORS,
   createDivider,
@@ -136,15 +137,39 @@ function createCombatActionRows(sessionId, options = {}) {
 
   const rows = [mainRow];
 
-  // 두 번째 줄: 스킬 (사용 가능한 스킬만)
+  // 두 번째 줄: 스킬 (기본 스킬 + 전직 스킬)
   if (character) {
-    const availableSkills = getAvailableSkills(character);
-    if (availableSkills.length > 0) {
-      const skillButtons = availableSkills.map((skill) => {
+    // 기본 스킬
+    const basicSkills = getAvailableSkills(character);
+    
+    // 전직 스킬 (DB에서 가져온 스킬 - 모두 표시)
+    const advancedSkills = (character.skills || [])
+      .map(s => {
+        const skillData = character.advancedClass 
+          ? getAdvancedSkillByKey(character.advancedClass, s.skillKey)
+          : null;
+        if (!skillData) return null;
+        return {
+          ...skillData,
+          key: s.skillKey,
+          dbSkillLevel: s.skillLevel,
+        };
+      })
+      .filter(Boolean);
+
+    // 합치기 (최대 5개)
+    const allSkills = [...basicSkills, ...advancedSkills].slice(0, 5);
+
+    if (allSkills.length > 0) {
+      const skillButtons = allSkills.map((skill) => {
         const canUse = currentMana >= skill.manaCost;
+        const label = skill.dbSkillLevel 
+          ? `${skill.name} +${skill.dbSkillLevel} (${skill.manaCost} MP)`
+          : `${skill.name} (${skill.manaCost} MP)`;
+        
         return new ButtonBuilder()
           .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.skill, sessionId, skill.key))
-          .setLabel(`${skill.name} (${skill.manaCost} MP)`)
+          .setLabel(label)
           .setEmoji(skill.emoji)
           .setStyle(ButtonStyle.Primary)
           .setDisabled(disabled || !canUse);
@@ -553,25 +578,38 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
   }
 
   if (action === COMBAT_ACTIONS.skill) {
-    // skillKey가 주어지면 해당 스킬, 없으면 가장 높은 레벨의 스킬
-    const skill = skillKey ? getSkillByKey(character, skillKey) : getCombatSkill(character);
+    // 기본 스킬 찾기
+    let skill = skillKey ? getSkillByKey(character, skillKey) : getCombatSkill(character);
+    let skillLevel = 1;
+
+    // 기본 스킬 없으면 전직 스킬 확인
+    if (!skill && skillKey && character.advancedClass) {
+      const dbSkill = (character.skills || []).find(s => s.skillKey === skillKey);
+      if (dbSkill) {
+        const advancedSkill = getAdvancedSkillByKey(character.advancedClass, skillKey);
+        if (advancedSkill) {
+          skill = advancedSkill;
+          skillLevel = dbSkill.skillLevel || 1;
+        }
+      }
+    }
 
     if (!skill) {
       battleLog.push('❌ 아직 사용할 수 있는 스킬이 없습니다.');
     } else {
-      const skillCheck = canUseSkill(character, skill);
-      if (!skillCheck.allowed) {
-        battleLog.push(`❌ ${skillCheck.reason}`);
+      // 마나 체크
+      if (playerMana < skill.manaCost) {
+        battleLog.push(`❌ 마나가 부족합니다. (필요: ${skill.manaCost}, 현재: ${playerMana})`);
       } else {
         playerMana -= skill.manaCost;
 
-        // 스킬 효과 실행
+        // 스킬 효과 실행 (레벨 적용)
         const skillEffect = skill.effect(character, {
           hp: monsterHp,
           maxHp: session.monsterMaxHp,
           attack: session.monsterAttack,
           defense: session.monsterDefense,
-        });
+        }, skillLevel);
 
         monsterHp = Math.max(monsterHp - skillEffect.damage, 0);
         battleLog.push(skillEffect.message);
@@ -888,7 +926,11 @@ async function handleCombatButton({ interaction, prisma }) {
       id: parsed.sessionId,
     },
     include: {
-      character: true,
+      character: {
+        include: {
+          skills: true,
+        },
+      },
     },
   });
 

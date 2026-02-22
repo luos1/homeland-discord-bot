@@ -609,7 +609,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         const character = await prisma.character.findUnique({
           where: { userId: interaction.user.id },
-          include: { combatSession: true },
+          include: { 
+            combatSession: true,
+            skills: true,
+          },
         });
 
         if (!character) {
