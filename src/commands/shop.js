@@ -93,7 +93,7 @@ function createShopMainEmbed(character) {
 }
 
 function createShopMainActionRow(character) {
-  const buttons = [
+  const row1Buttons = [
     new ButtonBuilder()
       .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.potions}`)
       .setLabel('포션')
@@ -116,17 +116,30 @@ function createShopMainActionRow(character) {
       .setStyle(ButtonStyle.Primary),
   ];
 
+  const row2Buttons = [];
+
   if (character.advancedClass) {
-    buttons.push(
+    row2Buttons.push(
       new ButtonBuilder()
         .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.skills}`)
-        .setLabel('스킬')
+        .setLabel('스킬 상점')
         .setEmoji('📚')
         .setStyle(ButtonStyle.Primary),
     );
   }
 
-  return new ActionRowBuilder().addComponents(buttons);
+  row2Buttons.push(
+    new ButtonBuilder()
+      .setCustomId('back_to_profile')
+      .setLabel('나가기')
+      .setEmoji('👤')
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  return [
+    new ActionRowBuilder().addComponents(row1Buttons),
+    new ActionRowBuilder().addComponents(row2Buttons),
+  ];
 }
 
 function createPotionShopEmbed(character) {
@@ -418,7 +431,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
-      components: [createShopMainActionRow(character)],
+      components: createShopMainActionRow(character),
     });
   },
 
@@ -454,7 +467,7 @@ module.exports = {
     if (action === 'main') {
       await interaction.update({
         embeds: [createShopMainEmbed(character)],
-        components: [createShopMainActionRow(character)],
+        components: createShopMainActionRow(character),
       });
 
       return true;
