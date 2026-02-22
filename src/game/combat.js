@@ -423,10 +423,19 @@ function resolveCombatTurn({ character, session, action }) {
     battleLog.push('⚔️ 당신의 공격!');
 
     if (playerStrike.isCritical) {
-      battleLog.push('💥 크리티컬 히트!');
+      battleLog.push('');
+      battleLog.push('💥💥💥 치명타!! 💥💥💥');
+      battleLog.push('⚡ CRITICAL HIT ⚡');
+      battleLog.push('');
     }
 
-    battleLog.push(`💔 ${session.monsterName}에게 ${playerStrike.damage} 데미지`);
+    battleLog.push(`💔 ${session.monsterName}에게 ${playerStrike.damage} 데미지!`);
+    
+    if (monsterHp <= 0) {
+      battleLog.push('🎯 완벽한 일격이었습니다!');
+    } else if (monsterHp <= session.monsterMaxHp * 0.2) {
+      battleLog.push(`⚠️ ${session.monsterName}이(가) 위태롭습니다!`);
+    }
   }
 
   if (action === COMBAT_ACTIONS.skill) {
@@ -452,10 +461,17 @@ function resolveCombatTurn({ character, session, action }) {
       battleLog.push(`${skill.emoji} ${skill.name} 시전! (${skill.manaCost} MP 소모)`);
 
       if (skillStrike.isCritical) {
-        battleLog.push('💥 스킬 크리티컬!');
+        battleLog.push('');
+        battleLog.push('✨✨✨ 스킬 크리티컬! ✨✨✨');
+        battleLog.push('🌟 SKILL CRITICAL 🌟');
+        battleLog.push('');
       }
 
-      battleLog.push(`💔 ${session.monsterName}에게 ${skillStrike.damage} 스킬 데미지`);
+      battleLog.push(`💔 ${session.monsterName}에게 ${skillStrike.damage} 스킬 데미지!`);
+      
+      if (monsterHp <= 0) {
+        battleLog.push(`🔥 ${skill.name}의 위력으로 적을 쓰러뜨렸습니다!`);
+      }
     }
   }
 
@@ -583,11 +599,23 @@ function resolveCombatTurn({ character, session, action }) {
 
   playerHp = Math.max(playerHp - enemyDamage, 0);
 
+  battleLog.push('');
+  battleLog.push(`👹 ${session.monsterName}의 반격!`);
+  
   if (enemyStrike.isCritical) {
-    battleLog.push(`💥 ${session.monsterName}의 크리티컬 공격!`);
+    battleLog.push('💥 적의 크리티컬 공격!');
+    battleLog.push('⚠️ CRITICAL DAMAGE ⚠️');
   }
 
-  battleLog.push(`💔 ${session.monsterName}에게 ${enemyDamage} 데미지를 받았습니다.`);
+  if (playerDefending) {
+    battleLog.push('🛡️ 방어로 피해 감소!');
+  }
+
+  battleLog.push(`💔 ${enemyDamage} 데미지를 받았습니다.`);
+  
+  if (playerHp > 0 && playerHp <= character.maxHp * 0.3) {
+    battleLog.push('⚠️ 위험! 체력이 낮습니다!');
+  }
 
   if (playerHp <= 0) {
     battleLog.push('💀 쓰러졌습니다. 마을에서 회복됩니다.');
@@ -628,18 +656,18 @@ function resolveCombatTurn({ character, session, action }) {
 
 function combatResultTitle(status, monsterName) {
   if (status === 'victory') {
-    return '🎉 승리!';
+    return '🎉🎉🎉 승리! 🎉🎉🎉';
   }
 
   if (status === 'defeat') {
-    return '💀 패배...';
+    return '💀 패배... 다시 도전하세요!';
   }
 
   if (status === 'fled') {
     return '🏃 전투에서 도망쳤습니다!';
   }
 
-  return `⚔️ 전투 - ${monsterName}`;
+  return `💀 전투 시작! - ${monsterName}`;
 }
 
 function buildLevelUpDetails(before, after, levelsGained) {
