@@ -19,6 +19,12 @@ const INVENTORY_ACTION = {
   equip: 'equip',
   unequip: 'unequip',
   delete: 'delete',
+  use: 'use',
+};
+
+const INVENTORY_TAB = {
+  equipment: 'equipment',
+  consumable: 'consumable',
 };
 
 function createInventoryEmbed(character, equipmentList) {
@@ -87,6 +93,42 @@ function createInventoryEmbed(character, equipmentList) {
     });
 }
 
+function createConsumableInventoryEmbed(character, consumables) {
+  const consumableLines = consumables.slice(0, 15).map((item, index) => {
+    const effectText = {
+      heal_hp: `HP +${item.power} 회복`,
+      heal_mp: `MP +${item.power} 회복`,
+      buff_regen: `HP ${item.power} 재생 (${Math.floor(item.duration / 60)}분)`,
+    }[item.effect] || item.effect;
+
+    return `${index + 1}. **${item.name}** x${item.quantity}\n   ${effectText}`;
+  });
+
+  return new EmbedBuilder()
+    .setColor(EMBED_COLORS.profile)
+    .setTitle(`🎒 ${character.name}의 소비템`)
+    .setDescription(
+      [
+        createDivider(),
+        '💊 보유 소비 아이템',
+        '',
+        consumableLines.length > 0 ? consumableLines.join('\n\n') : '소비 아이템이 없습니다',
+        consumables.length > 15 ? `\n... 외 ${consumables.length - 15}개` : '',
+        '',
+        createDivider(),
+        '',
+        `💰 총 ${consumables.length}종의 소비템 보유`,
+        '',
+        '💡 아이템을 선택하여 사용할 수 있습니다',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    )
+    .setFooter({
+      text: '포션과 음식은 전투 외에서도 사용 가능합니다',
+    });
+}
+
 function createInventoryActionRow(equipmentList) {
   const unequipped = equipmentList.filter((e) => !e.equipped).slice(0, 4);
 
@@ -104,10 +146,40 @@ function createInventoryActionRow(equipmentList) {
   // 항상 뒤로가기 버튼 추가
   buttons.push(
     new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:consumable`)
+      .setLabel('소비템')
+      .setEmoji('💊')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
       .setCustomId('back_to_profile')
       .setLabel('프로필로')
       .setEmoji('👤')
       .setStyle(ButtonStyle.Secondary)
+  );
+
+  return new ActionRowBuilder().addComponents(buttons);
+}
+
+function createConsumableActionRow(consumables) {
+  const buttons = consumables.slice(0, 4).map((item, index) => {
+    return new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}use:${item.id}`)
+      .setLabel(`${index + 1}. 사용`)
+      .setEmoji('💊')
+      .setStyle(ButtonStyle.Primary);
+  });
+
+  buttons.push(
+    new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:equipment`)
+      .setLabel('장비')
+      .setEmoji('⚔️')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('back_to_profile')
+      .setLabel('프로필로')
+      .setEmoji('👤')
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return new ActionRowBuilder().addComponents(buttons);
@@ -198,6 +270,9 @@ module.exports = {
         equipment: {
           orderBy: [{ equipped: 'desc' }, { rarity: 'desc' }, { createdAt: 'desc' }],
         },
+        consumables: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -224,11 +299,131 @@ module.exports = {
       return false;
     }
 
-    const [action, equipmentIdStr] = interaction.customId
+    const [action, param] = interaction.customId
       .slice(INVENTORY_BUTTON_PREFIX.length)
       .split(':');
 
-    const equipmentId = parseInt(equipmentIdStr, 10);
+    // 탭 전환
+    if (action === 'tab') {
+      const character = await prisma.character.findUnique({
+        where: {
+          userId: interaction.user.id,
+        },
+        include: {
+          equipment: {
+            orderBy: [{ equipped: 'desc' }, { rarity: 'desc' }, { createdAt: 'desc' }],
+          },
+          consumables: {
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      });
+
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      if (param === INVENTORY_TAB.equipment) {
+        await interaction.update({
+          embeds: [createInventoryEmbed(character, character.equipment)],
+          components: [createInventoryActionRow(character.equipment)],
+        });
+
+        return true;
+      }
+
+      if (param === INVENTORY_TAB.consumable) {
+        await interaction.update({
+          embeds: [createConsumableInventoryEmbed(character, character.consumables)],
+          components: [createConsumableActionRow(character.consumables)],
+        });
+
+        return true;
+      }
+    }
+
+    // 소비템 사용
+    if (action === INVENTORY_ACTION.use) {
+      const consumableId = parseInt(param, 10);
+
+      const consumable = await prisma.consumable.findUnique({
+        where: { id: consumableId },
+        include: { character: true },
+      });
+
+      if (!consumable || consumable.character.userId !== interaction.user.id) {
+        await interaction.reply({
+          content: '이 아이템에 접근할 수 없습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      const character = consumable.character;
+
+      // 효과 적용
+      let resultMessage = '';
+      let hpChange = 0;
+      let manaChange = 0;
+
+      if (consumable.effect === 'heal_hp') {
+        hpChange = Math.min(consumable.power, character.maxHp - character.hp);
+        resultMessage = `❤️ HP +${hpChange} 회복`;
+      } else if (consumable.effect === 'heal_mp') {
+        manaChange = Math.min(consumable.power, (character.maxMana || 0) - (character.mana || 0));
+        resultMessage = `🔷 MP +${manaChange} 회복`;
+      } else if (consumable.effect === 'buff_regen') {
+        resultMessage = `💚 HP 재생 효과 (${Math.floor(consumable.duration / 60)}분) - 버프는 나중에 구현`;
+      }
+
+      // 트랜잭션: 아이템 소모 & 효과 적용
+      await prisma.$transaction(async (tx) => {
+        // 캐릭터 상태 업데이트
+        await tx.character.update({
+          where: { id: character.id },
+          data: {
+            hp: character.hp + hpChange,
+            mana: (character.mana || 0) + manaChange,
+          },
+        });
+
+        // 아이템 수량 감소
+        if (consumable.quantity > 1) {
+          await tx.consumable.update({
+            where: { id: consumableId },
+            data: {
+              quantity: consumable.quantity - 1,
+            },
+          });
+        } else {
+          await tx.consumable.delete({
+            where: { id: consumableId },
+          });
+        }
+      });
+
+      await interaction.reply({
+        content: [
+          `✅ ${consumable.name} 사용!`,
+          '',
+          resultMessage,
+          '',
+          `❤️ HP: ${character.hp + hpChange}/${character.maxHp}`,
+          `🔷 MP: ${(character.mana || 0) + manaChange}/${character.maxMana || 0}`,
+        ].join('\n'),
+        ephemeral: true,
+      });
+
+      return true;
+    }
+
+    const equipmentId = parseInt(param, 10);
 
     if (!equipmentId) {
       await interaction.reply({

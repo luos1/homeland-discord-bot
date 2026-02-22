@@ -43,6 +43,7 @@ model Character {
   gatherSessions   GatherSession[]
   craftingSessions CraftingSession[]
   marketListings   MarketListing[]
+  consumables      Consumable[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 }
@@ -96,6 +97,23 @@ model Resource {
   @@unique([characterId, type])
   @@index([characterId])
 }
+
+model Consumable {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name        String
+  type        String    // potion, food, scroll
+  effect      String    // heal_hp, heal_mp, buff_regen, etc
+  power       Int       // 효과 수치
+  duration    Int?      // 지속 시간 (초, 버프용)
+  quantity    Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([characterId])
+}
+
 
 model GatherSession {
   id             String    @id @default(cuid())

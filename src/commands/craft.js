@@ -185,15 +185,40 @@ module.exports = {
             },
           });
         } else if (recipe.result.type === 'consumable') {
-          // 소비 아이템은 나중에 구현 (일단 골드로 대체)
-          await tx.character.update({
+          // 소비 아이템 생성
+          const consumableKey = `${recipe.key}_consumable`;
+          
+          // 기존에 같은 종류가 있는지 확인
+          const existing = await tx.consumable.findFirst({
             where: {
-              id: character.id,
-            },
-            data: {
-              gold: character.gold + 50, // 임시
+              characterId: character.id,
+              name: recipe.name,
+              effect: recipe.result.effect,
             },
           });
+
+          if (existing) {
+            // 수량 증가
+            await tx.consumable.update({
+              where: { id: existing.id },
+              data: {
+                quantity: existing.quantity + session.quantity,
+              },
+            });
+          } else {
+            // 새로 생성
+            await tx.consumable.create({
+              data: {
+                characterId: character.id,
+                name: recipe.name,
+                type: recipe.type,
+                effect: recipe.result.effect,
+                power: recipe.result.power,
+                duration: recipe.result.duration || null,
+                quantity: session.quantity,
+              },
+            });
+          }
         }
 
         // 세션 삭제
@@ -218,7 +243,7 @@ module.exports = {
             productionXp: levelingResult.productionXp,
             gold: levelingResult.levelsGained > 0 
               ? character.gold + getProductionLevelUpRewards(levelingResult.productionLevel).gold
-              : character.gold + (recipe.result.type === 'consumable' ? 50 : 0),
+              : character.gold,
           },
         });
       });
@@ -231,7 +256,7 @@ module.exports = {
       const resultText =
         recipe.result.type === 'equipment'
           ? `${recipe.emoji} **${recipe.name}** 제작 완료! (인벤토리에 추가)`
-          : `${recipe.emoji} **${recipe.name}** 제작 완료! (+50G)`;
+          : `${recipe.emoji} **${recipe.name}** x${session.quantity} 제작 완료! (소비템 인벤토리에 추가)`;
 
       const messages = [
         `✅ 제작 완료!`,
