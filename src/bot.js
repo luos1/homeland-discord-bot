@@ -403,10 +403,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (interaction.customId === PROFILE_BUTTON_IDS.boss) {
+        // 버튼 interaction은 먼저 defer 처리
+        await interaction.deferUpdate();
+
         const bossCommand = client.commands.get('boss');
 
         if (!bossCommand) {
-          await interaction.reply({
+          await interaction.followUp({
             content: '보스 명령어를 찾을 수 없습니다.',
             ephemeral: true,
           });
@@ -420,7 +423,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             options: {
               getSubcommand: () => 'list',
             },
-            reply: interaction.reply.bind(interaction),
+            reply: interaction.followUp.bind(interaction),
           },
           { prisma },
         );
@@ -429,10 +432,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (interaction.customId === PROFILE_BUTTON_IDS.shop) {
+        // 버튼 interaction은 먼저 defer 처리
+        await interaction.deferUpdate();
+
         const shopCommand = client.commands.get('shop');
 
         if (!shopCommand) {
-          await interaction.reply({
+          await interaction.followUp({
             content: '상점 명령어를 찾을 수 없습니다.',
             ephemeral: true,
           });
@@ -443,7 +449,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await shopCommand.execute(
           {
             user: interaction.user,
-            reply: interaction.reply.bind(interaction),
+            reply: interaction.followUp.bind(interaction),
           },
           { prisma, client },
         );
@@ -452,10 +458,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (interaction.customId === PROFILE_BUTTON_IDS.jobchange) {
+        // 버튼 interaction은 먼저 defer 처리
+        await interaction.deferUpdate();
+
         const jobchangeCommand = client.commands.get('jobchange');
 
         if (!jobchangeCommand) {
-          await interaction.reply({
+          await interaction.followUp({
             content: '전직 명령어를 찾을 수 없습니다.',
             ephemeral: true,
           });
@@ -463,10 +472,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return;
         }
 
+        // followUp으로 전직 화면 표시
         await jobchangeCommand.execute(
           {
             user: interaction.user,
-            reply: interaction.reply.bind(interaction),
+            reply: interaction.followUp.bind(interaction),
           },
           { prisma },
         );
