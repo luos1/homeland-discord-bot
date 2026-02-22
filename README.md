@@ -73,6 +73,21 @@ npx prisma db push
 npm start
 ```
 
+## 🧪 테스트 실행
+
+```bash
+# 전체 테스트 실행
+npm run test
+
+# 변경 감지 모드
+npm run test:watch
+
+# 커버리지 포함 실행
+npm run test:coverage
+```
+
+테스트 코드는 `tests/commands/`와 `tests/helpers/`에 구성되어 있습니다.
+
 ## 🎯 게임 시스템
 
 ### 직업 (Class)

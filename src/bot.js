@@ -40,10 +40,20 @@ const { GATHER_BUTTON_PREFIX } = require('./commands/gather');
 const { CRAFT_BUTTON_PREFIX } = require('./commands/craft');
 const { PSKILL_BUTTON_PREFIX } = require('./commands/production_skills');
 const { MARKET_BUTTON_PREFIX } = require('./commands/market');
+const { RANKING_COMPONENT_PREFIX } = require('./commands/ranking');
 const {
   startSessionCleanupJob,
   DEFAULT_CLEANUP_INTERVAL_MS,
 } = require('./game/session-cleanup');
+const {
+  startDailyQuestResetScheduler,
+  stopDailyQuestResetScheduler,
+} = require('./game/daily-quests');
+const {
+  handleOnboardingEvent,
+  maybeSendGuideTip,
+  sendOnboardingFeedback,
+} = require('./game/onboarding');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
@@ -138,6 +148,12 @@ client.once(Events.ClientReady, async (readyClient) => {
   } catch (error) {
     console.error('자동 세션 정리 작업 시작 실패:', error);
   }
+
+  try {
+    startDailyQuestResetScheduler(prisma);
+  } catch (error) {
+    console.error('Daily quest 자정 리셋 스케줄러 시작 실패:', error);
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -155,6 +171,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       await command.execute(interaction, { prisma, client });
+
+      const onboardingFeedback = await handleOnboardingEvent({
+        prisma,
+        user: interaction.user,
+        eventType: `command_${interaction.commandName}`,
+      });
+      await sendOnboardingFeedback(interaction, onboardingFeedback);
       return;
     }
 
@@ -744,6 +767,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
           components,
         });
 
+        await maybeSendGuideTip({
+          prisma,
+          user: interaction.user,
+          interaction,
+          category: 'production',
+        });
+
         return;
       }
 
@@ -1173,6 +1203,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       }
 
+      // 랭킹 버튼
+      if (interaction.customId.startsWith(RANKING_COMPONENT_PREFIX)) {
+        const rankingCommand = client.commands.get('ranking');
+
+        if (!rankingCommand) {
+          await interaction.reply({
+            content: '랭킹 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await rankingCommand.handleRankingButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
       // 몬스터 선택 버튼 (전투 시작)
       if (interaction.customId.startsWith(MONSTER_SELECT_PREFIX)) {
         const [zoneKey, monsterKey] = interaction.customId
@@ -1293,6 +1343,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
           components: createCombatActionRows(session.id, { character: { ...character, hp: playerHp } }),
         });
 
+        await maybeSendGuideTip({
+          prisma,
+          user: interaction.user,
+          interaction,
+          category: 'combat',
+        });
+
         return;
       }
 
@@ -1308,6 +1365,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // StringSelectMenu 핸들러
     if (interaction.isStringSelectMenu()) {
+      // 랭킹 셀렉트
+      if (interaction.customId.startsWith(RANKING_COMPONENT_PREFIX)) {
+        const rankingCommand = client.commands.get('ranking');
+
+        if (rankingCommand) {
+          const handled = await rankingCommand.handleRankingSelect(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
       // 거래소 셀렉트
       if (interaction.customId.startsWith(MARKET_BUTTON_PREFIX)) {
         const marketCommand = client.commands.get('market');
@@ -1371,6 +1441,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 async function shutdown(signal) {
   console.log(`${signal} 신호를 받아 종료를 시작합니다...`);
+
+  stopDailyQuestResetScheduler();
+
+  if (sessionCleanupJob) {
+    sessionCleanupJob.stop();
+    sessionCleanupJob = null;
+  }
 
   await prisma.$disconnect();
   client.destroy();

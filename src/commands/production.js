@@ -12,6 +12,7 @@ const {
   PRODUCTION_CLASSES,
 } = require('../game/production-classes');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { maybeSendGuideTip } = require('../game/onboarding');
 
 const PRODUCTION_BUTTON_PREFIX = 'production:';
 
@@ -159,6 +160,13 @@ module.exports = {
     await interaction.reply({
       embeds: [embed],
       components,
+    });
+
+    await maybeSendGuideTip({
+      prisma,
+      user: interaction.user,
+      interaction,
+      category: 'production',
     });
   },
 

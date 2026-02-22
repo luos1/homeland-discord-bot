@@ -11,8 +11,46 @@ model User {
   discordId String     @id
   username  String
   character Character?
+  onboarding OnboardingProgress?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+}
+
+model OnboardingProgress {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [discordId], onDelete: Cascade)
+
+  tutorialStarted     Boolean  @default(false)
+  tutorialCompleted   Boolean  @default(false)
+  tutorialSkipped     Boolean  @default(false)
+  tutorialStep        Int      @default(1)
+  tutorialStep1Reward Boolean  @default(false)
+  tutorialStep2Reward Boolean  @default(false)
+  tutorialStep3Reward Boolean  @default(false)
+  tutorialStep4Reward Boolean  @default(false)
+  tutorialCompletedAt DateTime?
+
+  questChainStarted   Boolean  @default(false)
+  questChainCompleted Boolean  @default(false)
+  questStep           Int      @default(1)
+  questProgress       Int      @default(0)
+  questRewardClaimed  Boolean  @default(false)
+  questStartedAt      DateTime?
+  questCompletedAt    DateTime?
+
+  firstCombatTipShown     Boolean   @default(false)
+  firstProductionTipShown Boolean   @default(false)
+  firstTradeTipShown      Boolean   @default(false)
+  firstCombatAt           DateTime?
+  firstProductionAt       DateTime?
+  firstTradeAt            DateTime?
+
+  battleWins        Int @default(0)
+  productionActions Int @default(0)
+  tradeActions      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Character {
@@ -35,6 +73,9 @@ model Character {
   gold             Int                @default(0)
   winStreak        Int                @default(0)
   maxWinStreak     Int                @default(0)
+  battleWins       Int                @default(0)
+  bossKills        Int                @default(0)
+  tradeVolume      Int                @default(0)
   productionLevel  Int                @default(1)
   productionXp     Int                @default(0)
   combatSession    CombatSession?
@@ -44,9 +85,20 @@ model Character {
   gatherSessions   GatherSession[]
   craftingSessions CraftingSession[]
   marketListings   MarketListing[]
+  rankingEvents    RankingEvent[]
   consumables      Consumable[]
+  attendanceRecords AttendanceRecord[]
+  dailyQuests      DailyQuest[]
+  dailyQuestProfile DailyQuestProfile?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
+
+  @@index([level])
+  @@index([battleWins])
+  @@index([bossKills])
+  @@index([gold])
+  @@index([productionLevel])
+  @@index([tradeVolume])
 }
 
 model Equipment {
@@ -177,6 +229,20 @@ model TradeHistory {
   @@index([sellerId])
   @@index([buyerId])
   @@index([createdAt])
+  @@index([createdAt, sellerId])
+  @@index([createdAt, buyerId])
+}
+
+model RankingEvent {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  category    String
+  value       Int
+  createdAt   DateTime  @default(now())
+
+  @@index([category, createdAt])
+  @@index([characterId, category, createdAt])
 }
 
 model CombatSession {
@@ -214,4 +280,53 @@ model BossEncounter {
   updatedAt      DateTime  @updatedAt
 
   @@index([respawnAt])
+}
+
+model DailyQuest {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  dayKey      String
+  questType   String
+  questKey    String
+  title       String
+  target      Int
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+  rewardGold  Int       @default(0)
+  rewardXp    Int       @default(0)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, dayKey, questKey])
+  @@index([characterId, dayKey])
+  @@index([dayKey])
+}
+
+model DailyQuestProfile {
+  characterId         Int       @id
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  streak              Int       @default(0)
+  lastAllClearDay     String?
+  weekKey             String?
+  weeklyCompletedDays Int       @default(0)
+  weeklyRewardClaimed Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model AttendanceRecord {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  date        String    // YYYY-MM-DD (KST)
+  streak      Int
+  claimed     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, date])
+  @@index([characterId])
+  @@index([date])
 }

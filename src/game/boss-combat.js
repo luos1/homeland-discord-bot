@@ -9,6 +9,7 @@ const { getBossById } = require('./bosses');
 const { applyExperience } = require('./leveling');
 const { calculateEquipmentStats } = require('./equipment');
 const { getAvailableSkills, canUseSkill } = require('./skills');
+const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests');
 const { EMBED_COLORS, createDivider, createHPBar } = require('../utils/ui');
 const { RARITIES } = require('./equipment');
 
@@ -300,7 +301,24 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
       data: {
         ...leveling.characterUpdate,
         gold: character.gold + goldReward,
+        battleWins: (character.battleWins || 0) + 1,
+        bossKills: (character.bossKills || 0) + 1,
       },
+    });
+
+    await tx.rankingEvent.createMany({
+      data: [
+        {
+          characterId: character.id,
+          category: 'battle_wins',
+          value: 1,
+        },
+        {
+          characterId: character.id,
+          category: 'boss_kills',
+          value: 1,
+        },
+      ],
     });
 
     // 전투 세션 삭제
@@ -308,6 +326,15 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
       where: { id: session.id },
     });
   });
+
+  try {
+    await Promise.all([
+      recordDailyQuestProgress(prisma, character.id, DAILY_QUEST_EVENTS.KILL_BOSS, 1),
+      recordDailyQuestProgress(prisma, character.id, DAILY_QUEST_EVENTS.KILL_MONSTER, 1),
+    ]);
+  } catch (error) {
+    console.error('Daily quest progress update failed (boss victory):', error);
+  }
 
   // 승리 메시지
   const victoryEmbed = new EmbedBuilder()

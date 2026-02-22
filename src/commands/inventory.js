@@ -10,6 +10,7 @@ const {
   EQUIPMENT_TYPES,
   RARITIES,
   EFFECTS,
+  generateEquipment,
   calculateEquipmentStats,
 } = require('../game/equipment');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
@@ -29,6 +30,20 @@ const INVENTORY_TAB = {
   consumable: 'consumable',
   skill: 'skill',
 };
+
+function rollAttendanceTicketRarity() {
+  const roll = Math.random();
+
+  if (roll < 0.1) {
+    return 'legendary';
+  }
+
+  if (roll < 0.35) {
+    return 'epic';
+  }
+
+  return 'rare';
+}
 
 function createInventoryEmbed(character, equipmentList) {
   const equipped = equipmentList.filter((e) => e.equipped);
@@ -153,6 +168,7 @@ function createConsumableInventoryEmbed(character, consumables) {
       heal_hp: `HP +${item.power} 회복`,
       heal_mp: `MP +${item.power} 회복`,
       buff_regen: `HP ${item.power} 재생 (${Math.floor(item.duration / 60)}분)`,
+      attendance_ticket: '장비 가챠 1회 사용',
     }[item.effect] || item.effect;
 
     return `${index + 1}. **${item.name}** x${item.quantity}\n   ${effectText}`;
@@ -526,6 +542,56 @@ module.exports = {
 
       const character = consumable.character;
 
+      if (consumable.effect === 'attendance_ticket') {
+        const rarity = rollAttendanceTicketRarity();
+        const newEquipment = generateEquipment(Math.max(character.level, 1), { rarity });
+
+        await prisma.$transaction(async (tx) => {
+          await tx.equipment.create({
+            data: {
+              characterId: character.id,
+              name: newEquipment.name,
+              type: newEquipment.type,
+              rarity: newEquipment.rarity,
+              attack: newEquipment.attack,
+              defense: newEquipment.defense,
+              hp: newEquipment.hp,
+              mana: newEquipment.mana,
+              effect: newEquipment.effect,
+              equipped: false,
+            },
+          });
+
+          if (consumable.quantity > 1) {
+            await tx.consumable.update({
+              where: { id: consumableId },
+              data: {
+                quantity: consumable.quantity - 1,
+              },
+            });
+          } else {
+            await tx.consumable.delete({
+              where: { id: consumableId },
+            });
+          }
+        });
+
+        const rarityData = RARITIES[newEquipment.rarity];
+
+        await interaction.reply({
+          content: [
+            `✅ ${consumable.name} 사용!`,
+            '',
+            `${rarityData.emoji} **${newEquipment.name}** 획득!`,
+            `⚔️ 공격 +${newEquipment.attack} | 🛡️ 방어 +${newEquipment.defense}`,
+            `❤️ HP +${newEquipment.hp} | 🔷 MP +${newEquipment.mana}`,
+          ].join('\n'),
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
       // 효과 적용
       let resultMessage = '';
       let hpChange = 0;
@@ -539,6 +605,13 @@ module.exports = {
         resultMessage = `🔷 MP +${manaChange} 회복`;
       } else if (consumable.effect === 'buff_regen') {
         resultMessage = `💚 HP 재생 효과 (${Math.floor(consumable.duration / 60)}분) - 버프는 나중에 구현`;
+      } else {
+        await interaction.reply({
+          content: '아직 사용할 수 없는 아이템입니다.',
+          ephemeral: true,
+        });
+
+        return true;
       }
 
       // 트랜잭션: 아이템 소모 & 효과 적용

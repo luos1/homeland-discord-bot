@@ -12,7 +12,12 @@ const {
   calculateGatherQuantity,
   PRODUCTION_CLASSES,
 } = require('../game/production-classes');
+const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('../game/daily-quests');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const {
+  handleOnboardingEvent,
+  sendOnboardingFeedback,
+} = require('../game/onboarding');
 
 const GATHER_BUTTON_PREFIX = 'gather:';
 
@@ -183,6 +188,17 @@ module.exports = {
         });
       });
 
+      try {
+        await recordDailyQuestProgress(
+          prisma,
+          character.id,
+          DAILY_QUEST_EVENTS.GATHER_RESOURCE,
+          session.quantity,
+        );
+      } catch (error) {
+        console.error('Daily quest progress update failed (gather):', error);
+      }
+
       // 레벨업 체크
       const { applyProductionExperience, getProductionLevelUpRewards } = require('../game/production-leveling');
       const xpGain = resourceData.tier * 10;
@@ -314,6 +330,13 @@ module.exports = {
       ],
       components: [],
     });
+
+    const onboardingFeedback = await handleOnboardingEvent({
+      prisma,
+      user: interaction.user,
+      eventType: 'production_action',
+    });
+    await sendOnboardingFeedback(interaction, onboardingFeedback);
 
     return true;
   },

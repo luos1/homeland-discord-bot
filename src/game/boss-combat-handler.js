@@ -9,6 +9,7 @@ const {
 const { getBossById } = require('./bosses');
 const { calculateEquipmentStats } = require('./equipment');
 const { getAvailableSkills, canUseSkill, getSkillByKey } = require('./skills');
+const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests');
 const { EMBED_COLORS } = require('../utils/ui');
 
 async function handleBossCombatAction({ interaction, prisma }) {
@@ -78,6 +79,7 @@ async function handleBossCombatAction({ interaction, prisma }) {
   let currentMana = character.mana || 0;
   // 이번 턴에 방어했는지 추적 (DB의 stale 값 대신 사용)
   let isDefendingThisTurn = false;
+  let skillUsed = false;
 
   // 플레이어 액션 처리
   let playerDamage = 0;
@@ -143,6 +145,7 @@ async function handleBossCombatAction({ interaction, prisma }) {
     );
 
     playerDamage = skillEffect.damage;
+    skillUsed = true;
     combatLog.push(skillEffect.message);
     combatLog.push(`💔 ${boss.name}에게 ${playerDamage} 피해!`);
 
@@ -196,6 +199,19 @@ async function handleBossCombatAction({ interaction, prisma }) {
       character: updatedSession.character,
       boss,
     });
+
+    if (skillUsed) {
+      try {
+        await recordDailyQuestProgress(
+          prisma,
+          updatedSession.character.id,
+          DAILY_QUEST_EVENTS.USE_SKILL,
+          1,
+        );
+      } catch (error) {
+        console.error('Daily quest progress update failed (boss skill use):', error);
+      }
+    }
     return;
   }
 
@@ -289,6 +305,14 @@ async function handleBossCombatAction({ interaction, prisma }) {
     embeds: [embed],
     components: [actionRow],
   });
+
+  if (skillUsed) {
+    try {
+      await recordDailyQuestProgress(prisma, updatedSession.character.id, DAILY_QUEST_EVENTS.USE_SKILL, 1);
+    } catch (error) {
+      console.error('Daily quest progress update failed (boss skill use):', error);
+    }
+  }
 }
 
 async function handleBossDefeat({ interaction, prisma, session, character, boss }) {

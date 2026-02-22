@@ -13,7 +13,12 @@ const {
   RESOURCES,
 } = require('../game/production-classes');
 const { canCraftRecipe } = require('../game/production-skills');
+const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('../game/daily-quests');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const {
+  handleOnboardingEvent,
+  sendOnboardingFeedback,
+} = require('../game/onboarding');
 
 const CRAFT_BUTTON_PREFIX = 'craft:';
 
@@ -248,6 +253,17 @@ module.exports = {
         });
       });
 
+      try {
+        await recordDailyQuestProgress(
+          prisma,
+          character.id,
+          DAILY_QUEST_EVENTS.CRAFT_ITEM,
+          session.quantity,
+        );
+      } catch (error) {
+        console.error('Daily quest progress update failed (craft):', error);
+      }
+
       // 레벨업 체크
       const { applyProductionExperience, getProductionLevelUpRewards } = require('../game/production-leveling');
       const xpGain = Math.floor(recipe.craftTime / 60);
@@ -429,6 +445,13 @@ module.exports = {
       ],
       components: [],
     });
+
+    const onboardingFeedback = await handleOnboardingEvent({
+      prisma,
+      user: interaction.user,
+      eventType: 'production_action',
+    });
+    await sendOnboardingFeedback(interaction, onboardingFeedback);
 
     return true;
   },

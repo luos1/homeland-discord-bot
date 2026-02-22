@@ -11,7 +11,13 @@ const {
 } = require('discord.js');
 
 const { RESOURCES } = require('../game/production-classes');
+const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('../game/daily-quests');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const {
+  handleOnboardingEvent,
+  maybeSendGuideTip,
+  sendOnboardingFeedback,
+} = require('../game/onboarding');
 
 const MARKET_BUTTON_PREFIX = 'market:';
 const MARKET_FEE_RATE = 0.1; // 10% 수수료
@@ -172,6 +178,13 @@ module.exports = {
     await interaction.reply({
       embeds: [createMarketMainEmbed()],
       components: [createMarketMainActionRow()],
+    });
+
+    await maybeSendGuideTip({
+      prisma,
+      user: interaction.user,
+      interaction,
+      category: 'trade',
     });
   },
 
@@ -462,6 +475,7 @@ module.exports = {
             where: { id: character.id },
             data: {
               gold: { decrement: totalPrice },
+              tradeVolume: { increment: totalPrice },
             },
           });
 
@@ -470,6 +484,7 @@ module.exports = {
             where: { id: listing.sellerId },
             data: {
               gold: { increment: netProfit },
+              tradeVolume: { increment: totalPrice },
             },
           });
 
@@ -524,6 +539,21 @@ module.exports = {
               fee,
             },
           });
+
+          await tx.rankingEvent.createMany({
+            data: [
+              {
+                characterId: listing.sellerId,
+                category: 'trade_volume',
+                value: totalPrice,
+              },
+              {
+                characterId: character.id,
+                category: 'trade_volume',
+                value: totalPrice,
+              },
+            ],
+          });
         });
       } catch (err) {
         if (err.message === 'LISTING_UNAVAILABLE') {
@@ -538,6 +568,15 @@ module.exports = {
         throw err;
       }
 
+      try {
+        await Promise.all([
+          recordDailyQuestProgress(prisma, character.id, DAILY_QUEST_EVENTS.MARKET_TRADE, 1),
+          recordDailyQuestProgress(prisma, listing.sellerId, DAILY_QUEST_EVENTS.MARKET_TRADE, 1),
+        ]);
+      } catch (error) {
+        console.error('Daily quest progress update failed (market trade):', error);
+      }
+
       await interaction.reply({
         content: [
           '✅ 구매 완료!',
@@ -549,6 +588,13 @@ module.exports = {
         ].join('\n'),
         ephemeral: true,
       });
+
+      const onboardingFeedback = await handleOnboardingEvent({
+        prisma,
+        user: interaction.user,
+        eventType: 'trade_action',
+      });
+      await sendOnboardingFeedback(interaction, onboardingFeedback);
 
       return true;
     }
@@ -791,6 +837,13 @@ module.exports = {
       ].join('\n'),
       ephemeral: true,
     });
+
+    const onboardingFeedback = await handleOnboardingEvent({
+      prisma,
+      user: interaction.user,
+      eventType: 'trade_action',
+    });
+    await sendOnboardingFeedback(interaction, onboardingFeedback);
 
     return true;
   },

@@ -11,6 +11,11 @@ const { getCombatSkill, getAvailableSkills, getSkillByKey, canUseSkill } = requi
 const { shouldDropEquipment, generateEquipment } = require('./equipment');
 const { calculateStreakBonus, updateWinStreak, resetWinStreak } = require('./streak');
 const { getAdvancedSkillByKey } = require('./advanced-skills');
+const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests');
+const {
+  handleOnboardingEvent,
+  sendOnboardingFeedback,
+} = require('./onboarding');
 const {
   EMBED_COLORS,
   createDivider,
@@ -563,6 +568,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
   let monsterHp = session.monsterHp;
   let potionsRemaining = session.potionsRemaining;
   let playerDefending = false;
+  let skillUsed = false;
 
   const battleLog = [];
 
@@ -606,6 +612,9 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
           hp: 0,
           mana: playerMana,
           winStreak: 0,
+        },
+        meta: {
+          skillUsed,
         },
       };
     }
@@ -663,6 +672,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
         battleLog.push(`❌ 마나가 부족합니다. (필요: ${skill.manaCost}, 현재: ${playerMana})`);
       } else {
         playerMana -= skill.manaCost;
+        skillUsed = true;
 
         // 스킬 효과 실행 (레벨 적용)
         const skillEffect = skill.effect(character, {
@@ -734,6 +744,9 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
         hp: playerHp,
         mana: playerMana,
       },
+      meta: {
+        skillUsed,
+      },
     };
   }
 
@@ -772,6 +785,9 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
         characterUpdate: {
           hp: playerHp,
           mana: playerMana,
+        },
+        meta: {
+          skillUsed,
         },
       };
     }
@@ -812,6 +828,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       ...streakResult.updates,
       mana: recoveredMana,
       gold: character.gold + goldReward,
+      battleWins: (character.battleWins || 0) + 1,
     };
 
     battleLog.push(`🎁 경험치 +${xpReward}, 골드 +${goldReward}G 획득!`);
@@ -900,6 +917,9 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       },
       droppedEquipment,
       droppedResource,
+      meta: {
+        skillUsed,
+      },
     };
   }
 
@@ -957,6 +977,9 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
         hp: character.maxHp,
         mana: maxMana,
       },
+      meta: {
+        skillUsed,
+      },
     };
   }
 
@@ -973,6 +996,9 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
     characterUpdate: {
       hp: playerHp,
       mana: playerMana,
+    },
+    meta: {
+      skillUsed,
     },
   };
 }
@@ -1083,6 +1109,16 @@ async function handleCombatButton({ interaction, prisma }) {
       data: outcome.characterUpdate,
     });
 
+    if (outcome.status === 'victory') {
+      await tx.rankingEvent.create({
+        data: {
+          characterId: session.characterId,
+          category: 'battle_wins',
+          value: 1,
+        },
+      });
+    }
+
     // 장비 드롭이 있으면 인벤토리에 추가
     if (outcome.droppedEquipment) {
       await tx.equipment.create({
@@ -1191,6 +1227,39 @@ async function handleCombatButton({ interaction, prisma }) {
     embeds: [embed],
     components,
   });
+
+  if (outcome.status === 'victory') {
+    try {
+      await recordDailyQuestProgress(
+        prisma,
+        session.characterId,
+        DAILY_QUEST_EVENTS.KILL_MONSTER,
+        1,
+      );
+    } catch (error) {
+      console.error('Daily quest progress update failed (kill monster):', error);
+    }
+
+    const onboardingFeedback = await handleOnboardingEvent({
+      prisma,
+      user: interaction.user,
+      eventType: 'battle_won',
+    });
+    await sendOnboardingFeedback(interaction, onboardingFeedback);
+  }
+
+  if (outcome.meta?.skillUsed) {
+    try {
+      await recordDailyQuestProgress(
+        prisma,
+        session.characterId,
+        DAILY_QUEST_EVENTS.USE_SKILL,
+        1,
+      );
+    } catch (error) {
+      console.error('Daily quest progress update failed (skill use):', error);
+    }
+  }
 
   return true;
 }

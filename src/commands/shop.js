@@ -16,6 +16,10 @@ const {
   createSkillUpgradeActionRow,
   calculateSkillUpgradeCost,
 } = require('../game/shop-skills');
+const {
+  handleOnboardingEvent,
+  sendOnboardingFeedback,
+} = require('../game/onboarding');
 
 const SHOP_BUTTON_PREFIX = 'shop:';
 const SHOP_ACTIONS = {
@@ -548,6 +552,16 @@ module.exports = {
     // 포션 구매
     if (action === SHOP_ACTIONS.buyPotion) {
       const potionType = param;
+
+      if (potionType !== 'health' && potionType !== 'mana') {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 포션 종류입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
       const price = potionType === 'health' ? PRICES.healthPotion : PRICES.manaPotion;
 
       if (character.gold < price) {
@@ -577,23 +591,19 @@ module.exports = {
         ephemeral: true,
       });
 
+      const onboardingFeedback = await handleOnboardingEvent({
+        prisma,
+        user: interaction.user,
+        eventType: 'shop_purchase',
+      });
+      await sendOnboardingFeedback(interaction, onboardingFeedback);
+
       return true;
     }
 
     // 장비 구매
     if (action === SHOP_ACTIONS.buyEquipment) {
       const tier = param; // common, uncommon, rare, epic
-      const priceKey = `equipment${tier.charAt(0).toUpperCase()}${tier.slice(1)}`;
-      const price = PRICES[priceKey];
-
-      if (character.gold < price) {
-        await interaction.reply({
-          content: '💰 골드가 부족합니다.',
-          ephemeral: true,
-        });
-
-        return true;
-      }
 
       // 확률형 뽑기
       const rarityPools = {
@@ -617,6 +627,36 @@ module.exports = {
           { rarity: 'legendary', weight: 10 },
         ],
       };
+
+      if (!rarityPools[tier]) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 장비 뽑기 등급입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      const priceKey = `equipment${tier.charAt(0).toUpperCase()}${tier.slice(1)}`;
+      const price = PRICES[priceKey];
+
+      if (!Number.isFinite(price)) {
+        await interaction.reply({
+          content: '❌ 장비 가격 정보를 불러오지 못했습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      if (character.gold < price) {
+        await interaction.reply({
+          content: '💰 골드가 부족합니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
 
       const pool = rarityPools[tier];
       const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
@@ -673,12 +713,28 @@ module.exports = {
         ephemeral: true,
       });
 
+      const onboardingFeedback = await handleOnboardingEvent({
+        prisma,
+        user: interaction.user,
+        eventType: 'shop_purchase',
+      });
+      await sendOnboardingFeedback(interaction, onboardingFeedback);
+
       return true;
     }
 
     // 장비 판매
     if (action === SHOP_ACTIONS.sellEquipment) {
       const equipmentId = parseInt(param, 10);
+
+      if (!Number.isInteger(equipmentId)) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 장비 ID입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
 
       const equipment = await prisma.equipment.findUnique({
         where: {
@@ -734,6 +790,15 @@ module.exports = {
     // 장비 강화
     if (action === SHOP_ACTIONS.upgradeEquipment) {
       const equipmentId = parseInt(param, 10);
+
+      if (!Number.isInteger(equipmentId)) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 장비 ID입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
 
       const equipment = await prisma.equipment.findUnique({
         where: {
@@ -841,6 +906,15 @@ module.exports = {
     if (action === SHOP_ACTIONS.buySkill) {
       const skillKey = param;
 
+      if (!skillKey) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 스킬 정보입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
       if (!character.advancedClass) {
         await interaction.reply({
           content: '⚠️ 전직 후에 스킬을 구매할 수 있습니다.',
@@ -928,6 +1002,15 @@ module.exports = {
     if (action === SHOP_ACTIONS.upgradeSkillAction) {
       const skillId = parseInt(param, 10);
 
+      if (!Number.isInteger(skillId)) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 스킬 ID입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
       const skill = await prisma.skill.findUnique({
         where: {
           id: skillId,
@@ -964,6 +1047,15 @@ module.exports = {
       }
 
       const skillData = getAdvancedSkillByKey(character.advancedClass, skill.skillKey);
+
+      if (!skillData) {
+        await interaction.reply({
+          content: '❌ 스킬 정보를 불러오지 못했습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
 
       await prisma.$transaction(async (tx) => {
         await tx.character.update({

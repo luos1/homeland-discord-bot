@@ -12,6 +12,10 @@ const {
   createDivider,
   localizeClassName,
 } = require('../utils/ui');
+const {
+  handleOnboardingEvent,
+  sendOnboardingFeedback,
+} = require('../game/onboarding');
 
 const CLASS_PRESETS = {
   warrior: {
@@ -175,6 +179,13 @@ module.exports = {
       embeds: [embed],
       components: [createCharacterActionRow()],
     });
+
+    const onboardingFeedback = await handleOnboardingEvent({
+      prisma,
+      user: interaction.user,
+      eventType: 'character_created',
+    });
+    await sendOnboardingFeedback(interaction, onboardingFeedback);
   },
   CLASS_PRESETS,
   createCharacterActionRow,
