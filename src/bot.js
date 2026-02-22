@@ -463,7 +463,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         const { getZone, MONSTERS } = require('./game/monsters');
-        const { createCombatEmbed, createCombatActionRow } = require('./game/combat');
+        const { createCombatEmbed, createCombatActionRows } = require('./game/combat');
         const { localizeClassName } = require('./utils/ui');
 
         const zone = getZone(zoneKey);
@@ -543,7 +543,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         await interaction.update({
           embeds: [embed],
-          components: [createCombatActionRow(session.id, { character: { ...character, hp: playerHp } })],
+          components: [createCombatActionRows(session.id, { character: { ...character, hp: playerHp } })],
         });
 
         return;
