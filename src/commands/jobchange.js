@@ -154,8 +154,11 @@ module.exports = {
     const choices = getAdvancedClassChoices(character.class);
 
     if (choices.length === 0) {
+      // 디버깅용 로그
+      console.log(`[전직 오류] 캐릭터 ${character.name}의 class: '${character.class}' (type: ${typeof character.class})`);
+      
       await interaction.reply({
-        content: '사용 가능한 전직 경로가 없습니다.',
+        content: `사용 가능한 전직 경로가 없습니다.\n디버그: 현재 직업 = ${character.class || '없음'}`,
         ephemeral: true,
       });
 

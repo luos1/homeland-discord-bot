@@ -88,10 +88,21 @@ const ADVANCED_CLASSES = {
 };
 
 function getAdvancedClassChoices(baseClass) {
-  const normalized = baseClass.toLowerCase();
+  // class 값 정규화 (한글 → 영문 매핑)
+  const classMapping = {
+    '전사': 'warrior',
+    '궁수': 'ranger',
+    '마법사': 'sorcerer',
+    'warrior': 'warrior',
+    'ranger': 'ranger',
+    'sorcerer': 'sorcerer',
+  };
+
+  const normalized = (classMapping[baseClass] || baseClass || '').toLowerCase();
   const choices = ADVANCED_CLASSES[normalized];
 
   if (!choices) {
+    console.log(`[전직] 인식 불가능한 class: ${baseClass} → ${normalized}`);
     return [];
   }
 
