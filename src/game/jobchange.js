@@ -117,10 +117,21 @@ function getAdvancedClassChoices(baseClass) {
 }
 
 function getAdvancedClassData(baseClass, advancedClassKey) {
-  const normalized = baseClass.toLowerCase();
+  // class 값 정규화 (한글 → 영문 매핑)
+  const classMapping = {
+    '전사': 'warrior',
+    '궁수': 'ranger',
+    '마법사': 'sorcerer',
+    'warrior': 'warrior',
+    'ranger': 'ranger',
+    'sorcerer': 'sorcerer',
+  };
+
+  const normalized = (classMapping[baseClass] || baseClass || '').toLowerCase();
   const choices = ADVANCED_CLASSES[normalized];
 
   if (!choices || !choices[advancedClassKey]) {
+    console.log(`[전직 데이터] baseClass: ${baseClass} → ${normalized}, advancedClassKey: ${advancedClassKey}`);
     return null;
   }
 

@@ -177,6 +177,9 @@ module.exports = {
       return false;
     }
 
+    // 버튼 interaction은 먼저 defer
+    await interaction.deferUpdate();
+
     const [baseClass, advancedClassKey] = interaction.customId
       .slice(JOBCHANGE_BUTTON_PREFIX.length)
       .split(':');
@@ -188,7 +191,7 @@ module.exports = {
     });
 
     if (!character) {
-      await interaction.reply({
+      await interaction.followUp({
         content: '캐릭터가 없습니다.',
         ephemeral: true,
       });
@@ -199,7 +202,7 @@ module.exports = {
     const check = canJobChange(character);
 
     if (!check.allowed) {
-      await interaction.reply({
+      await interaction.followUp({
         content: check.reason,
         ephemeral: true,
       });
@@ -210,7 +213,7 @@ module.exports = {
     const update = applyJobChange(character, advancedClassKey);
 
     if (!update) {
-      await interaction.reply({
+      await interaction.followUp({
         content: '유효하지 않은 전직 선택입니다.',
         ephemeral: true,
       });
@@ -218,7 +221,7 @@ module.exports = {
       return true;
     }
 
-    const classData = getAdvancedClassData(baseClass, advancedClassKey);
+    const classData = getAdvancedClassData(character.class, advancedClassKey);
 
     await prisma.character.update({
       where: {
@@ -232,7 +235,7 @@ module.exports = {
       ...update,
     };
 
-    await interaction.update({
+    await interaction.editReply({
       embeds: [createJobChangeResultEmbed(updatedCharacter, classData, classData.bonuses)],
       components: [],
     });
