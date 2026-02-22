@@ -88,11 +88,7 @@ function createInventoryEmbed(character, equipmentList) {
 }
 
 function createInventoryActionRow(equipmentList) {
-  const unequipped = equipmentList.filter((e) => !e.equipped).slice(0, 5);
-
-  if (unequipped.length === 0) {
-    return null;
-  }
+  const unequipped = equipmentList.filter((e) => !e.equipped).slice(0, 4);
 
   const buttons = unequipped.map((eq, index) => {
     const rarityData = RARITIES[eq.rarity];
@@ -104,6 +100,15 @@ function createInventoryActionRow(equipmentList) {
       .setEmoji(typeData.emoji)
       .setStyle(ButtonStyle.Primary);
   });
+
+  // 항상 뒤로가기 버튼 추가
+  buttons.push(
+    new ButtonBuilder()
+      .setCustomId('back_to_profile')
+      .setLabel('프로필로')
+      .setEmoji('👤')
+      .setStyle(ButtonStyle.Secondary)
+  );
 
   return new ActionRowBuilder().addComponents(buttons);
 }
@@ -210,8 +215,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
-      components: actionRow ? [actionRow] : [],
-      ephemeral: true,
+      components: [actionRow],
     });
   },
 

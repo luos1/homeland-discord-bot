@@ -310,6 +310,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      // 프로필로 돌아가기 버튼
+      if (interaction.customId === 'back_to_profile') {
+        const character = await getProfileCharacter(prisma, interaction.user.id);
+
+        if (!character) {
+          await interaction.reply({
+            content: '캐릭터가 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        await interaction.update({
+          embeds: [createProfileEmbed(character)],
+          components: [createProfileActionRow({ character })],
+        });
+
+        return;
+      }
+
       if (interaction.customId === PROFILE_BUTTON_IDS.shop) {
         await interaction.reply({
           content: '상점 시스템은 2주차에 구현됩니다.',
