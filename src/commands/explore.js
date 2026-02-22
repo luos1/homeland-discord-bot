@@ -224,6 +224,7 @@ module.exports = {
       },
       include: {
         combatSession: true,
+        skills: true,
       },
     });
 

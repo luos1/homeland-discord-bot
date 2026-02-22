@@ -47,8 +47,9 @@ async function handleBossCombatAction({ interaction, prisma }) {
   }
 
   if (session.character.userId !== interaction.user.id) {
-    await interaction.editReply({
+    await interaction.followUp({
       content: '다른 플레이어의 전투입니다.',
+      ephemeral: true,
     });
     return;
   }
@@ -70,9 +71,16 @@ async function handleBossCombatAction({ interaction, prisma }) {
 
   const combatLog = [];
 
+  // 로컬 상태 추적 (stale session 데이터 문제 방지)
+  let currentPlayerHp = session.playerHp;
+  let currentBossHp = session.monsterHp;
+  let currentPotions = session.potionsRemaining;
+  let currentMana = character.mana || 0;
+  // 이번 턴에 방어했는지 추적 (DB의 stale 값 대신 사용)
+  let isDefendingThisTurn = false;
+
   // 플레이어 액션 처리
   let playerDamage = 0;
-  let playerHealed = 0;
 
   if (action === 'attack') {
     const baseDamage = Math.max(1, totalAttack - session.monsterDefense);
@@ -80,83 +88,96 @@ async function handleBossCombatAction({ interaction, prisma }) {
     playerDamage = baseDamage + Math.floor(Math.random() * variance);
 
     combatLog.push(`⚔️ 당신은 ${boss.name}에게 ${playerDamage} 피해를 입혔습니다!`);
-
-    // 방어 태세 해제
-    await prisma.combatSession.update({
-      where: { id: sessionId },
-      data: { playerDefending: false },
-    });
   } else if (action === 'defend') {
+    isDefendingThisTurn = true;
     combatLog.push('🛡️ 방어 태세를 취했습니다! (받는 피해 -50%)');
-
-    await prisma.combatSession.update({
-      where: { id: sessionId },
-      data: { playerDefending: true },
-    });
   } else if (action === 'potion') {
-    if (session.potionsRemaining <= 0) {
+    if (currentPotions <= 0) {
       await interaction.editReply({
         content: '포션이 없습니다!',
       });
       return;
     }
 
-    playerHealed = Math.min(80, maxHp - session.playerHp);
-    combatLog.push(`💊 포션을 사용하여 HP ${playerHealed} 회복!`);
-
-    await prisma.combatSession.update({
-      where: { id: sessionId },
-      data: {
-        playerHp: session.playerHp + playerHealed,
-        potionsRemaining: session.potionsRemaining - 1,
-        playerDefending: false,
-      },
-    });
-  } else if (action === 'skill' && skillKey) {
-    const skill = await getSkillByKey(skillKey, character.skills);
-
-    if (!skill || !canUseSkill(skill, character)) {
+    // 이미 최대 HP인 경우 포션 낭비 방지
+    if (currentPlayerHp >= maxHp) {
       await interaction.editReply({
-        content: '이 스킬을 사용할 수 없습니다.',
+        content: '이미 체력이 최대치입니다!',
       });
       return;
     }
 
-    // 스킬 데미지
-    const skillDamage = Math.max(1, (totalAttack + skill.power) - session.monsterDefense);
-    playerDamage = skillDamage;
+    const playerHealed = Math.min(80, maxHp - currentPlayerHp);
+    currentPlayerHp += playerHealed;
+    currentPotions -= 1;
+    combatLog.push(`💊 포션을 사용하여 HP ${playerHealed} 회복!`);
+  } else if (action === 'skill' && skillKey) {
+    // 올바른 시그니처: getSkillByKey(character, skillKey)
+    const skill = getSkillByKey(character, skillKey);
 
-    combatLog.push(
-      `${skill.emoji || '✨'} **${skill.name}**! ${boss.name}에게 ${playerDamage} 피해!`,
-    );
-
-    if (skill.manaCost && skill.manaCost > 0) {
-      await prisma.character.update({
-        where: { id: character.id },
-        data: {
-          mana: Math.max(0, (character.mana || 0) - skill.manaCost),
-        },
+    // 올바른 시그니처: canUseSkill(character, skill)
+    if (!skill) {
+      await interaction.editReply({
+        content: '이 스킬을 찾을 수 없습니다.',
       });
+      return;
     }
 
-    await prisma.combatSession.update({
-      where: { id: sessionId },
-      data: { playerDefending: false },
-    });
+    const useCheck = canUseSkill(character, skill);
+    if (!useCheck.allowed) {
+      await interaction.editReply({
+        content: useCheck.reason || '이 스킬을 사용할 수 없습니다.',
+      });
+      return;
+    }
+
+    // 스킬 데미지 — skill.effect 함수를 사용하여 일관성 유지
+    const skillEffect = skill.effect(
+      { ...character, attack: totalAttack },
+      {
+        hp: currentBossHp,
+        maxHp: session.monsterMaxHp,
+        attack: session.monsterAttack,
+        defense: session.monsterDefense,
+      },
+    );
+
+    playerDamage = skillEffect.damage;
+    combatLog.push(skillEffect.message);
+    combatLog.push(`💔 ${boss.name}에게 ${playerDamage} 피해!`);
+
+    if (skill.manaCost && skill.manaCost > 0) {
+      currentMana = Math.max(0, currentMana - skill.manaCost);
+    }
+  } else if (action === 'flee') {
+    // 도망 처리 — 보스전에서는 항상 실패하도록 처리
+    combatLog.push('❌ 보스전에서는 도망칠 수 없습니다!');
   }
 
   // 보스 HP 감소
-  const newBossHp = Math.max(0, session.monsterHp - playerDamage);
+  currentBossHp = Math.max(0, currentBossHp - playerDamage);
 
-  await prisma.combatSession.update({
-    where: { id: sessionId },
-    data: {
-      monsterHp: newBossHp,
-    },
-  });
+  // 보스 처치 확인 — 트랜잭션으로 상태 저장 후 victory 처리
+  if (currentBossHp <= 0) {
+    await prisma.$transaction(async (tx) => {
+      await tx.combatSession.update({
+        where: { id: sessionId },
+        data: {
+          monsterHp: 0,
+          playerHp: currentPlayerHp,
+          potionsRemaining: currentPotions,
+          playerDefending: false,
+        },
+      });
 
-  // 보스 처치 확인
-  if (newBossHp <= 0) {
+      if (currentMana !== (character.mana || 0)) {
+        await tx.character.update({
+          where: { id: character.id },
+          data: { mana: currentMana },
+        });
+      }
+    });
+
     const updatedSession = await prisma.combatSession.findUnique({
       where: { id: sessionId },
       include: {
@@ -185,7 +206,7 @@ async function handleBossCombatAction({ interaction, prisma }) {
   const baseBossDamage = Math.max(1, session.monsterAttack - totalDefense);
   const bossSkillResult = applyBossSkillEffects(
     boss,
-    { ...session, monsterHp: newBossHp },
+    { ...session, monsterHp: currentBossHp },
     baseBossDamage,
   );
 
@@ -193,52 +214,50 @@ async function handleBossCombatAction({ interaction, prisma }) {
 
   // 보스 회복
   if (bossSkillResult.healAmount > 0) {
-    const healedBossHp = Math.min(session.monsterMaxHp, newBossHp + bossSkillResult.healAmount);
-
-    await prisma.combatSession.update({
-      where: { id: sessionId },
-      data: {
-        monsterHp: healedBossHp,
-      },
-    });
-
-    session.monsterHp = healedBossHp;
+    currentBossHp = Math.min(session.monsterMaxHp, currentBossHp + bossSkillResult.healAmount);
   }
 
   // 보스 공격 (회피하지 않은 경우)
   if (!bossSkillResult.dodged) {
     let bossDamage = bossSkillResult.finalDamage;
 
-    if (session.playerDefending) {
+    // 이번 턴에 방어했는지 로컬 변수로 확인 (stale session 데이터 대신)
+    if (isDefendingThisTurn) {
       bossDamage = Math.floor(bossDamage * 0.5);
       combatLog.push(`🛡️ 방어로 피해 감소! ${boss.name}의 공격 ${bossDamage} 피해`);
     } else {
       combatLog.push(`${boss.emoji} ${boss.name}의 공격! ${bossDamage} 피해`);
     }
 
-    const newPlayerHp = Math.max(0, session.playerHp - bossDamage);
+    currentPlayerHp = Math.max(0, currentPlayerHp - bossDamage);
+  }
 
-    await prisma.combatSession.update({
+  // 트랜잭션으로 모든 상태를 한번에 업데이트 (개별 update 호출 대신)
+  await prisma.$transaction(async (tx) => {
+    await tx.combatSession.update({
       where: { id: sessionId },
       data: {
-        playerHp: newPlayerHp,
+        monsterHp: currentBossHp,
+        playerHp: currentPlayerHp,
+        potionsRemaining: currentPotions,
+        playerDefending: isDefendingThisTurn,
+        turn: session.turn + 1,
       },
     });
 
-    // 플레이어 사망 확인
-    if (newPlayerHp <= 0) {
-      await handleBossDefeat({ interaction, prisma, session, character, boss });
-      return;
+    if (currentMana !== (character.mana || 0)) {
+      await tx.character.update({
+        where: { id: character.id },
+        data: { mana: currentMana },
+      });
     }
-  }
-
-  // 턴 증가
-  await prisma.combatSession.update({
-    where: { id: sessionId },
-    data: {
-      turn: session.turn + 1,
-    },
   });
+
+  // 플레이어 사망 확인
+  if (currentPlayerHp <= 0) {
+    await handleBossDefeat({ interaction, prisma, session, character, boss });
+    return;
+  }
 
   // 다음 턴 UI
   const updatedSession = await prisma.combatSession.findUnique({
@@ -265,7 +284,8 @@ async function handleBossCombatAction({ interaction, prisma }) {
 
   const actionRow = createBossCombatActionRow(updatedSession, availableSkills);
 
-  await interaction.update({
+  // deferUpdate() 후에는 반드시 editReply() 사용 (update()는 에러 발생)
+  await interaction.editReply({
     embeds: [embed],
     components: [actionRow],
   });
@@ -275,15 +295,17 @@ async function handleBossDefeat({ interaction, prisma, session, character, boss 
   const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
   const { createDivider } = require('../utils/ui');
 
-  // 전투 세션 삭제
-  await prisma.combatSession.delete({
-    where: { id: session.id },
-  });
+  // 트랜잭션으로 세션 삭제 + HP 설정을 원자적으로 처리
+  await prisma.$transaction(async (tx) => {
+    await tx.combatSession.delete({
+      where: { id: session.id },
+    });
 
-  // HP를 1로 설정
-  await prisma.character.update({
-    where: { id: character.id },
-    data: { hp: 1 },
+    // HP를 1로 설정
+    await tx.character.update({
+      where: { id: character.id },
+      data: { hp: 1 },
+    });
   });
 
   const defeatEmbed = new EmbedBuilder()
