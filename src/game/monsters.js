@@ -8,6 +8,7 @@ const MONSTERS = {
     xpReward: 24,
     goldMin: 10,
     goldMax: 20,
+    isBoss: false,
   },
   direWolf: {
     name: '다이어울프',
@@ -59,6 +60,61 @@ const MONSTERS = {
     goldMin: 52,
     goldMax: 82,
   },
+
+  // 필드 보스
+  alphaWolf: {
+    name: '🐺 알파 울프',
+    level: 10,
+    hp: 250,
+    attack: 18,
+    defense: 8,
+    xpReward: 120,
+    goldMin: 100,
+    goldMax: 200,
+    isBoss: true,
+    bossType: 'field',
+    guaranteedDrop: {
+      rarity: 'uncommon',
+      chance: 1.0,
+    },
+    description: '무리를 이끄는 강력한 늑대 우두머리',
+  },
+
+  corruptedKnight: {
+    name: '⚔️ 타락한 기사',
+    level: 20,
+    hp: 500,
+    attack: 28,
+    defense: 15,
+    xpReward: 250,
+    goldMin: 200,
+    goldMax: 400,
+    isBoss: true,
+    bossType: 'field',
+    guaranteedDrop: {
+      rarity: 'rare',
+      chance: 1.0,
+    },
+    description: '어둠에 잠식된 옛 영웅',
+  },
+
+  youngDragon: {
+    name: '🐉 어린 드래곤',
+    level: 35,
+    hp: 1200,
+    attack: 40,
+    defense: 20,
+    xpReward: 500,
+    goldMin: 500,
+    goldMax: 1000,
+    isBoss: true,
+    bossType: 'field',
+    guaranteedDrop: {
+      rarity: 'epic',
+      chance: 1.0,
+    },
+    description: '아직 어리지만 강력한 고대의 후예',
+  },
 };
 
 const ZONES = {
@@ -72,6 +128,7 @@ const ZONES = {
     rewardStars: '⭐',
     description: '첫 모험가를 위한 숲. 비교적 안전하지만 방심은 금물입니다.',
     monsterKeys: ['skeletonGrunt', 'direWolf'],
+    bossKeys: ['alphaWolf'],
     resourceDrops: ['wood', 'herb', 'meat'],
     dropChance: 0.3,
   },
@@ -85,6 +142,7 @@ const ZONES = {
     rewardStars: '⭐⭐',
     description: '암흑 마력이 흐르는 동굴. 전열 정비 없이 진입하면 위험합니다.',
     monsterKeys: ['undeadKnight', 'goblinShaman'],
+    bossKeys: ['corruptedKnight'],
     resourceDrops: ['iron_ore', 'copper_ore', 'bone', 'leather'],
     dropChance: 0.35,
   },
@@ -98,6 +156,7 @@ const ZONES = {
     rewardStars: '⭐⭐⭐',
     description: '영웅만이 살아남는 산맥. 강력한 보상만큼 치명적인 위험이 따릅니다.',
     monsterKeys: ['ancientDragon', 'lich'],
+    bossKeys: ['youngDragon'],
     resourceDrops: ['silver_ore', 'gold_ore', 'rare_herb', 'fur'],
     dropChance: 0.4,
   },

@@ -83,6 +83,26 @@ function createMonsterSelectionEmbed(zone) {
     })
     .join('\n\n');
 
+  const bossDescriptions = (zone.bossKeys || [])
+    .map((key) => {
+      const boss = MONSTERS[key];
+      const dropText = boss.guaranteedDrop
+        ? `${boss.guaranteedDrop.rarity} 등급 장비 확정 드롭`
+        : '';
+      return [
+        `💀 **${boss.name}** (Lv.${boss.level}) ⚠️ 필드 보스`,
+        `   ${boss.description || ''}`,
+        `   ❤️ 체력: ${boss.hp}`,
+        `   ⚔️ 공격력: ${boss.attack}`,
+        `   🛡️ 방어력: ${boss.defense}`,
+        `   🎁 보상: 경험치 ${boss.xpReward}, 골드 ${boss.goldMin}-${boss.goldMax}`,
+        dropText ? `   ✨ ${dropText}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+    })
+    .join('\n\n');
+
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.combat)
     .setTitle(`${zone.emoji} ${zone.name} - 전투 대상 선택`)
@@ -91,9 +111,11 @@ function createMonsterSelectionEmbed(zone) {
       `📍 ${zone.description}`,
       `⚠️ 권장 레벨: ${zone.recommendedLevel}`,
       createDivider(),
+      '👹 일반 몬스터',
       monsterDescriptions,
+      bossDescriptions ? '\n' + createDivider() + '\n💀 필드 보스\n' + bossDescriptions : '',
       createDivider(),
-      '💡 전투할 몬스터를 선택하세요!',
+      '💡 전투할 대상을 선택하세요!',
     ].join('\n'));
 }
 
@@ -107,8 +129,29 @@ function createMonsterSelectionActionRows(zoneKey, zone) {
       .setStyle(ButtonStyle.Danger);
   });
 
-  return [
-    new ActionRowBuilder().addComponents(monsterButtons),
+  const bossButtons = (zone.bossKeys || []).map((bossKey) => {
+    const boss = MONSTERS[bossKey];
+    return new ButtonBuilder()
+      .setCustomId(`${MONSTER_SELECT_PREFIX}${zoneKey}:${bossKey}`)
+      .setLabel(`${boss.name} (Lv.${boss.level})`)
+      .setEmoji('💀')
+      .setStyle(ButtonStyle.Danger);
+  });
+
+  const rows = [];
+
+  // 일반 몬스터 버튼
+  if (monsterButtons.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(monsterButtons));
+  }
+
+  // 보스 버튼
+  if (bossButtons.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(bossButtons));
+  }
+
+  // 뒤로가기 버튼
+  rows.push(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('back_to_zones')
@@ -116,7 +159,9 @@ function createMonsterSelectionActionRows(zoneKey, zone) {
         .setEmoji('◀️')
         .setStyle(ButtonStyle.Secondary),
     ),
-  ];
+  );
+
+  return rows;
 }
 
 module.exports = {

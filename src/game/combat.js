@@ -781,7 +781,23 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
 
     // 장비 드롭 체크
     let droppedEquipment = null;
-    if (shouldDropEquipment()) {
+    
+    // 보스 확정 드롭 확인 (monsterName에서 추출)
+    const isBoss = session.monsterName.includes('🐺') || session.monsterName.includes('⚔️') || session.monsterName.includes('🐉');
+    
+    if (isBoss) {
+      // 보스 확정 드롭
+      let guaranteedRarity = 'uncommon';
+      if (session.monsterName.includes('🐺')) guaranteedRarity = 'uncommon';
+      if (session.monsterName.includes('⚔️')) guaranteedRarity = 'rare';
+      if (session.monsterName.includes('🐉')) guaranteedRarity = 'epic';
+      
+      droppedEquipment = generateEquipment(characterUpdate.level, { rarity: guaranteedRarity });
+      battleLog.push('');
+      battleLog.push('💀 보스 클리어! 확정 보상!');
+      battleLog.push(`✨ ${droppedEquipment.name}을(를) 획득했습니다!`);
+    } else if (shouldDropEquipment()) {
+      // 일반 몬스터 랜덤 드롭
       droppedEquipment = generateEquipment(characterUpdate.level);
       battleLog.push('');
       battleLog.push('✨ 장비 드롭!');
