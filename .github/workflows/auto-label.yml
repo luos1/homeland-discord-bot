@@ -1,0 +1,48 @@
+name: Auto Label Issues & PRs
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Label bug reports
+      if: contains(github.event.issue.title, 'bug') || contains(github.event.issue.body, 'bug')
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            labels: ['bug', 'needs-triage']
+          })
+    
+    - name: Label feature requests
+      if: contains(github.event.issue.title, 'feature') || contains(github.event.issue.title, 'enhancement')
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            labels: ['enhancement', 'needs-review']
+          })
+    
+    - name: Label content-related PRs
+      if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, 'Zone')
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            labels: ['content', 'zone-expansion']
+          })

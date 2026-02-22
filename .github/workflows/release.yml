@@ -1,0 +1,58 @@
+name: Auto Release Notes
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Generate release notes
+      id: notes
+      run: |
+        # Get commits since last tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          COMMITS=$(git log --pretty=format:"- %s" HEAD)
+        else
+          COMMITS=$(git log --pretty=format:"- %s" ${PREVIOUS_TAG}..HEAD)
+        fi
+        
+        echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+        echo "## What's Changed" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "$COMMITS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref_name }}
+        body: ${{ steps.notes.outputs.RELEASE_NOTES }}
+        draft: false
+        prerelease: false
+    
+    - name: Notify Discord - New Release
+      uses: sarisia/actions-status-discord@v1
+      with:
+        webhook: ${{ secrets.DISCORD_WEBHOOK }}
+        title: "🎉 New Release: ${{ github.ref_name }}"
+        description: |
+          **HOMELAND** has been updated!
+          
+          ${{ steps.notes.outputs.RELEASE_NOTES }}
+          
+          [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})
+        color: 0x00ff00

@@ -1,0 +1,38 @@
+name: Deploy Notification
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  notify-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Notify Discord - Deploy Started
+      uses: sarisia/actions-status-discord@v1
+      with:
+        webhook: ${{ secrets.DISCORD_WEBHOOK }}
+        status: "in_progress"
+        title: "🚀 Deployment Started"
+        description: |
+          **Commit:** ${{ github.event.head_commit.message }}
+          **Author:** ${{ github.event.head_commit.author.name }}
+          **Railway:** Auto-deploying to production...
+        color: 0xffa500
+    
+    - name: Wait for Railway deployment (5 minutes)
+      run: sleep 300
+    
+    - name: Notify Discord - Deploy Success
+      uses: sarisia/actions-status-discord@v1
+      with:
+        webhook: ${{ secrets.DISCORD_WEBHOOK }}
+        status: "success"
+        title: "✅ Deployment Complete"
+        description: |
+          **gameMaster bot** is now live with latest changes!
+          
+          Recent updates:
+          - ${{ github.event.head_commit.message }}
+        color: 0x00ff00
