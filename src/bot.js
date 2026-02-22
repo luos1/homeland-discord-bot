@@ -40,12 +40,16 @@ const { GATHER_BUTTON_PREFIX } = require('./commands/gather');
 const { CRAFT_BUTTON_PREFIX } = require('./commands/craft');
 const { PSKILL_BUTTON_PREFIX } = require('./commands/production_skills');
 const { MARKET_BUTTON_PREFIX } = require('./commands/market');
-const { cleanupAllOldSessions } = require('./game/session-cleanup');
+const {
+  startSessionCleanupJob,
+  DEFAULT_CLEANUP_INTERVAL_MS,
+} = require('./game/session-cleanup');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
 const MONSTER_SELECT_PREFIX = 'monster_select:';
 const PROFILE_ZONE_KEYS = new Set(['zone1', 'zone2', 'zone3']);
+let sessionCleanupJob = null;
 
 const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
 
@@ -91,6 +95,25 @@ async function registerCommands() {
   console.log(`${commandData.length}개의 슬래시 명령어를 등록했습니다 (${scope}).`);
 }
 
+function resolveCleanupIntervalMs() {
+  const rawMinutes = process.env.SESSION_CLEANUP_INTERVAL_MINUTES;
+
+  if (!rawMinutes) {
+    return DEFAULT_CLEANUP_INTERVAL_MS;
+  }
+
+  const parsed = Number.parseInt(rawMinutes, 10);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `SESSION_CLEANUP_INTERVAL_MINUTES 값이 잘못되어 기본값(60분)을 사용합니다: ${rawMinutes}`,
+    );
+    return DEFAULT_CLEANUP_INTERVAL_MS;
+  }
+
+  return parsed * 60 * 1000;
+}
+
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`${readyClient.user.tag} 계정으로 로그인되었습니다.`);
 
@@ -100,14 +123,20 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.error('슬래시 명령어 등록에 실패했습니다:', error);
   }
 
-  // 봇 시작 시 오래된 전투 세션 정리
+  // 1시간 주기 자동 세션 정리 시작 (시작 시 즉시 1회 실행)
   try {
-    const cleaned = await cleanupAllOldSessions(prisma);
-    if (cleaned > 0) {
-      console.log(`🧹 봇 시작: ${cleaned}개의 오래된 전투 세션을 정리했습니다.`);
+    if (sessionCleanupJob) {
+      sessionCleanupJob.stop();
     }
+
+    const intervalMs = resolveCleanupIntervalMs();
+    sessionCleanupJob = startSessionCleanupJob(prisma, {
+      intervalMs,
+      runOnStart: true,
+    });
+    console.log(`🕒 자동 세션 정리 작업 시작 (${Math.floor(intervalMs / 60000)}분 주기)`);
   } catch (error) {
-    console.error('세션 정리 중 오류:', error);
+    console.error('자동 세션 정리 작업 시작 실패:', error);
   }
 });
 

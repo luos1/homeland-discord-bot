@@ -2,6 +2,7 @@
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30분
 const PRODUCTION_SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24시간 (생산 세션용)
+const DEFAULT_CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1시간
 
 /**
  * 오래된 전투 세션 정리
@@ -121,10 +122,66 @@ async function cleanupAllOldSessions(prisma) {
   return total;
 }
 
+/**
+ * 자동 세션 정리 작업 시작 (기본: 1시간마다 실행)
+ * @param {PrismaClient} prisma
+ * @param {Object} options
+ * @param {number} options.intervalMs - 실행 주기(ms)
+ * @param {boolean} options.runOnStart - 시작 시 즉시 1회 실행 여부
+ */
+function startSessionCleanupJob(
+  prisma,
+  { intervalMs = DEFAULT_CLEANUP_INTERVAL_MS, runOnStart = true } = {},
+) {
+  const safeIntervalMs = Number.isFinite(intervalMs) && intervalMs > 0
+    ? intervalMs
+    : DEFAULT_CLEANUP_INTERVAL_MS;
+
+  let isRunning = false;
+
+  async function runCleanup(trigger) {
+    if (isRunning) {
+      console.warn(`[session-cleanup] 이전 작업 실행 중 - 건너뜀 (${trigger})`);
+      return 0;
+    }
+
+    isRunning = true;
+
+    try {
+      return await cleanupAllOldSessions(prisma);
+    } catch (error) {
+      console.error(`[session-cleanup] 자동 정리 실패 (${trigger}):`, error);
+      return 0;
+    } finally {
+      isRunning = false;
+    }
+  }
+
+  const timer = setInterval(() => {
+    void runCleanup('interval');
+  }, safeIntervalMs);
+
+  if (typeof timer.unref === 'function') {
+    timer.unref();
+  }
+
+  if (runOnStart) {
+    void runCleanup('startup');
+  }
+
+  return {
+    intervalMs: safeIntervalMs,
+    runNow: (trigger = 'manual') => runCleanup(trigger),
+    stop: () => clearInterval(timer),
+  };
+}
+
 module.exports = {
   cleanupOldSessions,
   cleanupOldProductionSessions,
   forceEndUserSession,
   cleanupAllOldSessions,
+  startSessionCleanupJob,
   SESSION_TIMEOUT_MS,
+  DEFAULT_CLEANUP_INTERVAL_MS,
 };
