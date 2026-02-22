@@ -28,11 +28,6 @@ const PLAY_CREATE_BUTTON_EMOJIS = {
 };
 
 function createPlayCreateEmbed() {
-  const classLines = PLAY_CREATE_CLASS_KEYS.map((classKey) => {
-    const classPreset = CLASS_PRESETS[classKey];
-    return `${PLAY_CREATE_BUTTON_EMOJIS[classKey]} ${classPreset.label}`;
-  });
-
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.warning)
     .setTitle('🎮 플레이 시작 준비')
@@ -40,13 +35,15 @@ function createPlayCreateEmbed() {
       [
         createDivider(),
         '아직 캐릭터가 없습니다.',
-        '아래 직업 버튼을 누르면 바로 캐릭터를 생성합니다.',
+        '아래 명령어로 캐릭터를 생성하세요:',
         '',
-        '선택 가능한 직업',
-        ...classLines,
+        '**선택 가능한 직업**',
+        '🛡️ 전사 (탱커) - `/create class:전사 (탱커)`',
+        '🏹 궁수 (균형형) - `/create class:궁수 (균형형)`',
+        '🔮 마법사 (고화력) - `/create class:마법사 (고화력)`',
         '',
-        '※ 버튼 생성 시 이름은 디스코드 닉네임으로 설정됩니다.',
-        '※ 이름을 직접 지정하려면 `/create class:<직업> name:<이름>`을 사용하세요.',
+        '※ 이름을 지정하려면:',
+        '`/create class:전사 (탱커) name:내이름`',
         createDivider(),
       ].join('\n'),
     );
@@ -96,7 +93,8 @@ module.exports = {
     if (!character) {
       await interaction.reply({
         embeds: [createPlayCreateEmbed()],
-        components: [createPlayCreateActionRow()],
+        // components 임시 제거 - 버튼 에러 회피
+        // components: [createPlayCreateActionRow()],
         ephemeral: true,
       });
 
