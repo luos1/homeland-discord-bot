@@ -26,6 +26,7 @@ const {
   getProfileCharacter,
 } = require('./commands/profile');
 const { getPlayCreateClassChoice } = require('./commands/play');
+const { JOBCHANGE_BUTTON_PREFIX } = require('./commands/jobchange');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
@@ -361,6 +362,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
 
         return;
+      }
+
+      // 전직 버튼
+      if (interaction.customId.startsWith(JOBCHANGE_BUTTON_PREFIX)) {
+        const jobchangeCommand = client.commands.get('jobchange');
+
+        if (!jobchangeCommand) {
+          await interaction.reply({
+            content: '전직 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await jobchangeCommand.handleJobChangeButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
       }
 
       // 몬스터 선택 버튼 (전투 시작)

@@ -5,13 +5,14 @@ const {
   EmbedBuilder,
 } = require('discord.js');
 
-const { applyExperience } = require('./leveling');
+const { applyExperience, progressToNextLevel } = require('./leveling');
 const { MONSTERS, getZone, randomInt } = require('./monsters');
 const { getCombatSkill } = require('./skills');
 const {
   EMBED_COLORS,
   createDivider,
   createHPBar,
+  createXPBar,
   localizeClassName,
 } = require('../utils/ui');
 
@@ -192,6 +193,17 @@ function buildOngoingDescription({ character, session, battleLog }) {
   lines.push(`⚔️ ${character.name} (${localizeClassName(character.class)}) Lv.${character.level}`);
   lines.push(`❤️ ${playerHpBar} ${session.playerHp}/${character.maxHp} HP`);
   lines.push(`🔷 ${playerManaBar} ${currentMana}/${maxMana} MP`);
+  
+  // 경험치 진행도 표시
+  const xpProgress = progressToNextLevel(character);
+  if (xpProgress.required !== null) {
+    const xpBar = createXPBar(character.xp, xpProgress.required, 10);
+    const xpPercent = Math.floor(xpProgress.ratio * 100);
+    lines.push(`📈 ${xpBar} ${character.xp}/${xpProgress.required} XP (${xpPercent}%)`);
+  } else {
+    lines.push(`📈 경험치: MAX (Lv.${character.level})`);
+  }
+  
   lines.push(`⚔️ 공격력: ${character.attack} | 🛡️ 방어력: ${character.defense}`);
   if (combatSkill) {
     lines.push(`${combatSkill.emoji} 스킬: ${combatSkill.name} (${combatSkill.manaCost} MP)`);

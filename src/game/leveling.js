@@ -5,7 +5,10 @@ function xpRequiredForLevel(level) {
     return null;
   }
 
-  return 100 + (level - 1) * 40;
+  // 초반 레벨업 빠르게 조정
+  // Lv1→2: 50, Lv2→3: 75, Lv3→4: 100, Lv4→5: 125...
+  // Lv10→11: 275, Lv20→21: 525
+  return 50 + (level - 1) * 25;
 }
 
 function applyExperience(character, gainedXp, currentHp, currentMana = character.mana) {

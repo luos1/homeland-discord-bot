@@ -8,6 +8,7 @@ const {
 
 const { LEVEL_CAP, progressToNextLevel } = require('../game/leveling');
 const { getZone } = require('../game/monsters');
+const { canJobChange, JOB_CHANGE_LEVEL } = require('../game/jobchange');
 const {
   EMBED_COLORS,
   createDivider,
@@ -57,6 +58,13 @@ function createProfileEmbed(character) {
       ? `${xpBar} 최대 (${LEVEL_CAP})`
       : `${xpBar} ${character.xp}/${progress.required} (${Math.floor(progress.ratio * 100)}%)`;
 
+  const jobCheck = canJobChange(character);
+  const jobLine = character.advancedClass
+    ? `💎 전직: ${character.advancedClass}`
+    : jobCheck.allowed
+      ? `✨ 전직 가능! Lv.${JOB_CHANGE_LEVEL} 달성`
+      : `⭐ 전직: Lv.${JOB_CHANGE_LEVEL}부터 가능`;
+
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
     .setTitle(`⚔️ ${character.name}님의 ${localizeClassName(character.class)}`)
@@ -64,6 +72,7 @@ function createProfileEmbed(character) {
       [
         createDivider(),
         `💎 레벨 ${character.level} | 💰 골드 ${formatNumber(character.gold)}G`,
+        jobLine,
         createDivider(),
         '',
         '📊 전투 능력치',
@@ -83,7 +92,7 @@ function createProfileEmbed(character) {
       ].join('\n'),
     )
     .setFooter({
-      text: '버튼으로 탐험/새로고침을 진행하세요',
+      text: jobCheck.allowed ? '전직 가능! /jobchange 명령어를 사용하세요' : '버튼으로 탐험/새로고침을 진행하세요',
     });
 }
 

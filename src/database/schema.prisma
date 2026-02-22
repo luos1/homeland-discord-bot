@@ -21,6 +21,7 @@ model Character {
   user          User           @relation(fields: [userId], references: [discordId], onDelete: Cascade)
   name          String
   class         String
+  advancedClass String?
   level         Int            @default(1)
   xp            Int            @default(0)
   hp            Int            @default(100)
