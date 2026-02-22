@@ -40,6 +40,8 @@ const COMBAT_END_ACTIONS = {
   retry: 'retry',
   zones: 'zones',
 };
+const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+const RARE_MONSTER_PREFIXES = ['빛나는 ', '강력한 '];
 
 function buildCombatCustomId(action, sessionId, skillKey = null) {
   if (skillKey) {
@@ -105,6 +107,194 @@ function parseCombatEndCustomId(customId) {
 
 function isCombatEndButton(customId) {
   return customId.startsWith(`${COMBAT_END_PREFIX}:`);
+}
+
+function stripRareMonsterPrefix(monsterName = '') {
+  return RARE_MONSTER_PREFIXES.reduce((name, prefix) => {
+    if (name.startsWith(prefix)) {
+      return name.slice(prefix.length);
+    }
+    return name;
+  }, monsterName);
+}
+
+function getMonsterBySessionName(monsterName) {
+  if (!monsterName) {
+    return null;
+  }
+
+  const exactMatch = Object.values(MONSTERS).find((monster) => monster.name === monsterName);
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const normalizedName = stripRareMonsterPrefix(monsterName);
+  const normalizedMatch = Object.values(MONSTERS).find((monster) => monster.name === normalizedName);
+  if (normalizedMatch) {
+    return normalizedMatch;
+  }
+
+  return Object.values(MONSTERS).find((monster) => monsterName.endsWith(monster.name)) ?? null;
+}
+
+function resolveRarityPool(minRarity = 'rare') {
+  const minIndex = RARITY_ORDER.indexOf(minRarity);
+  if (minIndex === -1) {
+    return ['rare', 'epic', 'legendary'];
+  }
+  return RARITY_ORDER.slice(minIndex);
+}
+
+function rollFromWeightedPool(pool) {
+  if (!pool || pool.length === 0) {
+    return 'rare';
+  }
+
+  if (pool.length === 1) {
+    return pool[0];
+  }
+
+  const weightBySize = {
+    2: [0.8, 0.2],
+    3: [0.7, 0.23, 0.07],
+    4: [0.63, 0.22, 0.1, 0.05],
+    5: [0.57, 0.22, 0.12, 0.06, 0.03],
+  };
+  const weights = weightBySize[pool.length] || Array(pool.length).fill(1 / pool.length);
+  const roll = Math.random();
+  let cumulative = 0;
+
+  for (let index = 0; index < pool.length; index += 1) {
+    cumulative += weights[index];
+    if (roll <= cumulative) {
+      return pool[index];
+    }
+  }
+
+  return pool[pool.length - 1];
+}
+
+function resolveGuaranteedBossRarity(guaranteedDrop) {
+  if (!guaranteedDrop) {
+    return null;
+  }
+
+  if (guaranteedDrop.minRarity) {
+    return rollFromWeightedPool(resolveRarityPool(guaranteedDrop.minRarity));
+  }
+
+  const rarityLabel = guaranteedDrop.rarity;
+  if (!rarityLabel) {
+    return null;
+  }
+
+  if (rarityLabel.endsWith('+')) {
+    return rollFromWeightedPool(resolveRarityPool(rarityLabel.slice(0, -1)));
+  }
+
+  return rarityLabel;
+}
+
+function resolveTurnInterval(pattern) {
+  if (pattern.trigger === 'every_n_turns' && Number.isFinite(pattern.value)) {
+    return Math.max(1, Math.floor(pattern.value));
+  }
+
+  const match = pattern.trigger.match(/^every_(\d+)_turns$/);
+  if (!match) {
+    return null;
+  }
+
+  return Math.max(1, Number.parseInt(match[1], 10));
+}
+
+function shouldTriggerBossPattern(pattern, context) {
+  const monsterHpPercent = (context.currentMonsterHp / Math.max(context.monsterMaxHp, 1)) * 100;
+  const playerHpPercent = (context.playerHp / Math.max(context.playerMaxHp, 1)) * 100;
+
+  if (pattern.trigger === 'hp_below') {
+    return monsterHpPercent <= pattern.value;
+  }
+
+  if (pattern.trigger === 'player_hp_below') {
+    return playerHpPercent <= pattern.value;
+  }
+
+  if (pattern.trigger === 'cross_hp_below') {
+    const thresholdHp = Math.floor(context.monsterMaxHp * (pattern.value / 100));
+    return context.previousMonsterHp > thresholdHp && context.currentMonsterHp <= thresholdHp;
+  }
+
+  const interval = resolveTurnInterval(pattern);
+  return interval ? context.turn % interval === 0 : false;
+}
+
+function applyFieldBossSkillPatterns({
+  monsterData,
+  session,
+  character,
+  currentMonsterHp,
+  baseDamage,
+}) {
+  if (!monsterData?.isBoss || !monsterData.skillPatterns || monsterData.skillPatterns.length === 0) {
+    return {
+      monsterHp: currentMonsterHp,
+      enemyDamage: baseDamage,
+      logs: [],
+    };
+  }
+
+  const result = {
+    monsterHp: currentMonsterHp,
+    damageMultiplier: 1,
+    bonusDamage: 0,
+    logs: [],
+  };
+  const context = {
+    previousMonsterHp: session.monsterHp,
+    currentMonsterHp,
+    monsterMaxHp: session.monsterMaxHp,
+    playerHp: session.playerHp,
+    playerMaxHp: character.maxHp,
+    turn: session.turn,
+  };
+
+  monsterData.skillPatterns.forEach((pattern) => {
+    if (!shouldTriggerBossPattern(pattern, context)) {
+      return;
+    }
+
+    if (pattern.effect === 'heal') {
+      const healAmount = Math.max(0, Math.floor(pattern.amount || 0));
+      if (healAmount > 0 && result.monsterHp < session.monsterMaxHp) {
+        const healed = Math.min(healAmount, session.monsterMaxHp - result.monsterHp);
+        result.monsterHp += healed;
+        result.logs.push(`💀 ${pattern.name} 발동! ${monsterData.name}이(가) ${healed} HP 회복했습니다.`);
+      }
+      return;
+    }
+
+    if (pattern.effect === 'attack_multiplier') {
+      const multiplier = Math.max(1, Number(pattern.amount) || 1);
+      result.damageMultiplier *= multiplier;
+      result.logs.push(`💀 ${pattern.name} 발동! 공격력이 ${(multiplier * 100 - 100).toFixed(0)}% 증가합니다.`);
+      return;
+    }
+
+    if (pattern.effect === 'flat_damage') {
+      const extraDamage = Math.max(0, Math.floor(pattern.amount || 0));
+      if (extraDamage > 0) {
+        result.bonusDamage += extraDamage;
+        result.logs.push(`💀 ${pattern.name} 발동! 추가 피해 +${extraDamage}.`);
+      }
+    }
+  });
+
+  return {
+    monsterHp: result.monsterHp,
+    enemyDamage: Math.max(1, Math.floor(baseDamage * result.damageMultiplier) + result.bonusDamage),
+    logs: result.logs,
+  };
 }
 
 function createCombatActionRows(sessionId, options = {}) {
@@ -220,7 +410,7 @@ function createCombatEndActionRow(zoneKey, options = {}) {
 }
 
 function resolveMonsterLevel(monsterName, fallbackLevel = 1) {
-  const matched = Object.values(MONSTERS).find((monster) => monster.name === monsterName);
+  const matched = getMonsterBySessionName(monsterName);
   return matched?.level ?? fallbackLevel;
 }
 
@@ -849,20 +1039,17 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       );
     }
 
+    const monsterData = getMonsterBySessionName(session.monsterName);
+    const isBoss = Boolean(monsterData?.isBoss);
+
     // 장비 드롭 체크
     let droppedEquipment = null;
-    
-    // 보스 확정 드롭 확인 (monsterName에서 추출)
-    const isBoss = session.monsterName.includes('🐺') || session.monsterName.includes('⚔️') || session.monsterName.includes('🐉');
-    
+
     if (isBoss) {
-      // 보스 확정 드롭
-      let guaranteedRarity = 'uncommon';
-      if (session.monsterName.includes('🐺')) guaranteedRarity = 'uncommon';
-      if (session.monsterName.includes('⚔️')) guaranteedRarity = 'rare';
-      if (session.monsterName.includes('🐉')) guaranteedRarity = 'epic';
-      
-      droppedEquipment = generateEquipment(characterUpdate.level, { rarity: guaranteedRarity });
+      const forcedRarity = resolveGuaranteedBossRarity(monsterData.guaranteedDrop);
+      droppedEquipment = forcedRarity
+        ? generateEquipment(characterUpdate.level, { rarity: forcedRarity })
+        : generateEquipment(characterUpdate.level);
       battleLog.push('');
       battleLog.push('💀 보스 클리어! 확정 보상!');
       battleLog.push(`✨ ${droppedEquipment.name}을(를) 획득했습니다!`);
@@ -927,7 +1114,20 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
     critChance: 0.08,
     critMultiplier: 1.5,
   });
-  let enemyDamage = enemyStrike.damage;
+  const monsterData = getMonsterBySessionName(session.monsterName);
+  const skillPatternResult = applyFieldBossSkillPatterns({
+    monsterData,
+    session: {
+      ...session,
+      playerHp,
+    },
+    character,
+    currentMonsterHp: monsterHp,
+    baseDamage: enemyStrike.damage,
+  });
+
+  monsterHp = skillPatternResult.monsterHp;
+  let enemyDamage = skillPatternResult.enemyDamage;
 
   if (playerDefending) {
     enemyDamage = Math.max(1, Math.floor(enemyDamage * 0.45));
@@ -936,6 +1136,10 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
   playerHp = Math.max(playerHp - enemyDamage, 0);
 
   battleLog.push('');
+  if (skillPatternResult.logs.length > 0) {
+    battleLog.push(...skillPatternResult.logs);
+    battleLog.push('');
+  }
   battleLog.push(`👹 ${session.monsterName}의 반격!`);
   
   if (enemyStrike.isCritical) {

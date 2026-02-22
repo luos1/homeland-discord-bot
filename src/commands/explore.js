@@ -10,14 +10,12 @@ const { createCombatActionRows, createCombatEmbed } = require('../game/combat');
 const {
   MONSTERS,
   getZone,
-  getZoneWithTypeData,
   listZoneChoices,
   listZones,
-  spawnMonster,
   ZONE_TYPES,
 } = require('../game/monsters');
 const { PROFILE_BUTTON_IDS } = require('./profile');
-const { EMBED_COLORS, createDivider, localizeClassName } = require('../utils/ui');
+const { EMBED_COLORS, createDivider } = require('../utils/ui');
 const { cleanupOldSessions } = require('../game/session-cleanup');
 
 const zoneChoices = listZoneChoices();
@@ -27,6 +25,7 @@ const ZONE_BUTTON_STYLES = {
   zone1: ButtonStyle.Primary,
   zone2: ButtonStyle.Secondary,
   zone3: ButtonStyle.Success,
+  zone4: ButtonStyle.Primary,
 };
 
 function createZoneInfoEmbed(zoneKey) {
@@ -60,24 +59,27 @@ function createZoneInfoEmbed(zoneKey) {
     ? `**드롭 확률**: ${Math.floor(zone.dropChance * 100)}%\n**자원 종류**: ${zone.resourceDrops.join(', ')}`
     : '';
 
-  const specialMechanic = zone.key === 'zone3'
-    ? '⚠️ **특수 메커니즘**\n몬스터가 첫 턴에 먼저 공격합니다!\n체력 관리에 주의하세요.'
-    : '';
+  const specialMechanic = zone.specialMechanic || '';
 
   const monsterList = zone.monsterKeys
     .map((key) => {
       const monster = MONSTERS[key];
-      return `👹 **${monster.name}** (Lv.${monster.level}) - HP ${monster.hp}, ATK ${monster.attack}, DEF ${monster.defense}`;
+      const traitText = monster.trait ? ` | ${monster.trait}` : '';
+      return `👹 **${monster.name}** (Lv.${monster.level}) - HP ${monster.hp}, ATK ${monster.attack}, DEF ${monster.defense}${traitText}`;
     })
     .join('\n');
 
   const bossList = (zone.bossKeys || [])
     .map((key) => {
       const boss = MONSTERS[key];
-      const dropText = boss.guaranteedDrop ? `${boss.guaranteedDrop.rarity} 등급 확정 드롭` : '';
+      const dropText = boss.guaranteedDrop ? `${boss.guaranteedDrop.rarity} 장비 확정 드롭` : '';
+      const patternText = boss.skillPatterns && boss.skillPatterns.length > 0
+        ? `   🧠 스킬 패턴: ${boss.skillPatterns.map((pattern) => pattern.name).join(', ')}`
+        : '';
       return [
         `💀 **${boss.name}** (Lv.${boss.level})`,
         `   HP ${boss.hp}, ATK ${boss.attack}, DEF ${boss.defense}`,
+        patternText,
         dropText ? `   ✨ ${dropText}` : '',
       ].filter(Boolean).join('\n');
     })
@@ -128,9 +130,8 @@ function createZoneSelectionEmbed() {
         ? `자원 드롭 (${Math.floor(zone.dropChance * 100)}%): ${zone.resourceDrops.join(', ')}`
         : '';
 
-      // Zone 3 특수 메커니즘 경고
-      const specialMechanic = zone.key === 'zone3'
-        ? '⚠️ **특수 메커니즘**: 몬스터가 먼저 공격합니다!'
+      const specialMechanic = zone.specialMechanic
+        ? zone.specialMechanic.replace(/\n/g, ' ')
         : '';
 
       return [
@@ -183,6 +184,7 @@ function createMonsterSelectionEmbed(zone) {
         `   ❤️ 체력: ${monster.hp}`,
         `   ⚔️ 공격력: ${monster.attack}`,
         `   🛡️ 방어력: ${monster.defense}`,
+        monster.trait ? `   🧬 특성: ${monster.trait}` : '',
         `   🎁 보상: 경험치 ${monster.xpReward}, 골드 ${monster.goldMin}-${monster.goldMax}`,
       ].join('\n');
     })
@@ -192,11 +194,15 @@ function createMonsterSelectionEmbed(zone) {
     .map((key) => {
       const boss = MONSTERS[key];
       const dropText = boss.guaranteedDrop
-        ? `${boss.guaranteedDrop.rarity} 등급 장비 확정 드롭`
+        ? `${boss.guaranteedDrop.rarity} 장비 확정 드롭`
+        : '';
+      const patternText = boss.skillPatterns && boss.skillPatterns.length > 0
+        ? `스킬 패턴: ${boss.skillPatterns.map((pattern) => pattern.name).join(', ')}`
         : '';
       return [
         `💀 **${boss.name}** (Lv.${boss.level}) ⚠️ 필드 보스`,
         `   ${boss.description || ''}`,
+        patternText ? `   🧠 ${patternText}` : '',
         `   ❤️ 체력: ${boss.hp}`,
         `   ⚔️ 공격력: ${boss.attack}`,
         `   🛡️ 방어력: ${boss.defense}`,

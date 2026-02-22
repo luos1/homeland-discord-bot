@@ -54,11 +54,12 @@ const {
   maybeSendGuideTip,
   sendOnboardingFeedback,
 } = require('./game/onboarding');
+const { listZones } = require('./game/monsters');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
 const MONSTER_SELECT_PREFIX = 'monster_select:';
-const PROFILE_ZONE_KEYS = new Set(['zone1', 'zone2', 'zone3']);
+const PROFILE_ZONE_KEYS = new Set(listZones().map((zone) => zone.key));
 let sessionCleanupJob = null;
 
 const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
@@ -1238,7 +1239,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return;
         }
 
-        const { getZone, getZoneWithTypeData, MONSTERS, spawnMonster, rollRareMonster, applyRareModifier } = require('./game/monsters');
+        const {
+          getZone,
+          getZoneWithTypeData,
+          MONSTERS,
+          rollRareMonster,
+          applyRareModifier,
+        } = require('./game/monsters');
         const { createCombatEmbed, createCombatActionRows } = require('./game/combat');
         const { localizeClassName } = require('./utils/ui');
 
@@ -1265,10 +1272,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
           defense: Math.floor(baseMonster.defense * statMult),
         };
 
-        // 레어 몬스터 체크 (존별 확률)
-        const rareType = rollRareMonster(zoneKey);
-        if (rareType) {
-          monster = applyRareModifier(monster, rareType);
+        // 레어 몬스터 체크 (보스 제외, 존별 확률)
+        if (!baseMonster.isBoss) {
+          const rareType = rollRareMonster(zoneKey);
+          if (rareType) {
+            monster = applyRareModifier(monster, rareType);
+          }
         }
 
         const character = await prisma.character.findUnique({
