@@ -304,6 +304,7 @@ async function startBossFight(interaction, { prisma, character, boss }) {
       turn: 1,
       isBossFight: true,
       bossId: boss.id,
+      monsterFirstStrike: boss.zone === 3, // Zone 3 bosses attack first
     },
   });
 

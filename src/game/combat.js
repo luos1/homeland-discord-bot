@@ -566,6 +566,53 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
 
   const battleLog = [];
 
+  // Zone 3 선공 메커니즘: 첫 턴에 몬스터가 먼저 공격
+  if (session.turn === 1 && session.monsterFirstStrike) {
+    battleLog.push('⚠️ **위험지대 특수 메커니즘 발동!**');
+    battleLog.push('💀 몬스터가 먼저 공격합니다!');
+    battleLog.push('');
+
+    const enemyFirstStrike = rollDamage(session.monsterAttack, character.defense, {
+      critChance: 0.08,
+      critMultiplier: 1.5,
+    });
+
+    playerHp = Math.max(playerHp - enemyFirstStrike.damage, 0);
+    battleLog.push(`👹 ${session.monsterName}의 선제공격!`);
+
+    if (enemyFirstStrike.isCritical) {
+      battleLog.push('');
+      battleLog.push('💥 치명타! 💥');
+      battleLog.push('');
+    }
+
+    battleLog.push(`💔 ${enemyFirstStrike.damage} 데미지를 받았습니다!`);
+
+    if (playerHp <= 0) {
+      battleLog.push('');
+      battleLog.push('☠️ 선제공격에 쓰러졌습니다...');
+
+      return {
+        status: 'defeat',
+        battleLog,
+        sessionUpdate: {
+          monsterHp,
+          playerHp: 0,
+          potionsRemaining,
+          playerDefending: false,
+          turn: session.turn + 1,
+        },
+        characterUpdate: {
+          hp: 0,
+          mana: playerMana,
+          winStreak: 0,
+        },
+      };
+    }
+
+    battleLog.push('');
+  }
+
   if (action === COMBAT_ACTIONS.attack) {
     const playerStrike = rollDamage(character.attack, session.monsterDefense, {
       critChance: 0.15,

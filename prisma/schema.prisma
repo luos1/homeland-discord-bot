@@ -1,7 +1,3 @@
-// This file is auto-synced from src/database/schema.prisma
-// The canonical schema lives at src/database/schema.prisma
-// All prisma CLI commands use --schema src/database/schema.prisma (see package.json)
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -24,10 +20,11 @@ model Character {
   userId           String             @unique
   user             User               @relation(fields: [userId], references: [discordId], onDelete: Cascade)
   name             String
-  class            String
-  advancedClass    String?
-  productionClass  String?
-  level            Int                @default(1)
+  class                    String
+  advancedClass            String?
+  productionClass          String?
+  advancedProductionClass  String?
+  level                    Int                @default(1)
   xp               Int                @default(0)
   hp               Int                @default(100)
   maxHp            Int                @default(100)
@@ -119,6 +116,7 @@ model Consumable {
   @@index([characterId])
 }
 
+
 model GatherSession {
   id             String    @id @default(cuid())
   characterId    Int       @unique
@@ -182,26 +180,27 @@ model TradeHistory {
 }
 
 model CombatSession {
-  id               String    @id @default(cuid())
-  characterId      Int       @unique
-  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  zone             String
-  monsterName      String
-  monsterHp        Int
-  monsterMaxHp     Int
-  monsterAttack    Int
-  monsterDefense   Int
-  monsterXpReward  Int
-  monsterGoldMin   Int
-  monsterGoldMax   Int
-  playerHp         Int
-  playerDefending  Boolean   @default(false)
-  potionsRemaining Int       @default(3)
-  turn             Int       @default(1)
-  isBossFight      Boolean   @default(false)
-  bossId           String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  characterId        Int       @unique
+  character          Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  zone               String
+  monsterName        String
+  monsterHp          Int
+  monsterMaxHp       Int
+  monsterAttack      Int
+  monsterDefense     Int
+  monsterXpReward    Int
+  monsterGoldMin     Int
+  monsterGoldMax     Int
+  playerHp           Int
+  playerDefending    Boolean   @default(false)
+  potionsRemaining   Int       @default(3)
+  turn               Int       @default(1)
+  isBossFight        Boolean   @default(false)
+  bossId             String?
+  monsterFirstStrike Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model BossEncounter {

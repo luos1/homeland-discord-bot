@@ -33,23 +33,37 @@ function createZoneSelectionEmbed() {
   const zoneDescriptions = listZones()
     .map((zone) => {
       const monsterNames = zone.monsterKeys.map((key) => MONSTERS[key].name).join(', ');
+      const bossNames = (zone.bossKeys || []).map((key) => MONSTERS[key].name).join(', ');
       const zoneTypeData = ZONE_TYPES[zone.zoneType];
       
       const typeInfo = zoneTypeData
-        ? `${zoneTypeData.emoji} ${zoneTypeData.name} - ${zoneTypeData.description}`
+        ? `${zoneTypeData.emoji} **${zoneTypeData.name}** - ${zoneTypeData.description}`
         : '';
 
-      const bonusInfo = zoneTypeData
-        ? `보상: 골드 x${zoneTypeData.goldMultiplier}, 경험치 x${zoneTypeData.xpMultiplier}, 레어 x${zoneTypeData.rareChanceMultiplier}`
+      const statInfo = zoneTypeData
+        ? `능력치: **x${zoneTypeData.statMultiplier}** | 골드: **x${zoneTypeData.goldMultiplier}** | 경험치: **x${zoneTypeData.xpMultiplier}** | 레어: **x${zoneTypeData.rareChanceMultiplier}**`
+        : '';
+
+      // 자원 드롭 정보
+      const resourceInfo = zone.resourceDrops && zone.resourceDrops.length > 0
+        ? `자원 드롭 (${Math.floor(zone.dropChance * 100)}%): ${zone.resourceDrops.join(', ')}`
+        : '';
+
+      // Zone 3 특수 메커니즘 경고
+      const specialMechanic = zone.key === 'zone3'
+        ? '⚠️ **특수 메커니즘**: 몬스터가 먼저 공격합니다!'
         : '';
 
       return [
         `${zone.emoji} **${zone.name}** (${zone.label})`,
         typeInfo ? `   ${typeInfo}` : '',
         `   ${zone.description}`,
-        `   권장 레벨: ${zone.recommendedLevel}`,
-        `   몬스터: ${monsterNames}`,
-        bonusInfo ? `   ${bonusInfo}` : '',
+        `   📊 권장 레벨: **${zone.recommendedLevel}**`,
+        statInfo ? `   📈 ${statInfo}` : '',
+        `   👹 일반 몬스터: ${monsterNames}`,
+        bossNames ? `   💀 필드 보스: ${bossNames}` : '',
+        resourceInfo ? `   🎁 ${resourceInfo}` : '',
+        specialMechanic ? `   ${specialMechanic}` : '',
       ].filter(Boolean).join('\n');
     })
     .join('\n\n');

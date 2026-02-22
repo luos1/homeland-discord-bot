@@ -1193,6 +1193,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             monsterGoldMax: monster.goldMax,
             playerHp,
             potionsRemaining: 3,
+            monsterFirstStrike: zone.key === 'zone3', // Zone 3 monsters attack first
           },
         });
 

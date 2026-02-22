@@ -180,26 +180,27 @@ model TradeHistory {
 }
 
 model CombatSession {
-  id               String    @id @default(cuid())
-  characterId      Int       @unique
-  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  zone             String
-  monsterName      String
-  monsterHp        Int
-  monsterMaxHp     Int
-  monsterAttack    Int
-  monsterDefense   Int
-  monsterXpReward  Int
-  monsterGoldMin   Int
-  monsterGoldMax   Int
-  playerHp         Int
-  playerDefending  Boolean   @default(false)
-  potionsRemaining Int       @default(3)
-  turn             Int       @default(1)
-  isBossFight      Boolean   @default(false)
-  bossId           String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  characterId        Int       @unique
+  character          Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  zone               String
+  monsterName        String
+  monsterHp          Int
+  monsterMaxHp       Int
+  monsterAttack      Int
+  monsterDefense     Int
+  monsterXpReward    Int
+  monsterGoldMin     Int
+  monsterGoldMax     Int
+  playerHp           Int
+  playerDefending    Boolean   @default(false)
+  potionsRemaining   Int       @default(3)
+  turn               Int       @default(1)
+  isBossFight        Boolean   @default(false)
+  bossId             String?
+  monsterFirstStrike Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model BossEncounter {
