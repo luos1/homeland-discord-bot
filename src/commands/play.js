@@ -103,7 +103,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [createProfileEmbed(character)],
-      components: [createProfileActionRow()],
+      components: createProfileActionRow(),  // 이미 배열이므로 [] 제거!
     });
   },
   PLAY_CREATE_BUTTON_PREFIX,
