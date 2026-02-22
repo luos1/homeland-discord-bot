@@ -12,12 +12,14 @@ const { getAvailableSkills, canUseSkill, getSkillByKey } = require('./skills');
 const { EMBED_COLORS } = require('../utils/ui');
 
 async function handleBossCombatAction({ interaction, prisma }) {
+  // 버튼 interaction 처리를 위해 defer
+  await interaction.deferUpdate();
+
   const parsed = parseBossCombatCustomId(interaction.customId);
 
   if (!parsed) {
-    await interaction.reply({
+    await interaction.editReply({
       content: '유효하지 않은 전투 액션입니다.',
-      ephemeral: true,
     });
     return;
   }
@@ -38,17 +40,15 @@ async function handleBossCombatAction({ interaction, prisma }) {
   });
 
   if (!session) {
-    await interaction.reply({
+    await interaction.editReply({
       content: '전투 세션을 찾을 수 없습니다.',
-      ephemeral: true,
     });
     return;
   }
 
   if (session.character.userId !== interaction.user.id) {
-    await interaction.reply({
+    await interaction.editReply({
       content: '다른 플레이어의 전투입니다.',
-      ephemeral: true,
     });
     return;
   }
@@ -57,9 +57,8 @@ async function handleBossCombatAction({ interaction, prisma }) {
   const boss = getBossById(session.bossId);
 
   if (!boss) {
-    await interaction.reply({
+    await interaction.editReply({
       content: '보스 데이터를 찾을 수 없습니다.',
-      ephemeral: true,
     });
     return;
   }
@@ -96,9 +95,8 @@ async function handleBossCombatAction({ interaction, prisma }) {
     });
   } else if (action === 'potion') {
     if (session.potionsRemaining <= 0) {
-      await interaction.reply({
+      await interaction.editReply({
         content: '포션이 없습니다!',
-        ephemeral: true,
       });
       return;
     }
@@ -118,9 +116,8 @@ async function handleBossCombatAction({ interaction, prisma }) {
     const skill = await getSkillByKey(skillKey, character.skills);
 
     if (!skill || !canUseSkill(skill, character)) {
-      await interaction.reply({
+      await interaction.editReply({
         content: '이 스킬을 사용할 수 없습니다.',
-        ephemeral: true,
       });
       return;
     }
