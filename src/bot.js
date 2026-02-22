@@ -465,7 +465,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         await interaction.update({
           embeds: [createProfileEmbed(character)],
-          components: [createProfileActionRow({ character })],
+          components: createProfileActionRow({ character }),
         });
 
         return;
@@ -707,7 +707,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         await interaction.update({
           embeds: [successEmbed],
-          components: [createProfileActionRow({ character: refreshedCharacter })],
+          components: createProfileActionRow({ character: refreshedCharacter }),
         });
 
         return;
@@ -760,7 +760,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         await interaction.update({
           embeds: [createProfileEmbed(character)],
-          components: [createProfileActionRow({ character })],
+          components: createProfileActionRow({ character }),
         });
 
         return;
