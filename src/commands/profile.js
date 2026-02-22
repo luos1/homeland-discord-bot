@@ -10,6 +10,7 @@ const { LEVEL_CAP, progressToNextLevel } = require('../game/leveling');
 const { getZone } = require('../game/monsters');
 const { canJobChange, JOB_CHANGE_LEVEL } = require('../game/jobchange');
 const { calculateEquipmentStats } = require('../game/equipment');
+const { getStreakDisplay } = require('../game/streak');
 const {
   EMBED_COLORS,
   createDivider,
@@ -67,6 +68,12 @@ function createProfileEmbed(character) {
       ? `✨ 전직 가능! Lv.${JOB_CHANGE_LEVEL} 달성`
       : `⭐ 전직: Lv.${JOB_CHANGE_LEVEL}부터 가능`;
 
+  // 연승 표시
+  const streakDisplay = getStreakDisplay(character.winStreak || 0);
+  const streakLine = streakDisplay
+    ? `${streakDisplay} (최고: ${character.maxWinStreak || 0}연승)`
+    : null;
+
   // 장비 보너스 계산
   const equipmentStats = character.equipment
     ? calculateEquipmentStats(character.equipment)
@@ -93,6 +100,7 @@ function createProfileEmbed(character) {
         createDivider(),
         `💎 레벨 ${character.level} | 💰 골드 ${formatNumber(character.gold)}G`,
         jobLine,
+        streakLine || null,
         createDivider(),
         '',
         '📊 전투 능력치',

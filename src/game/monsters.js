@@ -131,12 +131,81 @@ function spawnMonster(zoneKey) {
   };
 }
 
+// 레어 몹 타입
+const RARE_TYPES = {
+  shiny: {
+    name: '샤이니',
+    emoji: '✨',
+    chance: 0.01, // 1%
+    hpMultiplier: 2.0,
+    attackMultiplier: 1.5,
+    defenseMultiplier: 1.3,
+    xpMultiplier: 5.0,
+    goldMultiplier: 10.0,
+    prefix: '빛나는',
+  },
+  boss: {
+    name: '보스',
+    emoji: '👑',
+    chance: 0.05, // 5%
+    hpMultiplier: 3.0,
+    attackMultiplier: 2.0,
+    defenseMultiplier: 1.5,
+    xpMultiplier: 3.0,
+    goldMultiplier: 5.0,
+    prefix: '강력한',
+  },
+};
+
+// 레어 몹 체크
+function rollRareMonster() {
+  const roll = Math.random();
+
+  // 샤이니 체크 (1%)
+  if (roll < RARE_TYPES.shiny.chance) {
+    return 'shiny';
+  }
+
+  // 보스 체크 (5%)
+  if (roll < RARE_TYPES.shiny.chance + RARE_TYPES.boss.chance) {
+    return 'boss';
+  }
+
+  return null; // 일반 몬스터
+}
+
+// 레어 몬스터 생성
+function applyRareModifier(monster, rareType) {
+  if (!rareType || !RARE_TYPES[rareType]) {
+    return { ...monster, rareType: null };
+  }
+
+  const modifier = RARE_TYPES[rareType];
+
+  return {
+    ...monster,
+    name: `${modifier.prefix} ${monster.name}`,
+    displayName: `${modifier.emoji} ${modifier.prefix} ${monster.name}`,
+    hp: Math.floor(monster.hp * modifier.hpMultiplier),
+    attack: Math.floor(monster.attack * modifier.attackMultiplier),
+    defense: Math.floor(monster.defense * modifier.defenseMultiplier),
+    xpReward: Math.floor(monster.xpReward * modifier.xpMultiplier),
+    goldMin: Math.floor(monster.goldMin * modifier.goldMultiplier),
+    goldMax: Math.floor(monster.goldMax * modifier.goldMultiplier),
+    rareType,
+    rareEmoji: modifier.emoji,
+  };
+}
+
 module.exports = {
   MONSTERS,
   ZONES,
+  RARE_TYPES,
   randomInt,
   getZone,
   listZones,
   listZoneChoices,
   spawnMonster,
+  rollRareMonster,
+  applyRareModifier,
 };

@@ -6,9 +6,10 @@ const {
 } = require('discord.js');
 
 const { applyExperience, progressToNextLevel } = require('./leveling');
-const { MONSTERS, getZone, randomInt } = require('./monsters');
+const { MONSTERS, getZone, randomInt, rollRareMonster, applyRareModifier } = require('./monsters');
 const { getCombatSkill, getAvailableSkills, getSkillByKey, canUseSkill } = require('./skills');
 const { shouldDropEquipment, generateEquipment } = require('./equipment');
+const { calculateStreakBonus, updateWinStreak, resetWinStreak } = require('./streak');
 const {
   EMBED_COLORS,
   createDivider,
@@ -608,8 +609,20 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
   }
 
   if (monsterHp <= 0) {
-    const xpReward = session.monsterXpReward;
-    const goldReward = randomInt(session.monsterGoldMin, session.monsterGoldMax);
+    // 연승 업데이트
+    const streakResult = updateWinStreak(character);
+    const streakBonus = calculateStreakBonus(streakResult.newStreak);
+
+    // 연승 보너스 적용
+    let baseXpReward = session.monsterXpReward;
+    let baseGoldReward = randomInt(session.monsterGoldMin, session.monsterGoldMax);
+
+    const xpReward = Math.floor(
+      baseXpReward * (1 + streakBonus.xpBonus) + streakBonus.specialRewards.xp,
+    );
+    const goldReward = Math.floor(
+      baseGoldReward * (1 + streakBonus.goldBonus) + streakBonus.specialRewards.gold,
+    );
 
     // 전투 종료 화면에서 레벨업 수치를 즉시 보여주기 위해 XP를 바로 반영한다.
     const leveling = applyExperience(character, xpReward, playerHp, playerMana);
@@ -620,11 +633,18 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
 
     const characterUpdate = {
       ...leveling.characterUpdate,
+      ...streakResult.updates,
       mana: recoveredMana,
       gold: character.gold + goldReward,
     };
 
     battleLog.push(`🎁 경험치 +${xpReward}, 골드 +${goldReward}G 획득!`);
+
+    // 연승 메시지 추가
+    if (streakResult.messages.length > 0) {
+      battleLog.push('');
+      streakResult.messages.forEach((msg) => battleLog.push(msg));
+    }
 
     if (recoveredMana > leveling.characterUpdate.mana) {
       battleLog.push(`🔷 전투 후 마나 ${recoveredMana - leveling.characterUpdate.mana} 회복`);
@@ -698,6 +718,12 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
   if (playerHp <= 0) {
     battleLog.push('💀 쓰러졌습니다. 마을에서 회복됩니다.');
 
+    // 연승 리셋
+    const streakReset = resetWinStreak();
+    if (character.winStreak > 0) {
+      battleLog.push(`💔 ${character.winStreak}연승이 끊어졌습니다...`);
+    }
+
     return {
       status: 'defeat',
       battleLog,
@@ -709,6 +735,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
         turn: session.turn + 1,
       },
       characterUpdate: {
+        ...streakReset,
         hp: character.maxHp,
         mana: maxMana,
       },

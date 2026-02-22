@@ -31,6 +31,8 @@ model Character {
   attack        Int            @default(10)
   defense       Int            @default(5)
   gold          Int            @default(0)
+  winStreak     Int            @default(0)
+  maxWinStreak  Int            @default(0)
   combatSession CombatSession?
   equipment     Equipment[]
   createdAt     DateTime       @default(now())
