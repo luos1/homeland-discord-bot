@@ -3,11 +3,16 @@ const { NPC_SHOP_BUTTON_PREFIX } = require('../commands/npc_shop');
 const { SELL_RESOURCES_BUTTON_PREFIX } = require('../commands/sell_resources');
 const { GUILD_MODAL_PREFIX, isGuildModal, handleGuildModal } = require('../game/guild-modals');
 const { AUCTION_BUTTON_PREFIX } = require('../commands/auction');
+const { TRADE_MODAL_PREFIX, isTradeModal, handleTradeModal } = require('../game/trade-modals');
 
 async function handleModal(interaction, { prisma, client }) {
   // 거래소 모달
   if (isGuildModal(interaction.customId)) {
     return await handleGuildModal(interaction);
+  }
+
+  if (isTradeModal(interaction.customId)) {
+    return await handleTradeModal(interaction);
   }
 
   if (interaction.customId.startsWith(MARKET_BUTTON_PREFIX)) {

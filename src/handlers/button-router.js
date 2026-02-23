@@ -51,6 +51,7 @@ const {
 const { listZones } = require('../game/monsters');
 const { GUILD_BUTTON_PREFIX, isGuildButton, handleGuildButton } = require('../game/guild-buttons');
 const { EMBED_COLORS, createDivider, localizeClassName } = require('../utils/ui');
+const { TRADE_BUTTON_PREFIX, isTradeButton, handleTradeButton } = require('../game/trade-buttons');
 
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
 const MONSTER_SELECT_PREFIX = 'monster_select:';
@@ -84,6 +85,10 @@ async function handleButton(interaction, { prisma, client }) {
 
   if (isGuildButton(interaction.customId)) {
     return await handleGuildButton(interaction);
+  }
+
+  if (isTradeButton(interaction.customId)) {
+    return await handleTradeButton(interaction);
   }
 
   if (isCombatButton(interaction.customId)) {
