@@ -1195,9 +1195,36 @@ function resolveCombatTurn({
       );
     }
 
-    // 연승 메시지 추가
-    if (streakResult.messages.length > 0) {
+    // 🔥 연승 메시지 (강화된 시각 효과)
+    if (streakResult.newStreak >= 5) {
       battleLog.push('');
+      battleLog.push('━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      if (streakResult.newStreak >= 20) {
+        battleLog.push('💫💫💫 **20연승!!** 💫💫💫');
+        battleLog.push('🎯 COMBO x20! LEGENDARY!');
+      } else if (streakResult.newStreak >= 10) {
+        battleLog.push('🌟🌟 **10연승!!** 🌟🌟');
+        battleLog.push('🎯 COMBO x10! AMAZING!');
+      } else if (streakResult.newStreak >= 5) {
+        battleLog.push('🔥🔥 **5연승!!** 🔥🔥');
+        battleLog.push('🎯 COMBO x5! GREAT!');
+      }
+      
+      if (streakBonus.goldBonus >= 1.0) {
+        battleLog.push(`💰 골드 **${Math.round((streakBonus.goldBonus + 1) * 100)}%** 획득!`);
+      }
+      
+      if (streakBonus.xpBonus >= 1.0) {
+        battleLog.push(`⭐ 경험치 **${Math.round((streakBonus.xpBonus + 1) * 100)}%** 획득!`);
+      }
+      
+      battleLog.push('━━━━━━━━━━━━━━━━━━━━━━━━');
+      battleLog.push('');
+    }
+    
+    // 특별 보상 메시지
+    if (streakResult.messages.length > 0) {
       streakResult.messages.forEach((msg) => battleLog.push(msg));
     }
 

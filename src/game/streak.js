@@ -5,22 +5,22 @@ const STREAK_BONUSES = {
     name: '5연승',
     emoji: '🔥',
     xpBonus: 0.25, // 25%
-    goldBonus: 0.5, // 50%
+    goldBonus: 1.0, // 100% (2배!)
     attackBonus: 0.1, // 10%
-    message: '🔥 5연승 달성! 경험치 +25%, 골드 +50%, 공격력 +10%',
+    message: '🔥🔥 5연승 달성! 골드 **2배**, 경험치 +25%, 공격력 +10%',
   },
   10: {
     threshold: 10,
     name: '10연승',
     emoji: '🌟',
-    xpBonus: 0.5, // 50%
-    goldBonus: 1.0, // 100%
+    xpBonus: 1.0, // 100% (2배!)
+    goldBonus: 1.5, // 150% (추가 50%)
     attackBonus: 0.2, // 20%
     specialReward: {
       xp: 1000,
       gold: 500,
     },
-    message: '🌟🌟 10연승 달성! 경험치 +50%, 골드 +100%, 공격력 +20%',
+    message: '🌟🌟 10연승 달성! 경험치 **2배**, 골드 +150%, 공격력 +20%',
     specialMessage: '🎁 특별 보상: 경험치 +1000, 골드 +500G',
   },
   20: {
