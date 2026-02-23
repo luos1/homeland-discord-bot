@@ -706,7 +706,7 @@ function createResourceActionRow() {
         .setEmoji('📚')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
-        .setCustomId('sell_resources:open')
+        .setCustomId('sellres:open')
         .setLabel('서버 판매')
         .setEmoji('📦')
         .setStyle(ButtonStyle.Primary),

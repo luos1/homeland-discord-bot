@@ -338,6 +338,14 @@ module.exports = {
     const action = parts[0];
     const itemKey = parts[1];
 
+    if (action === 'open') {
+      await renderSellResourcesMenu(interaction, {
+        prisma,
+        mode: 'update',
+      });
+      return true;
+    }
+
     if (action === 'refresh') {
       await renderSellResourcesMenu(interaction, {
         prisma,
