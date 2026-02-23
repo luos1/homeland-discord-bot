@@ -41,6 +41,8 @@ const { CRAFT_BUTTON_PREFIX } = require('./commands/craft');
 const { PSKILL_BUTTON_PREFIX } = require('./commands/production_skills');
 const { MARKET_BUTTON_PREFIX } = require('./commands/market');
 const { RANKING_COMPONENT_PREFIX } = require('./commands/ranking');
+const { handleVillageButton } = require('./commands/village');
+const { buildVillageHomeCustomId, isVillageButton } = require('./utils/village');
 const {
   startSessionCleanupJob,
   DEFAULT_CLEANUP_INTERVAL_MS,
@@ -211,6 +213,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
+      if (isVillageButton(interaction.customId)) {
+        const handled = await handleVillageButton(interaction, { prisma, client });
+
+        if (handled) {
+          return;
+        }
+      }
+
       // 캐릭터 삭제 확인 버튼
       if (interaction.customId === 'confirm_delete_character' || interaction.customId === 'cancel_delete_character') {
         const deleteCommand = client.commands.get('delete_character');
@@ -782,6 +792,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         buttons.push(
+          new ButtonBuilder()
+            .setCustomId(buildVillageHomeCustomId())
+            .setLabel('마을')
+            .setEmoji('🏘️')
+            .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId('production_menu_back')
             .setLabel('프로필')

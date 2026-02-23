@@ -1,4 +1,7 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const {
+  EmbedBuilder,
+  SlashCommandBuilder,
+} = require('discord.js');
 
 const {
   QUEST_TYPE_META,
@@ -7,6 +10,7 @@ const {
   getDailyQuestStatus,
 } = require('../game/daily-quests');
 const { EMBED_COLORS, createDivider, createXPBar, formatNumber } = require('../utils/ui');
+const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
 
 function formatResetCountdown(totalSeconds) {
   const safeSeconds = Math.max(0, totalSeconds);
@@ -96,6 +100,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
+      components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.daily })],
       ephemeral: true,
     });
   },

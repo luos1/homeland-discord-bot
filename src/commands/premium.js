@@ -1,6 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 const { EMBED_COLORS, createDivider, formatNumber } = require('../utils/ui');
+const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
 const {
   PREMIUM_PLAN,
   PREMIUM_PLAN_ID,
@@ -121,6 +122,7 @@ module.exports = {
             now,
           }),
         ],
+        components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.premium })],
         ephemeral: true,
       });
       return;
@@ -175,6 +177,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
+        components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.premium })],
       });
 
       return;
@@ -200,6 +203,7 @@ module.exports = {
 
       await interaction.reply({
         content: 'Premium Pass를 해지했습니다. 해지 시각부터 혜택이 중단됩니다.',
+        components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.premium })],
         ephemeral: true,
       });
       return;
@@ -230,6 +234,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
+        components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.premium })],
         ephemeral: true,
       });
     }

@@ -10,6 +10,7 @@ const {
   sendOnboardingFeedback,
 } = require('../game/onboarding');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
 
 const STEP_STATUS_LABELS = {
   completed: '✅ 완료',
@@ -137,6 +138,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [createTutorialEmbed(snapshot)],
+      components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.combat })],
       ephemeral: true,
     });
 

@@ -75,5 +75,9 @@ describe('profile/create command', () => {
     expect(payload.embeds).toHaveLength(1);
     expect(payload.components).toHaveLength(2);
     expect(payload.embeds[0].data.title).toContain(character.name);
+
+    const row2 = payload.components[1];
+    const buttonIds = row2.components.map((button) => button.data.custom_id);
+    expect(buttonIds).toContain('village:home');
   });
 });

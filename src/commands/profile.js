@@ -14,6 +14,7 @@ const { calculateEquipmentStats } = require('../game/equipment');
 const { getStreakDisplay } = require('../game/streak');
 const { cleanupOldSessions } = require('../game/session-cleanup');
 const { resolvePremiumBenefits } = require('../game/premium');
+const { buildVillageHomeCustomId } = require('../utils/village');
 const {
   EMBED_COLORS,
   createDivider,
@@ -152,7 +153,7 @@ function createProfileEmbed(character) {
           : `🎯 다음 레벨까지 ${progress.remaining} 남음`,
         '',
         `🎮 현재 상태: ${combatStatus}`,
-      ].filter(v => v != null).join('\n'),
+      ].filter((v) => v !== null && v !== undefined).join('\n'),
     )
     .setFooter({
       text: jobCheck.allowed ? '전직 가능! /jobchange 명령어를 사용하세요' : '버튼으로 탐험/새로고침을 진행하세요',
@@ -203,6 +204,12 @@ function createProfileActionRow(options = {}) {
       .setLabel('새로고침')
       .setEmoji('📈')
       .setStyle(ButtonStyle.Secondary)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId(buildVillageHomeCustomId())
+      .setLabel('마을')
+      .setEmoji('🏘️')
+      .setStyle(ButtonStyle.Success)
       .setDisabled(disabled),
   ];
 

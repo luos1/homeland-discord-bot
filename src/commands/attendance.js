@@ -14,6 +14,7 @@ const {
   createDivider,
   formatNumber,
 } = require('../utils/ui');
+const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
 const { resolvePremiumBenefits } = require('../game/premium');
 
 function createRewardLines({ rewardPlan, grantedEquipment, premiumDailyGems = 0 }) {
@@ -290,6 +291,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
+      components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.daily })],
     });
   },
 

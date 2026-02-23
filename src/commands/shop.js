@@ -20,6 +20,7 @@ const {
   handleOnboardingEvent,
   sendOnboardingFeedback,
 } = require('../game/onboarding');
+const { buildVillageHomeCustomId } = require('../utils/village');
 
 const SHOP_BUTTON_PREFIX = 'shop:';
 const SHOP_ACTIONS = {
@@ -133,6 +134,11 @@ function createShopMainActionRow(character) {
   }
 
   row2Buttons.push(
+    new ButtonBuilder()
+      .setCustomId(buildVillageHomeCustomId())
+      .setLabel('마을')
+      .setEmoji('🏘️')
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('back_to_profile')
       .setLabel('나가기')

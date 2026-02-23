@@ -1,6 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 const { EMBED_COLORS, createDivider, formatNumber } = require('../utils/ui');
+const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
 const { getStripePremiumReadiness } = require('../game/premium');
 const {
   GEM_EXCHANGE_FEE_RATE,
@@ -110,6 +111,7 @@ module.exports = {
     if (subcommand === 'status') {
       await interaction.reply({
         embeds: [createGemStatusEmbed({ character, marketSnapshot })],
+        components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.premium })],
         ephemeral: true,
       });
       return;
@@ -162,6 +164,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
+        components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.premium })],
       });
       return;
     }
@@ -266,6 +269,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
+        components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.premium })],
       });
     }
   },

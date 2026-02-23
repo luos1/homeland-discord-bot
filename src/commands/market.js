@@ -15,6 +15,7 @@ const { EQUIPMENT_TYPES, RARITIES } = require('../game/equipment');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('../game/daily-quests');
 const { logTradePricePoint } = require('../game/economy-monitor');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { buildVillageHomeCustomId } = require('../utils/village');
 const {
   handleOnboardingEvent,
   maybeSendGuideTip,
@@ -339,6 +340,11 @@ function createMarketMainActionRow() {
       .setLabel('내 주문')
       .setEmoji('📊')
       .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(buildVillageHomeCustomId())
+      .setLabel('마을')
+      .setEmoji('🏘️')
+      .setStyle(ButtonStyle.Secondary),
   );
 }
 

@@ -8,6 +8,7 @@ const {
 } = require('discord.js');
 
 const { EMBED_COLORS, createDivider, formatNumber } = require('../utils/ui');
+const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
 
 const RANKING_COMPONENT_PREFIX = 'ranking:';
 const RANKING_CACHE_TTL_MS = 60 * 1000;
@@ -202,7 +203,11 @@ function createRankingComponents({ categoryKey, periodKey }) {
 
   const periodRow = new ActionRowBuilder().addComponents(...periodButtons, refreshButton);
 
-  return [categoryRow, periodRow];
+  return [
+    categoryRow,
+    periodRow,
+    createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.ranking }),
+  ];
 }
 
 async function fetchSnapshotRanking(prisma, category, periodKey) {

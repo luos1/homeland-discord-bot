@@ -12,6 +12,7 @@ const {
   PRODUCTION_CLASSES,
 } = require('../game/production-classes');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
 const { maybeSendGuideTip } = require('../game/onboarding');
 
 const PRODUCTION_BUTTON_PREFIX = 'production:';
@@ -155,7 +156,12 @@ module.exports = {
     }
 
     const embed = createProductionMainEmbed(character);
-    const components = character.productionClass ? [] : [createCategorySelectActionRow()];
+    const components = character.productionClass
+      ? [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.production })]
+      : [
+          createCategorySelectActionRow(),
+          createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.production }),
+        ];
 
     await interaction.reply({
       embeds: [embed],
@@ -199,7 +205,10 @@ module.exports = {
 
       await interaction.update({
         embeds: [createClassSelectEmbed(category)],
-        components: [createClassSelectActionRow(category)],
+        components: [
+          createClassSelectActionRow(category),
+          createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.production }),
+        ],
       });
 
       return true;
@@ -209,7 +218,10 @@ module.exports = {
     if (action === 'back') {
       await interaction.update({
         embeds: [createProductionMainEmbed(character)],
-        components: [createCategorySelectActionRow()],
+        components: [
+          createCategorySelectActionRow(),
+          createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.production }),
+        ],
       });
 
       return true;
@@ -272,7 +284,7 @@ module.exports = {
               ].join('\n'),
             ),
         ],
-        components: [],
+        components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.production })],
       });
 
       return true;
