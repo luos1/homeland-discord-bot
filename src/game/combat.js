@@ -865,11 +865,13 @@ function resolveCombatTurn({
 
     if (enemyFirstStrike.isCritical) {
       battleLog.push('');
-      battleLog.push('💥 치명타! 💥');
+      battleLog.push('━━━━━━━━━━━━━━━━');
+      battleLog.push('💀💀 **몬스터 치명타!!** 💀💀');
+      battleLog.push('━━━━━━━━━━━━━━━━');
       battleLog.push('');
     }
 
-    battleLog.push(`💔 ${enemyFirstStrike.damage} 데미지를 받았습니다!`);
+    battleLog.push(`💔 **${enemyFirstStrike.damage}** 데미지를 받았습니다!`);
 
     if (playerHp <= 0) {
       battleLog.push('');
@@ -973,19 +975,30 @@ function resolveCombatTurn({
         monsterHp = Math.max(monsterHp - finalDamage, 0);
         battleLog.push(skillEffect.message);
 
+        // 💥 크리티컬 시각 효과 (강화)
+        if (skillEffect.critical) {
+          battleLog.push('');
+          battleLog.push('━━━━━━━━━━━━━━━━━━━━');
+          battleLog.push('💥💥💥 **CRITICAL HIT!!** 💥💥💥');
+          battleLog.push('━━━━━━━━━━━━━━━━━━━━');
+          battleLog.push('');
+        }
+
         // 🎯 콤보 시각 효과
         if (combo) {
           battleLog.push('');
           battleLog.push(getComboVisual(combo));
-          battleLog.push(`💥 **${finalDamage}** 콤보 데미지!`);
+          if (skillEffect.critical) {
+            battleLog.push(`💥💥 **크리티컬 콤보 ${finalDamage}** 💥💥`);
+          } else {
+            battleLog.push(`💥 **${finalDamage}** 콤보 데미지!`);
+          }
         } else {
-          battleLog.push(`💔 ${session.monsterName}에게 ${finalDamage} 데미지!`);
-        }
-
-        if (skillEffect.critical) {
-          battleLog.push('');
-          battleLog.push('✨✨✨ 완벽한 일격! ✨✨✨');
-          battleLog.push('');
+          if (skillEffect.critical) {
+            battleLog.push(`💥💥 **${finalDamage}** 크리티컬 데미지! 💥💥`);
+          } else {
+            battleLog.push(`💔 ${session.monsterName}에게 ${finalDamage} 데미지!`);
+          }
         }
 
         if (monsterHp <= 0) {
@@ -1319,15 +1332,19 @@ function resolveCombatTurn({
   battleLog.push(`👹 ${session.monsterName}의 반격!`);
   
   if (enemyStrike.isCritical) {
-    battleLog.push('💥 적의 크리티컬 공격!');
+    battleLog.push('');
+    battleLog.push('━━━━━━━━━━━━━━━━');
+    battleLog.push('💀💀 **적의 치명타!!** 💀💀');
     battleLog.push('⚠️ CRITICAL DAMAGE ⚠️');
+    battleLog.push('━━━━━━━━━━━━━━━━');
+    battleLog.push('');
   }
 
   if (playerDefending) {
     battleLog.push('🛡️ 방어로 피해 감소!');
   }
 
-  battleLog.push(`💔 ${enemyDamage} 데미지를 받았습니다.`);
+  battleLog.push(`💔 **${enemyDamage}** 데미지를 받았습니다.`);
   
   if (playerHp > 0 && playerHp <= character.maxHp * 0.3) {
     battleLog.push('⚠️ 위험! 체력이 낮습니다!');
