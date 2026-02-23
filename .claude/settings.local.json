@@ -3,7 +3,11 @@
     "allow": [
       "Bash(node --check:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(test:*)"
     ]
   }
 }

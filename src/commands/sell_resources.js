@@ -15,22 +15,10 @@ const { getResourceDynamicPrice } = require('../game/dynamic-pricing');
 const { EMBED_COLORS, createDivider, formatNumber } = require('../utils/ui');
 const { createVillageHomeButton } = require('../utils/village');
 const { executeNpcResourceSale } = require('./npc_shop');
+const { formatGold, parsePositiveInteger } = require('../utils/formatting');
+const { MAX_SELECT_OPTIONS } = require('../config/discord-constants');
 
 const SELL_RESOURCES_BUTTON_PREFIX = 'sellres:';
-const MAX_SELECT_OPTIONS = 25;
-
-function parsePositiveInteger(rawValue) {
-  const parsed = Number.parseInt(rawValue, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return parsed;
-}
-
-function formatGold(value) {
-  return `${formatNumber(Math.max(0, Number(value) || 0))}G`;
-}
 
 function getSortedResourceRows(resourceEntries) {
   return (Array.isArray(resourceEntries) ? resourceEntries : [])

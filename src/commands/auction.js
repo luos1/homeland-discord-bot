@@ -29,13 +29,10 @@ const {
   finalizeAuction,
   getAuctionRemainingMs,
 } = require('../game/auction-house');
+const { formatGold, parsePositiveInteger } = require('../utils/formatting');
+const { MAX_SELECT_OPTIONS } = require('../config/discord-constants');
 
 const AUCTION_BUTTON_PREFIX = 'auction:';
-const MAX_SELECT_OPTIONS = 25;
-
-function formatGold(value) {
-  return `${formatNumber(Math.max(0, Number(value) || 0))}G`;
-}
 
 function truncateText(text, maxLength = 100) {
   if (!text || text.length <= maxLength) {
@@ -43,15 +40,6 @@ function truncateText(text, maxLength = 100) {
   }
 
   return `${text.slice(0, maxLength - 3)}...`;
-}
-
-function parsePositiveInteger(rawValue) {
-  const parsed = Number.parseInt(rawValue, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return parsed;
 }
 
 function formatRemainingTime(expiresAt, now = new Date()) {

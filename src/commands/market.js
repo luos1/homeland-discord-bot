@@ -32,12 +32,13 @@ const {
   resolveFeeRate,
 } = require('../game/fee-config');
 const { getResourcePriceRecommendation } = require('../game/price-recommendation');
+const { formatGold, parsePositiveInteger, truncateLabel } = require('../utils/formatting');
+const { MAX_SELECT_OPTIONS } = require('../config/discord-constants');
 
 const MARKET_BUTTON_PREFIX = 'market:';
 const MAX_PRICE_PER_UNIT = 100000;
 const ORDERBOOK_DEPTH = 5;
 const RECENT_TRADE_LIMIT = 5;
-const MAX_SELECT_OPTIONS = 25;
 const EQUIPMENT_MAX_PRICE = 100000000;
 const DEFAULT_MARKET_FEE_RATE = FEE_DEFAULTS[FEE_CONFIG_KEYS.market].currentRate;
 const EQUIPMENT_RARITY_FILTERS = {
@@ -74,10 +75,6 @@ function getResourceInfo(itemKey) {
   };
 }
 
-function formatGold(value) {
-  return `${value.toLocaleString('ko-KR')}G`;
-}
-
 async function getMarketFeeRate(prisma, now = new Date()) {
   try {
     return await resolveFeeRate(prisma, FEE_CONFIG_KEYS.market, { now });
@@ -85,14 +82,6 @@ async function getMarketFeeRate(prisma, now = new Date()) {
     console.error('시장 수수료 조회 실패, 기본값 사용:', error);
     return DEFAULT_MARKET_FEE_RATE;
   }
-}
-
-function truncateLabel(text, maxLength = 100) {
-  if (!text || text.length <= maxLength) {
-    return text;
-  }
-
-  return `${text.slice(0, maxLength - 3)}...`;
 }
 
 function normalizeEquipmentCategory(type) {
@@ -656,16 +645,6 @@ function createMyOrdersActionRows(orders) {
   );
 
   return rows;
-}
-
-function parsePositiveInteger(rawValue) {
-  const parsed = Number.parseInt(rawValue, 10);
-
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return parsed;
 }
 
 async function getSafePriceRecommendation(prisma, itemKey) {
