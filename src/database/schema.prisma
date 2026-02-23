@@ -339,16 +339,16 @@ model TradeHistory {
 }
 
 model PremiumSubscription {
-  userId     String    @id
-  character  Character @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  planId     String
-  startDate  DateTime
-  endDate    DateTime
+  userId         String    @id
+  character      Character @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  planId         String
+  startDate      DateTime
+  endDate        DateTime
   autoFight      Boolean   @default(false)
   autoPotion     Boolean   @default(false)
   autoConsumable Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([planId])
   @@index([endDate])
