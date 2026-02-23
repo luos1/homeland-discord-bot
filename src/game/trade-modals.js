@@ -7,7 +7,7 @@ const { TradingSystem } = require('./trading-system');
 const TRADE_MODAL_PREFIX = 'trade_';
 
 function isTradeModal(customId) {
-  return customId.startsWith(TRADE_MODAL_PREFIX) && customId.includes('modal');
+  return customId.startsWith(TRADE_MODAL_PREFIX) && customId.includes('_modal');
 }
 
 async function handleTradeModal(interaction) {
@@ -22,11 +22,11 @@ async function handleTradeModal(interaction) {
 
 async function handleSetGoldModal(interaction) {
   const userId = interaction.user.id;
-  const goldStr = interaction.fields.getTextInputValue('gold_amount');
-  const gold = parseInt(goldStr);
+  const goldInput = interaction.fields.getTextInputValue('gold_amount');
+  const gold = parseInt(goldInput);
 
   if (isNaN(gold) || gold < 0) {
-    return interaction.reply({ content: '❌ 올바른 골드 수량을 입력하세요.', ephemeral: true });
+    return interaction.reply({ content: '❌ 올바른 골드 값을 입력해주세요.', ephemeral: true });
   }
 
   const userTrade = TradingSystem.getUserTrade(userId);
@@ -41,7 +41,7 @@ async function handleSetGoldModal(interaction) {
     return interaction.reply({ content: `❌ ${result.error}`, ephemeral: true });
   }
 
-  await interaction.reply({ content: `✅ 골드를 ${gold.toLocaleString()}로 설정했습니다!`, ephemeral: true });
+  await interaction.reply({ content: `✅ 골드가 ${gold.toLocaleString()}으로 설정되었습니다!`, ephemeral: true });
 }
 
 module.exports = {

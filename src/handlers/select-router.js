@@ -4,13 +4,15 @@ const { SELL_RESOURCES_BUTTON_PREFIX } = require('../commands/sell_resources');
 const { AUCTION_BUTTON_PREFIX } = require('../commands/auction');
 const { RANKING_COMPONENT_PREFIX } = require('../commands/ranking');
 
-const { TRADE_SELECT_PREFIX, isTradeSelect, handleTradeSelect } = require('../game/trade-selects');
+const { TRADE_SELECT_PREFIX, isTradeSelect, handleTradeSelect } = require('../game/trade-select');
+
 async function handleSelectMenu(interaction, { prisma, client }) {
-  // 랭킹 셀렉트
   // Trade Select
   if (isTradeSelect(interaction.customId)) {
     return await handleTradeSelect(interaction);
   }
+
+  // 랭킹 셀렉트
 
   if (interaction.customId.startsWith(RANKING_COMPONENT_PREFIX)) {
     const rankingCommand = client.commands.get('ranking');
