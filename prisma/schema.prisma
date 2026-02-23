@@ -683,3 +683,38 @@ model RandomNpcSpawn {
   @@index([isActive])
   @@index([expiresAt])
 }
+
+// 파티 시스템
+model Party {
+  id          Int       @id @default(autoincrement())
+  
+  leaderId    String    // 파티장 Discord ID
+  name        String?   // 파티 이름 (선택)
+  maxSize     Int       @default(4) // 최대 인원 (기본 4명)
+  
+  isActive    Boolean   @default(true)
+  
+  members     PartyMember[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([leaderId])
+  @@index([isActive])
+}
+
+model PartyMember {
+  id          Int       @id @default(autoincrement())
+  
+  partyId     Int
+  party       Party     @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  
+  userId      String    // Discord ID
+  characterId Int       // Character ID
+  
+  joinedAt    DateTime  @default(now())
+  
+  @@unique([partyId, userId])
+  @@index([userId])
+  @@index([characterId])
+}
