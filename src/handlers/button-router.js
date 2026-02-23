@@ -44,6 +44,7 @@ const {
 const { handleEnhanceButton } = require('../commands/enhance');
 const { handleDailyButton } = require('../commands/daily');
 const { leaveQueue } = require('../game/pvp-system');
+const { handleSubscribeButton } = require('../commands/subscribe');
 const { handleVillageButton } = require('../commands/village');
 const { buildVillageHomeCustomId, isVillageButton } = require('../utils/village');
 const {
@@ -112,6 +113,12 @@ async function handleButton(interaction, { prisma, client }) {
     leaveQueue(interaction.user.id);
     await interaction.update({ content: '✅ PvP 매칭이 취소되었습니다.', embeds: [], components: [] });
     return;
+  }
+
+  // 구독 버튼
+  if (interaction.customId.startsWith('subscribe_')) {
+    const handled = await handleSubscribeButton(interaction, { prisma });
+    if (handled) return;
   }
 
   // 필드 보스 참여 버튼
