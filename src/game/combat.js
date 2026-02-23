@@ -40,6 +40,7 @@ const COMBAT_ACTIONS = {
   skill: 'skill',
   flee: 'flee',
   reset: 'reset',
+  auto: 'auto',
 };
 const COMBAT_ACTION_VALUE_SET = new Set(Object.values(COMBAT_ACTIONS));
 
@@ -328,10 +329,16 @@ function createCombatActionRows(sessionId, options = {}) {
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
     new ButtonBuilder()
+      .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.auto, sessionId))
+      .setLabel('오토')
+      .setEmoji('⚡')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(disabled),
+    new ButtonBuilder()
       .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.potion, sessionId))
       .setLabel('포션')
       .setEmoji('💊')
-      .setStyle(ButtonStyle.Success)
+      .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
     new ButtonBuilder()
       .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.flee, sessionId))
@@ -1052,6 +1059,34 @@ function resolveCombatTurn({
         battleLog.push('❌ 전투 중에는 이 포션을 사용할 수 없습니다.');
       }
     }
+  }
+
+  if (action === COMBAT_ACTIONS.auto) {
+    // 오토 배틀: AI가 최적 행동 자동 선택
+    battleLog.push('⚡ 오토 모드!');
+    
+    // 간단한 AI 로직: 스킬 > 공격
+    const hasSkill = character.skills && character.skills.length > 0;
+    const hasMana = playerMana >= 10;
+    
+    if (hasSkill && hasMana) {
+      // 스킬 사용
+      const skills = character.skills.filter(s => s.manaCost <= playerMana);
+      if (skills.length > 0) {
+        const randomSkill = skills[Math.floor(Math.random() * skills.length)];
+        action = COMBAT_ACTIONS.skill;
+        skillKey = randomSkill.skillKey;
+        battleLog.push(`🤖 AI: ${randomSkill.name} 사용!`);
+      } else {
+        action = COMBAT_ACTIONS.attack;
+        battleLog.push('🤖 AI: 일반 공격!');
+      }
+    } else {
+      action = COMBAT_ACTIONS.attack;
+      battleLog.push('🤖 AI: 일반 공격!');
+    }
+    
+    // 계속 진행 (아래 로직으로 폴스루)
   }
 
   if (action === COMBAT_ACTIONS.reset) {
