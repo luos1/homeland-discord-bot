@@ -1055,3 +1055,16 @@ model GuildWarContribution {
   @@index([participantId])
   @@index([characterId])
 }
+
+model ServerEvent {
+  id         Int      @id @default(autoincrement())
+  type       String   // xp_boost, gold_boost, drop_boost, all_boost
+  name       String
+  multiplier Float
+  startTime  DateTime
+  endTime    DateTime
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([active, endTime])
+}
