@@ -1,0 +1,123 @@
+.combat-log {
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  padding: 15px;
+  margin: 20px 0;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.log-header {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #FFD700;
+  text-align: center;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 8px;
+}
+
+.log-content {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 5px;
+}
+
+.log-content.empty {
+  text-align: center;
+  color: #aaa;
+  font-style: italic;
+}
+
+.log-entry {
+  padding: 8px 12px;
+  margin: 5px 0;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: slideIn 0.3s ease-out;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 타입별 색상 */
+.log-entry.red {
+  background: rgba(255, 59, 48, 0.3);
+  border-left: 4px solid #FF3B30;
+  color: #FFB3B3;
+}
+
+.log-entry.orange {
+  background: rgba(255, 149, 0, 0.3);
+  border-left: 4px solid #FF9500;
+  color: #FFD699;
+}
+
+.log-entry.yellow {
+  background: rgba(255, 204, 0, 0.3);
+  border-left: 4px solid #FFCC00;
+  color: #FFEB99;
+}
+
+.log-entry.green {
+  background: rgba(52, 199, 89, 0.3);
+  border-left: 4px solid #34C759;
+  color: #B3F0C4;
+}
+
+.log-entry.cyan {
+  background: rgba(90, 200, 250, 0.3);
+  border-left: 4px solid #5AC8FA;
+  color: #C4EAFF;
+}
+
+.log-entry.gold {
+  background: rgba(255, 215, 0, 0.5);
+  border-left: 4px solid #FFD700;
+  color: #FFF;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.log-text {
+  flex: 1;
+}
+
+.log-damage {
+  font-weight: bold;
+  color: #FF3B30;
+  margin-left: 10px;
+  font-size: 1.1em;
+}
+
+/* 스크롤바 스타일 */
+.log-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.log-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.log-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.log-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}

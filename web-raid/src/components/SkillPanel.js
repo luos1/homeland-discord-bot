@@ -20,24 +20,16 @@ function SkillPanel({ character, actionMode, onActionSelect, onSkillSelect }) {
       </div>
 
       <div className="action-buttons">
-        <h4>행동 선택:</h4>
-        <button 
-          className={`action-btn ${actionMode === 'move' ? 'active' : ''}`}
-          onClick={() => onActionSelect('move')}
-        >
-          🚶 이동
-        </button>
-        <button 
-          className={`action-btn ${actionMode === 'attack' ? 'active' : ''}`}
-          onClick={() => onActionSelect('attack')}
-        >
-          ⚔️ 공격
-        </button>
+        <h4>행동:</h4>
+        <div className="auto-hint">
+          💡 타일 클릭 시 자동 판단:
+          <br />• 빈 칸 → 이동 | 보스 → 공격
+        </div>
         <button 
           className={`action-btn ${actionMode === 'skill' ? 'active' : ''}`}
           onClick={() => onActionSelect('skill')}
         >
-          🛡️ 스킬
+          🛡️ 스킬 사용
         </button>
       </div>
 
@@ -46,6 +38,7 @@ function SkillPanel({ character, actionMode, onActionSelect, onSkillSelect }) {
           <h4>스킬 선택:</h4>
           {character.skills.map(skill => {
             const canUse = skill.cooldown === 0 && character.mp >= skill.cost;
+            const isSelfBuff = ['taunt', 'defend'].includes(skill.id);
             
             return (
               <button
@@ -56,7 +49,10 @@ function SkillPanel({ character, actionMode, onActionSelect, onSkillSelect }) {
               >
                 <span className="skill-icon">{skill.icon}</span>
                 <div className="skill-info">
-                  <span className="skill-name">{skill.name}</span>
+                  <span className="skill-name">
+                    {skill.name}
+                    {isSelfBuff && ' (자신)'}
+                  </span>
                   {skill.cooldown > 0 ? (
                     <span className="skill-cooldown">쿨타임 {skill.cooldown}턴</span>
                   ) : character.mp < skill.cost ? (
@@ -72,9 +68,7 @@ function SkillPanel({ character, actionMode, onActionSelect, onSkillSelect }) {
       )}
 
       <div className="controls-hint">
-        {!actionMode && '💡 행동을 선택한 후 채스판의 타일을 클릭하세요'}
-        {actionMode === 'move' && '📍 이동할 타일을 클릭하세요'}
-        {actionMode === 'attack' && '⚔️ 보스를 클릭하세요'}
+        {!actionMode && '💡 타일을 클릭하세요 (빈 칸=이동, 보스=공격)'}
         {actionMode === 'skill' && '🎯 스킬을 선택한 후 대상을 클릭하세요'}
       </div>
     </div>

@@ -11,13 +11,21 @@ function PartyStatus({ party, commandQueue, selectedCharacter, onSelectCharacter
     return labels[role] || role;
   };
 
-  const getRoleEmoji = (role) => {
-    const emojis = {
-      tank: '🛡️',
-      healer: '💚',
-      dps: '⚔️'
+  const getClassEmoji = (character) => {
+    // Homeland 직업 아이콘 (전투 + 생산)
+    const classEmojis = {
+      // 전투 직업
+      'Warrior': '⚔️',      // 전사
+      'Ranger': '🏹',       // 레인저
+      'Mage': '🔮',         // 마법사
+      
+      // 생산 직업
+      'Gatherer': '🌾',     // 채집가
+      'Blacksmith': '⚒️',   // 대장장이
+      'Alchemist': '🧪'     // 연금술사
     };
-    return emojis[role] || '👤';
+    
+    return classEmojis[character.class] || '👤';
   };
 
   const getSkillStatus = (character) => {
@@ -27,7 +35,7 @@ function PartyStatus({ party, commandQueue, selectedCharacter, onSelectCharacter
 
   return (
     <div className="party-status">
-      <h3>전체 공대원 상태 (8명)</h3>
+      <h3>전체 공대원 상태 ({party.length}명)</h3>
       <div className="party-list">
         {party.map((character, index) => {
           const isSelected = selectedCharacter && selectedCharacter.id === character.id;
@@ -42,9 +50,9 @@ function PartyStatus({ party, commandQueue, selectedCharacter, onSelectCharacter
               onClick={() => onSelectCharacter(character)}
             >
               <div className="character-header">
-                <span className="role-emoji">{getRoleEmoji(character.role)}</span>
+                <span className="role-emoji">{getClassEmoji(character)}</span>
                 <span className="character-name">
-                  {getRoleLabel(character.role)}{index + 1}
+                  {character.name}
                 </span>
                 <span className="command-status">{hasCommand ? '✅' : '⏸️'}</span>
                 <span className="skill-ready">{getSkillStatus(character)}</span>
