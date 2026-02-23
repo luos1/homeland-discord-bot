@@ -15,6 +15,7 @@ const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests
 const { resolvePremiumBenefits } = require('./premium');
 const { calculateCombatGoldReward, applyCombatEconomyAdjustments } = require('./economy');
 const { recordSkillUse, checkCombo, clearCombo, calculateComboDamage, getComboVisual } = require('./skill-combo');
+const { createLevelUpMessage, createMultiLevelUpMessage } = require('./levelup-effects');
 const {
   handleOnboardingEvent,
   sendOnboardingFeedback,
@@ -1268,9 +1269,32 @@ function resolveCombatTurn({
     }
 
     if (leveling.levelsGained > 0) {
-      battleLog.push(
-        `📈 레벨 업! +${leveling.levelsGained}레벨 달성 (현재 Lv.${characterUpdate.level})`,
-      );
+      // 🎉 강화된 레벨업 연출
+      const levelUpData = {
+        oldLevel: character.level,
+        newLevel: characterUpdate.level,
+        levelsGained: leveling.levelsGained,
+        statGains: {
+          hp: leveling.characterUpdate.maxHp - character.maxHp,
+          mp: leveling.characterUpdate.maxMana - (character.maxMana || 0),
+          attack: leveling.characterUpdate.attack - character.attack,
+          defense: leveling.characterUpdate.defense - character.defense,
+          oldHp: character.maxHp,
+          oldMp: character.maxMana || 0,
+          oldAttack: character.attack,
+          oldDefense: character.defense,
+          newHp: leveling.characterUpdate.maxHp,
+          newMp: leveling.characterUpdate.maxMana,
+          newAttack: leveling.characterUpdate.attack,
+          newDefense: leveling.characterUpdate.defense
+        }
+      };
+      
+      if (leveling.levelsGained >= 2) {
+        battleLog.push(createMultiLevelUpMessage(levelUpData));
+      } else {
+        battleLog.push(createLevelUpMessage(levelUpData));
+      }
     }
 
     const monsterData = getMonsterBySessionName(session.monsterName);
