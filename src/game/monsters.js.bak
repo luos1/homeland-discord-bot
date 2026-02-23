@@ -251,43 +251,6 @@ const MONSTERS = {
         description: '체력 25% 이하에서 공격력이 폭증합니다.',
       },
     ],
-
-  // 숨겨진 던전 보스
-  ancientGuardian: {
-    name: '🗿 고대의 수호자',
-    level: 15,
-    hp: 800,
-    attack: 35,
-    defense: 20,
-    xpReward: 400,
-    goldMin: 500,
-    goldMax: 1000,
-    isBoss: true,
-    bossType: 'hidden',
-    guaranteedDrop: {
-      rarity: 'legendary',
-      chance: 1.0,
-    },
-    description: '오랜 세월 비밀 통로를 지키고 있던 고대의 전사. 던전 10층 클리어 후 1% 확률로 등장.',
-    skillPatterns: [
-      {
-        name: '고대의 분노',
-        trigger: 'every_3_turns',
-        value: 3,
-        effect: 'flat_damage',
-        amount: 60,
-        description: '3턴마다 강력한 일격을 가합니다.',
-      },
-      {
-        name: '수호자의 힘',
-        trigger: 'hp_below',
-        value: 50,
-        effect: 'attack_multiplier',
-        amount: 1.5,
-        description: '체력 50% 이하에서 공격력이 1.5배 증가합니다.',
-      },
-    ],
-  },
   },
 };
 

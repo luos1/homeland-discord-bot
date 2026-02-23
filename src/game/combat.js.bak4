@@ -1698,45 +1698,6 @@ async function handleCombatButton({ interaction, prisma }) {
       console.error('Daily quest progress update failed (kill monster):', error);
     }
 
-
-      // 숨겨진 던전 발견 시 별도 메시지
-      if (outcome.meta?.hiddenDungeonDiscovered) {
-        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-        const hiddenEmbed = new EmbedBuilder()
-          .setTitle('🚪 비밀 통로 발견!')
-          .setDescription(
-            '보스를 처치한 후, 벽 뒤에서 이상한 소리가 들립니다...\n\n' +
-            '**오랜 세월 잠들어 있던 고대의 비밀이 드러났습니다!**\n\n' +
-            '⚠️ 경고: 숨겨진 보스는 매우 강력합니다.\n' +
-            '💎 보상: 전설 등급 장비 확정!'
-          )
-          .setColor(0xfbbf24)
-          .setTimestamp();
-        
-        const exploreButton = new ButtonBuilder()
-          .setCustomId(`hidden_dungeon:explore:${session.characterId}`)
-          .setLabel('조사하기')
-          .setEmoji('🔍')
-          .setStyle(ButtonStyle.Danger);
-        
-        const ignoreButton = new ButtonBuilder()
-          .setCustomId(`hidden_dungeon:ignore:${session.characterId}`)
-          .setLabel('무시하기')
-          .setEmoji('🏃')
-          .setStyle(ButtonStyle.Secondary);
-        
-        const row = new ActionRowBuilder().addComponents(exploreButton, ignoreButton);
-        
-        try {
-          await interaction.followUp({
-            embeds: [hiddenEmbed],
-            components: [row],
-            ephemeral: true,
-          });
-        } catch (error) {
-          console.error('숨겨진 던전 메시지 전송 실패:', error);
-        }
-      }
     const onboardingFeedback = await handleOnboardingEvent({
       prisma,
       user: interaction.user,
