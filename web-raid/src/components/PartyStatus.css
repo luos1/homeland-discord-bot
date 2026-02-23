@@ -1,0 +1,127 @@
+.party-status {
+  background: #16213e;
+  padding: 1rem;
+  border-radius: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.party-status h3 {
+  margin-bottom: 1rem;
+  color: #f39c12;
+  font-size: 1.1rem;
+}
+
+.party-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.character-card {
+  background: #0f3460;
+  padding: 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.character-card:hover {
+  background: #1a4d7a;
+  transform: translateX(5px);
+}
+
+.character-card.selected {
+  border-color: #f39c12;
+  box-shadow: 0 0 10px rgba(243, 156, 18, 0.3);
+}
+
+.character-card.has-command {
+  border-color: #4ade80;
+  background: #0f4a3a;
+}
+
+.character-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.role-emoji {
+  font-size: 1.5rem;
+}
+
+.character-name {
+  font-weight: bold;
+  flex: 1;
+}
+
+.skill-ready {
+  font-size: 1.2rem;
+  animation: glow 1s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.stat-label {
+  width: 30px;
+  font-weight: bold;
+  color: #aaa;
+}
+
+.bar {
+  flex: 1;
+  height: 12px;
+  background: #2c2c3e;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #444;
+}
+
+.bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.stat-value {
+  font-size: 0.75rem;
+  color: #888;
+  min-width: 70px;
+  text-align: right;
+}
+
+.skill-cooldowns {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.skill-cooldown {
+  display: flex;
+  justify-content: space-between;
+  color: #aaa;
+}
+
+.skill-cooldown .ready {
+  color: #4ade80;
+  font-weight: bold;
+}
+
+.skill-cooldown .cooldown {
+  color: #ef4444;
+}

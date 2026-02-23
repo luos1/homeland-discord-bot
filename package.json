@@ -23,8 +23,10 @@
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",
+    "cors": "^2.8.6",
     "discord.js": "^14.18.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

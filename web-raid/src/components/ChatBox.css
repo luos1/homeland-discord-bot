@@ -1,0 +1,135 @@
+.chat-box {
+  background: #16213e;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  height: 40vh;
+}
+
+.chat-box h3 {
+  color: #f39c12;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: #0f3460;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages::-webkit-scrollbar-track {
+  background: #1a4d7a;
+  border-radius: 4px;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background: #3498db;
+  border-radius: 4px;
+}
+
+.message {
+  padding: 0.5rem;
+  border-radius: 4px;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.system-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #e74c3c33;
+  border-left: 3px solid #e74c3c;
+}
+
+.system-icon {
+  font-size: 1.2rem;
+}
+
+.system-text {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.user-message {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.timestamp {
+  color: #888;
+  font-size: 0.75rem;
+}
+
+.username {
+  color: #3498db;
+  font-weight: bold;
+}
+
+.text {
+  color: #ddd;
+}
+
+.chat-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 0.75rem;
+  background: #0f3460;
+  border: 2px solid #1a4d7a;
+  border-radius: 6px;
+  color: #eee;
+  font-size: 0.9rem;
+}
+
+.chat-input input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.chat-input button {
+  padding: 0.75rem 1.5rem;
+  background: #3498db;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-input button:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+}
+
+.chat-input button:active {
+  transform: translateY(0);
+}

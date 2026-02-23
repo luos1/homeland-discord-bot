@@ -1,0 +1,93 @@
+.command-queue {
+  background: #16213e;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.command-queue h3 {
+  color: #f39c12;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #0f3460;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.queue-item.completed {
+  border-color: #4ade80;
+}
+
+.queue-item.pending {
+  border-color: #888;
+  opacity: 0.6;
+}
+
+.status-icon {
+  font-size: 1.2rem;
+}
+
+.character-name {
+  font-weight: bold;
+  color: #3498db;
+  min-width: 60px;
+}
+
+.command-text {
+  flex: 1;
+  color: #ddd;
+  font-size: 0.9rem;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  transition: transform 0.2s ease;
+}
+
+.remove-btn:hover {
+  transform: scale(1.2);
+}
+
+.queue-summary {
+  padding: 0.5rem;
+  background: #0f3460;
+  border-radius: 6px;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.queue-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.queue-list::-webkit-scrollbar-track {
+  background: #1a4d7a;
+  border-radius: 3px;
+}
+
+.queue-list::-webkit-scrollbar-thumb {
+  background: #3498db;
+  border-radius: 3px;
+}

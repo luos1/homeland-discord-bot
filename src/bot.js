@@ -13,6 +13,9 @@ const {
   Routes,
 } = require('discord.js');
 
+// 레이드 서버 시작 (포트 3001)
+require('./raid-server');
+
 const { prisma } = require('./database/client');
 const {
   handleCombatButton,
