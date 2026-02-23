@@ -106,6 +106,7 @@ model Character {
   gemExchanges     GemExchange[]
   priceAlerts      PriceAlert[]
   npcShopSales     NpcShopSale[]
+  jobRespecHistories JobRespecHistory[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -489,6 +490,34 @@ model RankingEvent {
 
   @@index([category, createdAt])
   @@index([characterId, category, createdAt])
+}
+
+model JobRespecHistory {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  jobType     String
+  fromClass   String
+  toClass     String
+  cost        Int
+  createdAt   DateTime  @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([jobType, toClass, createdAt])
+  @@index([createdAt])
+}
+
+model JobRespecDemand {
+  id          Int      @id @default(autoincrement())
+  jobType     String
+  jobClass    String
+  respecCount Int      @default(0)
+  multiplier  Float    @default(1.0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([jobType, jobClass])
+  @@index([jobType, multiplier])
 }
 
 model CombatSession {

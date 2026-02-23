@@ -33,6 +33,10 @@ const {
 const { getPlayCreateClassChoice } = require('./commands/play');
 const { JOBCHANGE_BUTTON_PREFIX } = require('./commands/jobchange');
 const { PRODUCTION_JOBCHANGE_BUTTON_PREFIX } = require('./commands/production_jobchange');
+const {
+  JOB_RESPEC_BUTTON_PREFIX,
+  handleJobRespecButton,
+} = require('./commands/job_respec');
 const { INVENTORY_BUTTON_PREFIX } = require('./commands/inventory');
 const { SHOP_BUTTON_PREFIX } = require('./commands/shop');
 const { PRODUCTION_BUTTON_PREFIX } = require('./commands/production');
@@ -109,6 +113,10 @@ const commandData = [];
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
   const command = require(filePath);
+
+  if (command.isButtonHandlerOnly) {
+    continue;
+  }
 
   if (!command.data || !command.execute) {
     console.warn(`유효하지 않은 명령어 모듈을 건너뜁니다: ${file}`);
@@ -1189,6 +1197,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const handled = await prodJobchangeCommand.handleProductionJobChangeButton(interaction, {
           prisma,
         });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      if (interaction.customId.startsWith(JOB_RESPEC_BUTTON_PREFIX)) {
+        const handled = await handleJobRespecButton(interaction, { prisma });
 
         if (handled) {
           return;

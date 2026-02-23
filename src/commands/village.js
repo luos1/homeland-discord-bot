@@ -16,6 +16,10 @@ const {
   createVillageNavigationRow,
   withVillageNavigation,
 } = require('../utils/village');
+const {
+  VILLAGE_JOB_MANAGE_BUTTON_ID,
+  handleJobManageButton,
+} = require('./job_respec');
 
 const VILLAGE_MENU_SET = new Set(Object.values(VILLAGE_MENU_KEYS));
 
@@ -131,6 +135,11 @@ function createVillageMainComponents() {
         .setLabel('랭킹')
         .setEmoji('🏆')
         .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(VILLAGE_JOB_MANAGE_BUTTON_ID)
+        .setLabel('직업 관리')
+        .setEmoji('💼')
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId(buildVillageOpenCustomId(VILLAGE_OPEN_ACTIONS.profile))
         .setLabel('프로필')
@@ -789,6 +798,10 @@ async function handleVillageOpenAction(interaction, { prisma, client, parsed }) 
 }
 
 async function handleVillageButton(interaction, { prisma, client }) {
+  if (interaction.customId === VILLAGE_JOB_MANAGE_BUTTON_ID) {
+    return handleJobManageButton(interaction, { prisma });
+  }
+
   const parsed = parseVillageCustomId(interaction.customId);
 
   if (!parsed) {
