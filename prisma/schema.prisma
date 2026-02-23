@@ -101,6 +101,8 @@ model Character {
   attendanceRecords AttendanceRecord[]
   dailyQuests      DailyQuest[]
   dailyQuestProfile DailyQuestProfile?
+  hiddenQuests     HiddenQuestProgress[]
+  hiddenQuestTriggerStats HiddenQuestTriggerStats?
   premiumSubscription PremiumSubscription?
   gemTransactions  GemTransaction[]
   gemExchanges     GemExchange[]
@@ -604,4 +606,60 @@ model AttendanceRecord {
   @@unique([characterId, date])
   @@index([characterId])
   @@index([date])
+}
+
+// 숨겨진 퀘스트 시스템
+model HiddenQuestProgress {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  questKey    String    // 퀘스트 식별자 (예: "ancient_warrior", "dark_secret")
+  discovered  Boolean   @default(false) // 퀘스트 발견 여부
+  accepted    Boolean   @default(false) // 퀘스트 수락 여부
+  completed   Boolean   @default(false) // 퀘스트 완료 여부
+  claimed     Boolean   @default(false) // 보상 수령 여부
+  
+  progress    Int       @default(0)     // 현재 진행도
+  
+  discoveredAt DateTime?
+  acceptedAt   DateTime?
+  completedAt  DateTime?
+  claimedAt    DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([characterId, questKey])
+  @@index([characterId])
+  @@index([questKey])
+}
+
+// 숨겨진 퀘스트 트리거 통계 (발견 조건 추적)
+model HiddenQuestTriggerStats {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  // 처치 통계
+  totalMonsterKills    Int @default(0)
+  skeletonKills        Int @default(0)
+  direWolfKills        Int @default(0)
+  undeadKnightKills    Int @default(0)
+  goblinShamanKills    Int @default(0)
+  ancientDragonKills   Int @default(0)
+  
+  // 존 방문 통계
+  zone1Visits          Int @default(0)
+  zone2Visits          Int @default(0)
+  zone3Visits          Int @default(0)
+  
+  // 연속 출석
+  maxAttendanceStreak  Int @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([characterId])
+  @@index([characterId])
 }

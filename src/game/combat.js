@@ -1696,6 +1696,37 @@ async function handleCombatButton({ interaction, prisma }) {
       );
     } catch (error) {
       console.error('Daily quest progress update failed (kill monster):', error);
+
+      // 숨겨진 퀘스트 트리거 통계 업데이트
+      try {
+        const { updateHiddenQuestTriggerStats, checkAndDiscoverQuests } = require('./hidden-quest-handler');
+        const monsterData = require('./monsters').MONSTERS;
+        const monsterKey = Object.keys(monsterData).find(key => monsterData[key].name === session.monsterName);
+        
+        if (monsterKey) {
+          await updateHiddenQuestTriggerStats(prisma, session.characterId, {
+            type: 'monster_kill',
+            monsterKey,
+            zone: session.zone,
+          });
+          
+          // 퀘스트 발견 체크
+          const discoveries = await checkAndDiscoverQuests(prisma, interaction, session.characterId);
+          
+          // 발견된 퀘스트가 있으면 알림
+          if (discoveries && discoveries.length > 0) {
+            for (const discovery of discoveries) {
+              // 다음 전투 후 알림 (별도 메시지로)
+            }
+          }
+        }
+
+          // 퀘스트 진행도 업데이트
+          const { updateQuestProgress } = require('./hidden-quest-handler');
+          await updateQuestProgress(prisma, session.characterId, monsterKey, session.zone);
+      } catch (error) {
+        console.error('Hidden quest trigger update failed:', error);
+      }
     }
 
 

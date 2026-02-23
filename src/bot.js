@@ -463,6 +463,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 getSubcommand: () => 'list',
               },
               reply: (payload) => interaction.update(payload),
+
+      // 숨겨진 퀘스트 버튼
+      if (interaction.customId.startsWith('hidden_quest:')) {
+        const [, action, questKey] = interaction.customId.split(':');
+        const { acceptQuest, rejectQuest } = require('./game/hidden-quest-handler');
+        
+        if (action === 'accept') {
+          await acceptQuest(interaction, prisma, questKey);
+          return;
+        }
+        
+        if (action === 'reject') {
+          await rejectQuest(interaction, prisma, questKey);
+          return;
+
+      // 퀘스트 보상 수령 버튼
+      if (interaction.customId.startsWith('quest_claim:')) {
+        const questKey = interaction.customId.split(':')[1];
+        const { claimQuestReward } = require('./game/hidden-quest-handler');
+        await claimQuestReward(interaction, prisma, questKey);
+        return;
+      }
+        }
+      }
             },
             { prisma },
           );
