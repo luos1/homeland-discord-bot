@@ -49,6 +49,7 @@ const {
   sendOnboardingFeedback,
 } = require('../game/onboarding');
 const { listZones } = require('../game/monsters');
+const { GUILD_BUTTON_PREFIX, isGuildButton, handleGuildButton } = require('../game/guild-buttons');
 const { EMBED_COLORS, createDivider, localizeClassName } = require('../utils/ui');
 
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
@@ -79,6 +80,10 @@ async function handleButton(interaction, { prisma, client }) {
   if (interaction.customId.startsWith('hidden_dungeon:')) {
     await handleHiddenDungeonButton(interaction, { prisma });
     return;
+  }
+
+  if (isGuildButton(interaction.customId)) {
+    return await handleGuildButton(interaction);
   }
 
   if (isCombatButton(interaction.customId)) {

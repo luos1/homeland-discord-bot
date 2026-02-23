@@ -718,3 +718,105 @@ model PartyMember {
   @@index([userId])
   @@index([characterId])
 }
+
+// ==========================================
+// 🏰 Guild System
+// ==========================================
+
+model Guild {
+  id            Int       @id @default(autoincrement())
+  
+  name          String    @unique // 길드 이름 (유니크)
+  tag           String?   @unique // 길드 태그 [TAG] (선택, 유니크)
+  description   String?   // 길드 설명
+  
+  masterId      String    // 길드 마스터 Discord ID
+  
+  level         Int       @default(1) // 길드 레벨
+  xp            Int       @default(0) // 길드 경험치
+  gold          Int       @default(0) // 길드 자금
+  
+  maxMembers    Int       @default(10) // 최대 인원 (레벨업으로 증가)
+  
+  isRecruiting  Boolean   @default(true) // 모집 중 여부
+  minLevel      Int       @default(1) // 가입 최소 레벨
+  
+  members       GuildMember[]
+  storage       GuildStorage[]
+  buffs         GuildBuff[]
+  npcs          GuildNPC[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([masterId])
+  @@index([isRecruiting])
+  @@index([level])
+}
+
+model GuildMember {
+  id            Int       @id @default(autoincrement())
+  
+  guildId       Int
+  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  
+  userId        String    // Discord ID
+  characterId   Int       // Character ID
+  
+  rank          String    @default("MEMBER") // MASTER/OFFICER/MEMBER
+  
+  contributedXp Int       @default(0) // 기여 경험치
+  contributedGold Int     @default(0) // 기여 골드
+  
+  joinedAt      DateTime  @default(now())
+  
+  @@unique([guildId, userId])
+  @@index([userId])
+  @@index([characterId])
+  @@index([rank])
+}
+
+model GuildStorage {
+  id            Int       @id @default(autoincrement())
+  
+  guildId       Int
+  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  
+  itemType      String    // 아이템 타입
+  itemName      String    // 아이템 이름
+  quantity      Int       @default(0) // 수량
+  
+  @@unique([guildId, itemType, itemName])
+  @@index([guildId])
+}
+
+model GuildBuff {
+  id            Int       @id @default(autoincrement())
+  
+  guildId       Int
+  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  
+  buffType      String    // EXP_BOOST/GOLD_BOOST/COMBAT_BOOST 등
+  value         Float     // 버프 수치 (1.1 = +10%)
+  
+  isActive      Boolean   @default(true)
+  expiresAt     DateTime? // 만료 시간 (null = 영구)
+  
+  @@index([guildId, isActive])
+}
+
+model GuildNPC {
+  id            Int       @id @default(autoincrement())
+  
+  guildId       Int
+  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  
+  npcType       String    // MERCHANT/ELDER/GAMBLER 등
+  npcName       String    // NPC 이름
+  
+  purchasedAt   DateTime  @default(now())
+  weeklyCut     Float     @default(0.0) // 이번 주 수익
+  
+  @@unique([guildId, npcType])
+  @@index([guildId])
+}
