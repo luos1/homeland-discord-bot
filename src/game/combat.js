@@ -14,6 +14,7 @@ const { getAdvancedSkillByKey } = require('./advanced-skills');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests');
 const { resolvePremiumBenefits } = require('./premium');
 const { calculateCombatGoldReward, applyCombatEconomyAdjustments } = require('./economy');
+const { recordSkillUse, checkCombo, clearCombo, calculateComboDamage, getComboVisual } = require('./skill-combo');
 const {
   handleOnboardingEvent,
   sendOnboardingFeedback,
@@ -951,6 +952,10 @@ function resolveCombatTurn({
         playerMana -= skill.manaCost;
         skillUsed = true;
 
+        // 🎮 스킬 콤보 시스템
+        recordSkillUse(session.id, skillKey || 'basic_attack');
+        const combo = checkCombo(session.id);
+
         // 스킬 효과 실행 (레벨 적용)
         const skillEffect = skill.effect(character, {
           hp: monsterHp,
@@ -959,9 +964,23 @@ function resolveCombatTurn({
           defense: session.monsterDefense,
         }, skillLevel);
 
-        monsterHp = Math.max(monsterHp - skillEffect.damage, 0);
+        // 🔥 콤보 데미지 계산
+        let finalDamage = skillEffect.damage;
+        if (combo) {
+          finalDamage = calculateComboDamage(skillEffect.damage, combo);
+        }
+
+        monsterHp = Math.max(monsterHp - finalDamage, 0);
         battleLog.push(skillEffect.message);
-        battleLog.push(`💔 ${session.monsterName}에게 ${skillEffect.damage} 데미지!`);
+
+        // 🎯 콤보 시각 효과
+        if (combo) {
+          battleLog.push('');
+          battleLog.push(getComboVisual(combo));
+          battleLog.push(`💥 **${finalDamage}** 콤보 데미지!`);
+        } else {
+          battleLog.push(`💔 ${session.monsterName}에게 ${finalDamage} 데미지!`);
+        }
 
         if (skillEffect.critical) {
           battleLog.push('');
@@ -1236,6 +1255,9 @@ function resolveCombatTurn({
       }
     }
 
+    // 🎮 콤보 초기화 (전투 종료)
+    clearCombo(session.id);
+
     return {
       status: 'victory',
       battleLog,
@@ -1336,6 +1358,9 @@ function resolveCombatTurn({
     if (defeatEconomy.appliedDeathPenalty > 0) {
       battleLog.push(`💀 패배 페널티 -${defeatEconomy.appliedDeathPenalty}G`);
     }
+
+    // 🎮 콤보 초기화 (전투 종료)
+    clearCombo(session.id);
 
     return {
       status: 'defeat',
