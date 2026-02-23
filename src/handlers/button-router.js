@@ -42,6 +42,7 @@ const {
   handlePremiumButton,
 } = require('../commands/premium');
 const { handleEnhanceButton } = require('../commands/enhance');
+const { handleDailyButton } = require('../commands/daily');
 const { handleVillageButton } = require('../commands/village');
 const { buildVillageHomeCustomId, isVillageButton } = require('../utils/village');
 const {
@@ -96,6 +97,12 @@ async function handleButton(interaction, { prisma, client }) {
   // 장비 강화 버튼
   if (interaction.customId.startsWith('enhance_')) {
     const handled = await handleEnhanceButton(interaction, { prisma });
+    if (handled) return;
+  }
+
+  // 일일 퀘스트 버튼
+  if (interaction.customId.startsWith('daily_claim_')) {
+    const handled = await handleDailyButton(interaction, { prisma });
     if (handled) return;
   }
 

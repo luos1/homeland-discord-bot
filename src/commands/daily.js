@@ -1,107 +1,89 @@
-const {
-  EmbedBuilder,
-  SlashCommandBuilder,
-} = require('discord.js');
-
-const {
-  QUEST_TYPE_META,
-  WEEKLY_ALL_CLEAR_BONUS,
-  getSecondsUntilNextDailyReset,
-  getDailyQuestStatus,
-} = require('../game/daily-quests');
-const { EMBED_COLORS, createDivider, createXPBar, formatNumber } = require('../utils/ui');
-const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
-
-function formatResetCountdown(totalSeconds) {
-  const safeSeconds = Math.max(0, totalSeconds);
-  const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
-
-  return `${hours}시간 ${minutes}분`;
-}
-
-function formatQuestLine(quest, index) {
-  const meta = QUEST_TYPE_META[quest.questType] || QUEST_TYPE_META.other;
-  const statusIcon = quest.completed ? '✅' : '⬜';
-  const progressBar = createXPBar(quest.progress, quest.target, 12);
-
-  return [
-    `${statusIcon} ${index + 1}. ${meta.icon} ${quest.title}`,
-    `   ${progressBar} ${quest.progress}/${quest.target}`,
-    `   🎁 ${formatNumber(quest.rewardGold)}G | ${formatNumber(quest.rewardXp)} XP`,
-  ].join('\n');
-}
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { getTodayQuests, claimQuestReward } = require('../game/daily-quest-system');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('daily')
-    .setDescription('오늘의 Daily Quest 진행도를 확인합니다'),
+    .setNameLocalizations({ ko: '일일퀘스트' })
+    .setDescription('일일 퀘스트 확인')
+    .setDescriptionLocalizations({ ko: '일일 퀘스트 확인' }),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
+    const result = await getTodayQuests(interaction.user.id, prisma);
 
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
+    if (!result.success) {
+      return interaction.reply({ content: '❌ 퀘스트를 불러올 수 없습니다.', ephemeral: true });
     }
 
-    const dailyStatus = await getDailyQuestStatus(prisma, character.id, {
-      markLogin: true,
-    });
-
-    const { dayKey, quests, profile } = dailyStatus;
-    const completedCount = quests.filter((quest) => quest.completed).length;
-    const totalCount = quests.length;
-    const isAllClear = totalCount > 0 && completedCount === totalCount;
-
-    const totalGoldReward = quests.reduce((acc, quest) => acc + quest.rewardGold, 0);
-    const totalXpReward = quests.reduce((acc, quest) => acc + quest.rewardXp, 0);
-
-    const weeklyProgressBar = createXPBar(profile.weeklyCompletedDays, 7, 12);
-    const resetIn = formatResetCountdown(getSecondsUntilNextDailyReset());
-
-    const descriptionLines = [
-      createDivider(),
-      `📅 기준일: ${dayKey}`,
-      `⏰ 다음 리셋: ${resetIn} 후`,
-      '',
-      `📌 진행도: ${completedCount}/${totalCount}`,
-      `🔥 연속 올클리어: ${profile.streak}일`,
-      `🗓️ 주간 올클리어: ${weeklyProgressBar} ${profile.weeklyCompletedDays}/7`,
-      '',
-      ...quests.map((quest, index) => formatQuestLine(quest, index)),
-      '',
-      createDivider(),
-      `💰 일일 퀘스트 총 보상: ${formatNumber(totalGoldReward)}G`,
-      `✨ 일일 퀘스트 총 경험치: ${formatNumber(totalXpReward)} XP`,
-      `🎉 주간 7일 올클리어 보상: ${formatNumber(WEEKLY_ALL_CLEAR_BONUS.gold)}G + ${formatNumber(WEEKLY_ALL_CLEAR_BONUS.xp)} XP`,
-      '',
-      isAllClear
-        ? '🏆 오늘 Daily Quest를 모두 완료했습니다! 스트릭 보너스가 지급되었습니다.'
-        : '💡 전투/생산/거래를 진행하면 자동으로 퀘스트가 업데이트됩니다.',
-      createDivider(),
-    ];
+    const { quests } = result;
 
     const embed = new EmbedBuilder()
-      .setColor(isAllClear ? EMBED_COLORS.victory : EMBED_COLORS.profile)
-      .setTitle('🎁 Daily Quest')
-      .setDescription(descriptionLines.join('\n'))
-      .setFooter({
-        text: 'Daily Quest는 매일 자정(KST)에 갱신됩니다',
+      .setColor(0x3498DB)
+      .setTitle('📋 오늘의 일일 퀘스트')
+      .setDescription([
+        '매일 자정에 새로운 퀘스트가 갱신됩니다.',
+        '',
+        '**진행 중인 퀘스트:**'
+      ].join('\n'));
+
+    const buttons = [];
+
+    quests.forEach((quest, index) => {
+      const progress = `${quest.progress}/${quest.target}`;
+      const status = quest.claimed ? '✅ 완료' : quest.completed ? '🎁 수령 가능' : `⏳ ${progress}`;
+
+      embed.addFields({
+        name: `${index + 1}. ${quest.name} ${status}`,
+        value: [
+          `📝 ${quest.description}`,
+          `🎁 보상: 💰 ${quest.rewards.gold}G, ⭐ ${quest.rewards.xp} XP`,
+          `📊 진행도: ${progress}`
+        ].join('\n'),
+        inline: false
       });
 
-    await interaction.reply({
-      embeds: [embed],
-      components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.daily })],
-      ephemeral: true,
+      if (quest.completed && !quest.claimed) {
+        buttons.push(
+          new ButtonBuilder()
+            .setCustomId(`daily_claim_${quest.id}`)
+            .setLabel(`${quest.name} 보상 받기`)
+            .setEmoji('🎁')
+            .setStyle(ButtonStyle.Success)
+        );
+      }
     });
+
+    const rows = [];
+    for (let i = 0; i < buttons.length; i += 5) {
+      rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
+    }
+
+    await interaction.reply({ embeds: [embed], components: rows });
   },
+
+  async handleDailyButton(interaction, { prisma }) {
+    if (!interaction.customId.startsWith('daily_claim_')) return false;
+
+    const questId = interaction.customId.replace('daily_claim_', '');
+
+    const result = await claimQuestReward(interaction.user.id, questId, prisma);
+
+    if (!result.success) {
+      await interaction.reply({ content: `❌ ${result.error}`, ephemeral: true });
+      return true;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x2ECC71)
+      .setTitle('🎉 보상 획득!')
+      .setDescription([
+        '일일 퀘스트 보상을 받았습니다!',
+        '',
+        `💰 골드: +${result.rewards.gold}G`,
+        `⭐ 경험치: +${result.rewards.xp} XP`
+      ].join('\n'));
+
+    await interaction.reply({ embeds: [embed] });
+    return true;
+  }
 };
