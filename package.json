@@ -26,6 +26,7 @@
     "cors": "^2.8.6",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
+    "express": "^5.2.1",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
