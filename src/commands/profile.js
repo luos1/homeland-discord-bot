@@ -88,6 +88,9 @@ function createProfileEmbed(character) {
     : jobCheck.allowed
       ? `✨ 전직 가능! Lv.${JOB_CHANGE_LEVEL} 달성`
       : `⭐ 전직: Lv.${JOB_CHANGE_LEVEL}부터 가능`;
+  const classTitle = character.advancedClass
+    ? `${localizeClassName(character.class)} (전직: ${character.advancedClass})`
+    : localizeClassName(character.class);
 
   // 연승 표시
   const streakDisplay = getStreakDisplay(character.winStreak || 0);
@@ -128,7 +131,7 @@ function createProfileEmbed(character) {
 
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
-    .setTitle(`⚔️ ${character.name}님의 ${localizeClassName(character.class)}`)
+    .setTitle(`⚔️ ${character.name}님의 ${classTitle}`)
     .setDescription(
       [
         createDivider(),
