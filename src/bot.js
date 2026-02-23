@@ -46,6 +46,10 @@ const { NPC_SHOP_BUTTON_PREFIX } = require('./commands/npc_shop');
 const { SELL_RESOURCES_BUTTON_PREFIX } = require('./commands/sell_resources');
 const { AUCTION_BUTTON_PREFIX } = require('./commands/auction');
 const { RANKING_COMPONENT_PREFIX } = require('./commands/ranking');
+const {
+  PREMIUM_BUTTON_PREFIX,
+  handlePremiumButton,
+} = require('./commands/premium');
 const { handleVillageButton } = require('./commands/village');
 const { buildVillageHomeCustomId, isVillageButton } = require('./utils/village');
 const {
@@ -271,6 +275,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton()) {
       if (isVillageButton(interaction.customId)) {
         const handled = await handleVillageButton(interaction, { prisma, client });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      if (interaction.customId.startsWith(PREMIUM_BUTTON_PREFIX)) {
+        const handled = await handlePremiumButton(interaction, { prisma });
 
         if (handled) {
           return;

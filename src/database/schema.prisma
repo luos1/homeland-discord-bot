@@ -344,6 +344,9 @@ model PremiumSubscription {
   planId     String
   startDate  DateTime
   endDate    DateTime
+  autoFight      Boolean   @default(false)
+  autoPotion     Boolean   @default(false)
+  autoConsumable Boolean   @default(false)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
