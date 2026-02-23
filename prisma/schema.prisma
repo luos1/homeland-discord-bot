@@ -820,3 +820,85 @@ model GuildNPC {
   @@unique([guildId, npcType])
   @@index([guildId])
 }
+
+// ==========================================
+// ⚔️ PvP Arena System
+// ==========================================
+
+model ArenaBattle {
+  id            Int       @id @default(autoincrement())
+  
+  player1Id     String    // Discord ID
+  player2Id     String    // Discord ID
+  
+  player1Elo    Int       // 전투 전 ELO
+  player2Elo    Int
+  
+  winnerId      String?   // 승자 Discord ID
+  
+  entryFee      Int       @default(100) // 입장료
+  reward        Int       @default(200) // 보상 (입장료 x2)
+  
+  battleData    Json?     // 전투 로그
+  
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+  
+  @@index([player1Id])
+  @@index([player2Id])
+  @@index([winnerId])
+  @@index([createdAt])
+}
+
+model PlayerElo {
+  id            Int       @id @default(autoincrement())
+  
+  userId        String    @unique // Discord ID
+  
+  elo           Int       @default(1000) // 시작 ELO
+  wins          Int       @default(0)
+  losses        Int       @default(0)
+  
+  lastBattleAt  DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([elo])
+  @@index([wins])
+}
+
+model TheftAttempt {
+  id            Int       @id @default(autoincrement())
+  
+  thiefId       String    // 도둑 Discord ID
+  targetId      String    // 타겟 Discord ID
+  
+  success       Boolean   // 성공 여부
+  amount        Int       // 훔친/벌금 골드
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([thiefId])
+  @@index([targetId])
+  @@index([createdAt])
+}
+
+model WeeklyRanking {
+  id            Int       @id @default(autoincrement())
+  
+  userId        String
+  week          String    // YYYY-WW 형식
+  
+  category      String    // pvp_wins/boss_kills/gold_earned/trades
+  score         Int       @default(0)
+  rank          Int?
+  
+  rewardClaimed Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@unique([userId, week, category])
+  @@index([week, category, score])
+}
