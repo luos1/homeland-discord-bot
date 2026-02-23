@@ -902,3 +902,14 @@ model WeeklyRanking {
   @@unique([userId, week, category])
   @@index([week, category, score])
 }
+
+model DailyQuestProgress {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  date      String
+  quests    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date], name: "userId_date")
+}
