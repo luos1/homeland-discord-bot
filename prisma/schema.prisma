@@ -913,3 +913,29 @@ model DailyQuestProgress {
 
   @@unique([userId, date], name: "userId_date")
 }
+
+model PremiumSubscription {
+  id                    Int       @id @default(autoincrement())
+  userId                String    @unique
+  tier                  String    // bronze, silver, gold
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?   @unique
+  status                String    // active, canceled, past_due
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  canceledAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model PaymentHistory {
+  id                    Int       @id @default(autoincrement())
+  stripeInvoiceId       String    @unique
+  stripeSubscriptionId  String
+  amount                Float
+  currency              String
+  status                String    // succeeded, failed
+  paidAt                DateTime?
+  failedAt              DateTime?
+  createdAt             DateTime  @default(now())
+}
