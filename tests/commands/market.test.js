@@ -87,6 +87,57 @@ describe('market command', () => {
     expect(interaction.reply.mock.calls[0][0].content).toContain('매수 주문 등록 완료');
   });
 
+  test('주문장: 주문 모달 열기 시 AI 추천가를 가격 입력 필드에 표시한다', async () => {
+    const interaction = createMockInteraction({
+      customId: 'market:place:buy:wood',
+    });
+
+    const buyer = createCharacter({
+      id: 1,
+      userId: interaction.user.id,
+      gold: 5000,
+      resources: [],
+    });
+
+    prisma.character.findUnique.mockResolvedValue(buyer);
+    prisma.tradeHistory.aggregate
+      .mockResolvedValueOnce({
+        _sum: {
+          price: 7000,
+          quantity: 100,
+        },
+        _count: {
+          _all: 12,
+        },
+      })
+      .mockResolvedValueOnce({
+        _sum: {
+          price: 1400,
+          quantity: 10,
+        },
+        _count: {
+          _all: 4,
+        },
+      });
+    prisma.tradeHistory.findMany.mockResolvedValue([
+      {
+        quantity: 1,
+        price: 140,
+      },
+    ]);
+
+    const handled = await marketCommand.handleMarketButton(interaction, { prisma });
+
+    expect(handled).toBe(true);
+    expect(interaction.showModal).toHaveBeenCalledTimes(1);
+
+    const modal = interaction.showModal.mock.calls[0][0].toJSON();
+    const priceInput = modal.components[1].components[0];
+
+    expect(priceInput.label).toContain('추천');
+    expect(priceInput.placeholder).toBe('154');
+  });
+
   test('NPC 즉시 매입: 동적 단가로 자원을 판매하고 골드를 지급한다', async () => {
     const interaction = createMockInteraction({
       customId: 'market:npcmodal:wood',

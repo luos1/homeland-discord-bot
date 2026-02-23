@@ -17,7 +17,7 @@ const COMMAND_GROUPS = [
   },
   {
     title: '💰 경제/인벤토리',
-    names: ['shop', 'shop_skills', 'market', 'gem', 'premium', 'inventory'],
+    names: ['shop', 'shop_skills', 'market', 'npc_shop', 'sell_resources', 'auction', 'alert', 'gem', 'stats', 'premium', 'inventory'],
   },
   {
     title: '📅 시즌/이벤트',

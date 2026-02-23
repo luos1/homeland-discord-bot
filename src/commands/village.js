@@ -26,6 +26,8 @@ const VILLAGE_OPEN_ACTIONS = Object.freeze({
   boss: 'boss',
   shop: 'shop',
   market: 'market',
+  npcShop: 'npc_shop',
+  auction: 'auction',
   production: 'production',
   daily: 'daily',
   attendance: 'attendance',
@@ -220,6 +222,8 @@ function createMarketMenu(character) {
       : '캐릭터가 없으면 거래소를 이용할 수 없습니다.',
     '',
     '📈 거래소에서 자원/장비 거래를 진행합니다.',
+    '🏪 NPC 상점에서 동적 시세를 확인합니다.',
+    '🔨 경매장에서 실시간 입찰을 진행합니다.',
     createDivider(),
   ].join('\n');
 
@@ -237,6 +241,16 @@ function createMarketMenu(character) {
           .setLabel('거래소 열기')
           .setEmoji('🏪')
           .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId(buildVillageOpenCustomId(VILLAGE_OPEN_ACTIONS.npcShop))
+          .setLabel('NPC 상점')
+          .setEmoji('🧾')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(buildVillageOpenCustomId(VILLAGE_OPEN_ACTIONS.auction))
+          .setLabel('경매장')
+          .setEmoji('🔨')
+          .setStyle(ButtonStyle.Danger),
       ),
       createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.main }),
     ],
@@ -633,6 +647,32 @@ async function handleVillageOpenAction(interaction, { prisma, client, parsed }) 
     await runCommandFromVillage({
       interaction,
       command: client.commands.get('market'),
+      prisma,
+      client,
+      options: {},
+      backTo: VILLAGE_MENU_KEYS.market,
+    });
+    return true;
+  }
+
+  if (action === VILLAGE_OPEN_ACTIONS.npcShop) {
+    await runCommandFromVillage({
+      interaction,
+      command: client.commands.get('npc_shop'),
+      prisma,
+      client,
+      options: {
+        getString: () => null,
+      },
+      backTo: VILLAGE_MENU_KEYS.market,
+    });
+    return true;
+  }
+
+  if (action === VILLAGE_OPEN_ACTIONS.auction) {
+    await runCommandFromVillage({
+      interaction,
+      command: client.commands.get('auction'),
       prisma,
       client,
       options: {},

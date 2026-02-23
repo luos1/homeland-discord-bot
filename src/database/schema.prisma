@@ -86,6 +86,9 @@ model Character {
   gatherSessions   GatherSession[]
   craftingSessions CraftingSession[]
   marketListings   MarketListing[]
+  auctionsAsSeller Auction[]           @relation("AuctionSeller")
+  auctionsAsHighestBidder Auction[]    @relation("AuctionHighestBidder")
+  auctionBids     AuctionBid[]
   orderBookOrders  OrderBook[]
   rankingEvents    RankingEvent[]
   consumables      Consumable[]
@@ -95,6 +98,8 @@ model Character {
   premiumSubscription PremiumSubscription?
   gemTransactions  GemTransaction[]
   gemExchanges     GemExchange[]
+  priceAlerts      PriceAlert[]
+  npcShopSales     NpcShopSale[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -221,6 +226,78 @@ model MarketListing {
   @@index([itemType])
 }
 
+model DynamicPrice {
+  id                Int      @id @default(autoincrement())
+  itemType          String
+  itemKey           String
+  basePrice         Int
+  currentMultiplier Float    @default(1.0)
+  npcBuyPrice       Int
+  npcSellPrice      Int
+  supply24h         Int      @default(0)
+  demand24h         Int      @default(0)
+  lastUpdated       DateTime @default(now())
+
+  @@unique([itemType, itemKey])
+  @@index([lastUpdated])
+}
+
+model NpcShopSale {
+  id         Int       @id @default(autoincrement())
+  characterId Int
+  character  Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  saleType   String
+  itemKey    String
+  itemName   String
+  quantity   Int       @default(1)
+  totalPrice Int
+  createdAt  DateTime  @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([saleType, createdAt])
+  @@index([itemKey, createdAt])
+}
+
+model Auction {
+  id              Int        @id @default(autoincrement())
+  sellerId        Int
+  seller          Character  @relation("AuctionSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  itemType        String
+  itemKey         String
+  itemName        String
+  itemData        Json
+  startPrice      Int
+  currentPrice    Int
+  reservePrice    Int?
+  duration        Int
+  status          String     @default("active")
+  highestBidderId Int?
+  highestBidder   Character? @relation("AuctionHighestBidder", fields: [highestBidderId], references: [id], onDelete: SetNull)
+  bidCount        Int        @default(0)
+  createdAt       DateTime   @default(now())
+  expiresAt       DateTime
+  completedAt     DateTime?
+  bids            AuctionBid[]
+
+  @@index([sellerId, status])
+  @@index([status, expiresAt])
+  @@index([highestBidderId])
+}
+
+model AuctionBid {
+  id        Int       @id @default(autoincrement())
+  auctionId Int
+  bidderId  Int
+  bidAmount Int
+  bidAt     DateTime  @default(now())
+  isWinning Boolean   @default(false)
+  auction   Auction   @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidder    Character @relation(fields: [bidderId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId, bidAt])
+  @@index([bidderId, bidAt])
+}
+
 model OrderBook {
   id          Int       @id @default(autoincrement())
   type        String    // buy or sell
@@ -305,6 +382,20 @@ model GemExchange {
   @@index([userId, createdAt])
 }
 
+model FeeConfig {
+  id           Int      @id @default(autoincrement())
+  configKey    String   @unique // market_fee, gem_fee, auction_fee
+  baseRate     Float
+  currentRate  Float
+  minRate      Float
+  maxRate      Float
+  autoAdjust   Boolean  @default(true)
+  lastAdjusted DateTime @default(now())
+  adjustedBy   String?
+
+  @@index([configKey])
+}
+
 model EconomySnapshot {
   id               Int      @id @default(autoincrement())
   snapshotType     String   @default("hourly") // hourly, daily, manual
@@ -332,6 +423,20 @@ model ResourcePriceHistory {
   @@index([snapshotType, createdAt])
 }
 
+model ItemPriceHistory {
+  id         Int      @id @default(autoincrement())
+  itemType   String
+  itemKey    String
+  avgPrice   Int
+  minPrice   Int
+  maxPrice   Int
+  volume     Int
+  recordedAt DateTime @default(now())
+
+  @@index([itemType, itemKey, recordedAt])
+  @@index([recordedAt])
+}
+
 model EconomyAlert {
   id         Int      @id @default(autoincrement())
   alertType  String // inflation, abnormal_trade
@@ -344,6 +449,25 @@ model EconomyAlert {
   @@index([alertType, createdAt])
   @@index([severity, createdAt])
   @@index([resolvedAt])
+}
+
+model PriceAlert {
+  id            Int       @id @default(autoincrement())
+  userId        String
+  characterId   Int?
+  character     Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  itemType      String
+  itemKey       String
+  alertType     String // price_drop, price_rise, auction_ending
+  targetPrice   Int?
+  isActive      Boolean   @default(true)
+  lastTriggered DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, isActive])
+  @@index([itemType, itemKey, alertType])
+  @@index([characterId, isActive])
 }
 
 model RankingEvent {

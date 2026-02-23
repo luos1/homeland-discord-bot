@@ -1,7 +1,9 @@
+const { FEE_CONFIG_KEYS, FEE_DEFAULTS } = require('./fee-config');
+
 const DEFAULT_GEM_RATE = 120;
 const MIN_GEM_RATE = 60;
 const MAX_GEM_RATE = 500;
-const GEM_EXCHANGE_FEE_RATE = 0.05;
+const GEM_EXCHANGE_FEE_RATE = FEE_DEFAULTS[FEE_CONFIG_KEYS.gem].currentRate;
 const GEM_MARKET_LOOKBACK_HOURS = 24;
 
 function clamp(value, min, max) {

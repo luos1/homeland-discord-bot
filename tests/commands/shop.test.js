@@ -56,6 +56,16 @@ describe('shop command', () => {
         quantity: 1,
       }),
     });
+    expect(tx.npcShopSale.create).toHaveBeenCalledWith({
+      data: {
+        characterId: character.id,
+        saleType: 'consumable',
+        itemKey: 'health_potion',
+        itemName: '💊 체력 회복 포션',
+        quantity: 1,
+        totalPrice: 50,
+      },
+    });
     expect(interaction.reply).toHaveBeenCalledTimes(1);
     expect(interaction.reply.mock.calls[0][0].content).toContain('구매했습니다');
   });

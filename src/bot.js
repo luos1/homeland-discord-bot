@@ -40,6 +40,11 @@ const { GATHER_BUTTON_PREFIX } = require('./commands/gather');
 const { CRAFT_BUTTON_PREFIX } = require('./commands/craft');
 const { PSKILL_BUTTON_PREFIX } = require('./commands/production_skills');
 const { MARKET_BUTTON_PREFIX } = require('./commands/market');
+const { ECONOMY_ADMIN_BUTTON_PREFIX } = require('./commands/economy_admin');
+const { STATS_BUTTON_PREFIX } = require('./commands/stats');
+const { NPC_SHOP_BUTTON_PREFIX } = require('./commands/npc_shop');
+const { SELL_RESOURCES_BUTTON_PREFIX } = require('./commands/sell_resources');
+const { AUCTION_BUTTON_PREFIX } = require('./commands/auction');
 const { RANKING_COMPONENT_PREFIX } = require('./commands/ranking');
 const { handleVillageButton } = require('./commands/village');
 const { buildVillageHomeCustomId, isVillageButton } = require('./utils/village');
@@ -56,6 +61,14 @@ const {
   startEconomyMonitoringJob,
 } = require('./game/economy-scheduler');
 const {
+  resolveAuctionSettlementConfig,
+  startAuctionSettlementJob,
+} = require('./game/auction-scheduler');
+const {
+  resolvePriceAlertConfig,
+  startPriceAlertJob,
+} = require('./game/price-alerts');
+const {
   handleOnboardingEvent,
   maybeSendGuideTip,
   sendOnboardingFeedback,
@@ -68,6 +81,8 @@ const MONSTER_SELECT_PREFIX = 'monster_select:';
 const PROFILE_ZONE_KEYS = new Set(listZones().map((zone) => zone.key));
 let sessionCleanupJob = null;
 let economyMonitoringJob = null;
+let auctionSettlementJob = null;
+let priceAlertJob = null;
 
 const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
 
@@ -175,15 +190,56 @@ client.once(Events.ClientReady, async (readyClient) => {
       hourlySnapshotIntervalMs: economyConfig.hourlySnapshotIntervalMs,
       dailySnapshotIntervalMs: economyConfig.dailySnapshotIntervalMs,
       alertCheckIntervalMs: economyConfig.alertCheckIntervalMs,
+      dynamicPriceRefreshIntervalMs: economyConfig.dynamicPriceRefreshIntervalMs,
     });
 
     console.log(
       `📈 경제 모니터링 시작 (hourly=${Math.floor(economyConfig.hourlySnapshotIntervalMs / 60000)}분, `
       + `daily=${Math.floor(economyConfig.dailySnapshotIntervalMs / 60000)}분, `
-      + `alerts=${Math.floor(economyConfig.alertCheckIntervalMs / 60000)}분)`,
+      + `alerts=${Math.floor(economyConfig.alertCheckIntervalMs / 60000)}분, `
+      + `dynamic=${Math.floor(economyConfig.dynamicPriceRefreshIntervalMs / 60000)}분)`,
     );
   } catch (error) {
     console.error('경제 모니터링 시작 실패:', error);
+  }
+
+  try {
+    if (auctionSettlementJob) {
+      auctionSettlementJob.stop();
+    }
+
+    const auctionConfig = resolveAuctionSettlementConfig();
+    auctionSettlementJob = startAuctionSettlementJob(prisma, {
+      runOnStart: true,
+      settlementIntervalMs: auctionConfig.settlementIntervalMs,
+    });
+
+    console.log(
+      `🔨 경매 자동 정산 시작 (${Math.floor(auctionConfig.settlementIntervalMs / 1000)}초 주기)`,
+    );
+  } catch (error) {
+    console.error('경매 자동 정산 시작 실패:', error);
+  }
+
+  try {
+    if (priceAlertJob) {
+      priceAlertJob.stop();
+    }
+
+    const alertConfig = resolvePriceAlertConfig();
+    priceAlertJob = startPriceAlertJob(prisma, {
+      client: readyClient,
+      runOnStart: true,
+      intervalMs: alertConfig.checkIntervalMs,
+      cooldownMs: alertConfig.cooldownMs,
+    });
+
+    console.log(
+      `🔔 가격 알림 스케줄러 시작 (interval=${Math.floor(alertConfig.checkIntervalMs / 60000)}분, `
+      + `cooldown=${Math.floor(alertConfig.cooldownMs / 60000)}분)`,
+    );
+  } catch (error) {
+    console.error('가격 알림 스케줄러 시작 실패:', error);
   }
 });
 
@@ -1247,6 +1303,112 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       }
 
+      // 경제 관리자 버튼
+      if (interaction.customId.startsWith(ECONOMY_ADMIN_BUTTON_PREFIX)) {
+        const economyAdminCommand = client.commands.get('economy_admin');
+
+        if (!economyAdminCommand) {
+          await interaction.reply({
+            content: '경제 관리자 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        if (typeof economyAdminCommand.handleEconomyAdminButton === 'function') {
+          const handled = await economyAdminCommand.handleEconomyAdminButton(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
+      // 통계 버튼
+      if (interaction.customId.startsWith(STATS_BUTTON_PREFIX)) {
+        const statsCommand = client.commands.get('stats');
+
+        if (!statsCommand) {
+          await interaction.reply({
+            content: '통계 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        if (typeof statsCommand.handleStatsButton === 'function') {
+          const handled = await statsCommand.handleStatsButton(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
+      // NPC 상점 버튼
+      if (interaction.customId.startsWith(NPC_SHOP_BUTTON_PREFIX)) {
+        const npcShopCommand = client.commands.get('npc_shop');
+
+        if (!npcShopCommand) {
+          await interaction.reply({
+            content: 'NPC 상점 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await npcShopCommand.handleNpcShopButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
+      // 자원 판매소 버튼
+      if (interaction.customId.startsWith(SELL_RESOURCES_BUTTON_PREFIX)) {
+        const sellResourcesCommand = client.commands.get('sell_resources');
+
+        if (!sellResourcesCommand) {
+          await interaction.reply({
+            content: '자원 판매 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        if (typeof sellResourcesCommand.handleSellResourcesButton === 'function') {
+          const handled = await sellResourcesCommand.handleSellResourcesButton(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
+      // 경매장 버튼
+      if (interaction.customId.startsWith(AUCTION_BUTTON_PREFIX)) {
+        const auctionCommand = client.commands.get('auction');
+
+        if (!auctionCommand) {
+          await interaction.reply({
+            content: '경매장 명령어를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return;
+        }
+
+        const handled = await auctionCommand.handleAuctionButton(interaction, { prisma });
+
+        if (handled) {
+          return;
+        }
+      }
+
       // 랭킹 버튼
       if (interaction.customId.startsWith(RANKING_COMPONENT_PREFIX)) {
         const rankingCommand = client.commands.get('ranking');
@@ -1443,6 +1605,45 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       }
 
+      // NPC 상점 셀렉트
+      if (interaction.customId.startsWith(NPC_SHOP_BUTTON_PREFIX)) {
+        const npcShopCommand = client.commands.get('npc_shop');
+
+        if (npcShopCommand) {
+          const handled = await npcShopCommand.handleNpcShopSelect(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
+      // 자원 판매소 셀렉트
+      if (interaction.customId.startsWith(SELL_RESOURCES_BUTTON_PREFIX)) {
+        const sellResourcesCommand = client.commands.get('sell_resources');
+
+        if (sellResourcesCommand && typeof sellResourcesCommand.handleSellResourcesSelect === 'function') {
+          const handled = await sellResourcesCommand.handleSellResourcesSelect(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
+      // 경매장 셀렉트
+      if (interaction.customId.startsWith(AUCTION_BUTTON_PREFIX)) {
+        const auctionCommand = client.commands.get('auction');
+
+        if (auctionCommand) {
+          const handled = await auctionCommand.handleAuctionSelect(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
       // 미처리 셀렉트 메뉴 fallback
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
@@ -1461,6 +1662,45 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         if (marketCommand) {
           const handled = await marketCommand.handleMarketModal(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
+      // NPC 상점 모달
+      if (interaction.customId.startsWith(NPC_SHOP_BUTTON_PREFIX)) {
+        const npcShopCommand = client.commands.get('npc_shop');
+
+        if (npcShopCommand) {
+          const handled = await npcShopCommand.handleNpcShopModal(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
+      // 자원 판매소 모달
+      if (interaction.customId.startsWith(SELL_RESOURCES_BUTTON_PREFIX)) {
+        const sellResourcesCommand = client.commands.get('sell_resources');
+
+        if (sellResourcesCommand && typeof sellResourcesCommand.handleSellResourcesModal === 'function') {
+          const handled = await sellResourcesCommand.handleSellResourcesModal(interaction, { prisma });
+
+          if (handled) {
+            return;
+          }
+        }
+      }
+
+      // 경매 모달
+      if (interaction.customId.startsWith(AUCTION_BUTTON_PREFIX)) {
+        const auctionCommand = client.commands.get('auction');
+
+        if (auctionCommand) {
+          const handled = await auctionCommand.handleAuctionModal(interaction, { prisma });
 
           if (handled) {
             return;
@@ -1504,6 +1744,16 @@ async function shutdown(signal) {
   if (economyMonitoringJob) {
     economyMonitoringJob.stop();
     economyMonitoringJob = null;
+  }
+
+  if (auctionSettlementJob) {
+    auctionSettlementJob.stop();
+    auctionSettlementJob = null;
+  }
+
+  if (priceAlertJob) {
+    priceAlertJob.stop();
+    priceAlertJob = null;
   }
 
   await prisma.$disconnect();

@@ -1,3 +1,7 @@
+jest.mock('../../src/game/dynamic-pricing', () => ({
+  getResourceDynamicPrice: jest.fn(),
+}));
+
 const inventoryCommand = require('../../src/commands/inventory');
 const { createMockInteraction } = require('../helpers/discord');
 const { createPrismaMock } = require('../helpers/prisma');
@@ -5,8 +9,10 @@ const {
   createCharacter,
   createConsumable,
   createEquipment,
+  createResource,
   createSkill,
 } = require('../helpers/factories');
+const { getResourceDynamicPrice } = require('../../src/game/dynamic-pricing');
 
 describe('inventory command', () => {
   let prisma;
@@ -14,6 +20,10 @@ describe('inventory command', () => {
 
   beforeEach(() => {
     prisma = createPrismaMock();
+    getResourceDynamicPrice.mockResolvedValue({
+      itemKey: 'wood',
+      npcBuyPrice: 70,
+    });
     character = createCharacter({
       advancedClass: 'berserker',
       equipment: [createEquipment({ equipped: false })],
@@ -62,6 +72,34 @@ describe('inventory command', () => {
     expect(interaction.update).toHaveBeenCalledTimes(1);
     const payload = interaction.update.mock.calls[0][0];
     expect(payload.embeds[0].data.title).toContain('스킬');
+  });
+
+  test('자원 탭: inventory:tab:resource 요청을 처리하고 가격 정보를 표시한다', async () => {
+    const interaction = createMockInteraction({
+      customId: 'inventory:tab:resource',
+    });
+    prisma.character.findUnique.mockResolvedValue(
+      createCharacter({
+        resources: [createResource({ type: 'wood', name: '목재', quantity: 10 })],
+      }),
+    );
+    prisma.itemPriceHistory.findMany.mockResolvedValue([
+      {
+        itemKey: 'wood',
+        avgPrice: 50,
+        recordedAt: new Date(Date.now() - (2 * 60 * 60 * 1000)),
+      },
+    ]);
+
+    const handled = await inventoryCommand.handleInventoryButton(interaction, { prisma });
+
+    expect(handled).toBe(true);
+    expect(getResourceDynamicPrice).toHaveBeenCalled();
+    expect(interaction.update).toHaveBeenCalledTimes(1);
+    const payload = interaction.update.mock.calls[0][0];
+    expect(payload.embeds[0].data.title).toContain('자원');
+    expect(payload.embeds[0].data.description).toContain('NPC 매입가');
+    expect(payload.embeds[0].data.description).toContain('📈');
   });
 
   test('execute: character 컬렉션이 null이어도 인벤토리를 응답한다', async () => {

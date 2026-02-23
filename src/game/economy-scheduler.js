@@ -4,10 +4,15 @@ const {
   formatEconomyAlertLines,
   runEconomyAlertChecks,
 } = require('./economy-monitor');
+const {
+  refreshAllResourceDynamicPrices,
+  createResourcePriceSnapshots,
+} = require('./dynamic-pricing');
 
 const DEFAULT_HOURLY_SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000;
 const DEFAULT_DAILY_SNAPSHOT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ALERT_CHECK_INTERVAL_MS = 10 * 60 * 1000;
+const DEFAULT_DYNAMIC_PRICE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 function toPositiveInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
@@ -26,6 +31,10 @@ function resolveEconomyMonitoringConfig() {
     ) * 60 * 1000,
     alertCheckIntervalMs: toPositiveInt(
       process.env.ECONOMY_ALERT_CHECK_INTERVAL_MINUTES,
+      10,
+    ) * 60 * 1000,
+    dynamicPriceRefreshIntervalMs: toPositiveInt(
+      process.env.DYNAMIC_PRICE_REFRESH_INTERVAL_MINUTES,
       10,
     ) * 60 * 1000,
   };
@@ -84,6 +93,7 @@ function startEconomyMonitoringJob(
     hourlySnapshotIntervalMs = DEFAULT_HOURLY_SNAPSHOT_INTERVAL_MS,
     dailySnapshotIntervalMs = DEFAULT_DAILY_SNAPSHOT_INTERVAL_MS,
     alertCheckIntervalMs = DEFAULT_ALERT_CHECK_INTERVAL_MS,
+    dynamicPriceRefreshIntervalMs = DEFAULT_DYNAMIC_PRICE_REFRESH_INTERVAL_MS,
   } = {},
 ) {
   const timers = [];
@@ -139,6 +149,26 @@ function startEconomyMonitoringJob(
     return result;
   }
 
+  async function runDynamicPriceRefresh() {
+    if (stopped) {
+      return null;
+    }
+
+    const refreshed = await refreshAllResourceDynamicPrices(prisma, new Date());
+    console.log(`[Economy] Dynamic prices refreshed (${refreshed.length} resources)`);
+    return refreshed;
+  }
+
+  async function runResourcePriceSnapshot() {
+    if (stopped) {
+      return null;
+    }
+
+    const rows = await createResourcePriceSnapshots(prisma, new Date());
+    console.log(`[Economy] Resource price snapshots saved (${rows.length} resources)`);
+    return rows;
+  }
+
   async function runSafely(label, fn) {
     try {
       await fn();
@@ -150,11 +180,23 @@ function startEconomyMonitoringJob(
   if (runOnStart) {
     void runSafely('초기 시간별 스냅샷', runHourlySnapshot);
     void runSafely('초기 알림 점검', runAlertChecks);
+    void runSafely('초기 동적 가격 갱신', runDynamicPriceRefresh);
+    void runSafely('초기 자원 가격 스냅샷', runResourcePriceSnapshot);
   }
 
   schedule(timers, () => runSafely('시간별 스냅샷', runHourlySnapshot), hourlySnapshotIntervalMs);
   schedule(timers, () => runSafely('일별 스냅샷', runDailySnapshot), dailySnapshotIntervalMs);
   schedule(timers, () => runSafely('알림 점검', runAlertChecks), alertCheckIntervalMs);
+  schedule(
+    timers,
+    () => runSafely('자원 가격 스냅샷', runResourcePriceSnapshot),
+    hourlySnapshotIntervalMs,
+  );
+  schedule(
+    timers,
+    () => runSafely('동적 가격 갱신', runDynamicPriceRefresh),
+    dynamicPriceRefreshIntervalMs,
+  );
 
   return {
     stop() {
@@ -165,6 +207,8 @@ function startEconomyMonitoringJob(
     runHourlySnapshot,
     runDailySnapshot,
     runAlertChecks,
+    runResourcePriceSnapshot,
+    runDynamicPriceRefresh,
   };
 }
 
@@ -172,6 +216,7 @@ module.exports = {
   DEFAULT_HOURLY_SNAPSHOT_INTERVAL_MS,
   DEFAULT_DAILY_SNAPSHOT_INTERVAL_MS,
   DEFAULT_ALERT_CHECK_INTERVAL_MS,
+  DEFAULT_DYNAMIC_PRICE_REFRESH_INTERVAL_MS,
   resolveEconomyMonitoringConfig,
   startEconomyMonitoringJob,
   notifyAdminAlertChannel,

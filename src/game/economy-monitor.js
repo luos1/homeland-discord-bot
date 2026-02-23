@@ -26,7 +26,16 @@ const DEFAULTS = {
   abnormalTradeLookbackHours: 24,
   statsLimit: 10,
   tradeActivityDays: 7,
+  priceTrendDays: 7,
 };
+
+const STATS_ITEM_TYPES = {
+  all: 'all',
+  resource: 'resource',
+  equipment: 'equipment',
+};
+
+const SPARKLINE_BLOCKS = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 
 function normalizeSnapshotType(snapshotType) {
   if (snapshotType && SNAPSHOT_TYPES[snapshotType]) {
@@ -51,6 +60,38 @@ function toResourceName(resourceType, fallbackName = null) {
 
 function toResourceEmoji(resourceType) {
   return RESOURCES[resourceType]?.emoji || '📦';
+}
+
+function normalizeStatsItemType(itemType) {
+  if (itemType && STATS_ITEM_TYPES[itemType]) {
+    return itemType;
+  }
+
+  return STATS_ITEM_TYPES.all;
+}
+
+function toItemDisplayName(itemType, itemKey, fallbackName = null) {
+  if (itemType === STATS_ITEM_TYPES.resource) {
+    return toResourceName(itemKey, fallbackName || itemKey);
+  }
+
+  if (itemType === STATS_ITEM_TYPES.equipment) {
+    return fallbackName || `장비#${itemKey}`;
+  }
+
+  return fallbackName || itemKey;
+}
+
+function toItemEmoji(itemType, itemKey) {
+  if (itemType === STATS_ITEM_TYPES.resource) {
+    return toResourceEmoji(itemKey);
+  }
+
+  if (itemType === STATS_ITEM_TYPES.equipment) {
+    return '⚔️';
+  }
+
+  return '📦';
 }
 
 function parseSnapshotMap(raw) {
@@ -157,6 +198,48 @@ async function getGroupedResourcePrices(prisma, { fromDate = null, toDate = null
   });
 }
 
+function buildItemPriceHistoryRowsFromTrades(trades, timestamp) {
+  const grouped = new Map();
+
+  (Array.isArray(trades) ? trades : []).forEach((trade) => {
+    const itemType = trade?.itemType;
+    const itemKey = trade?.itemKey;
+    const quantity = trade?.quantity || 0;
+    const price = trade?.price || 0;
+
+    if (!itemType || !itemKey || quantity <= 0 || price <= 0) {
+      return;
+    }
+
+    const unitPrice = Math.max(1, Math.round(price / quantity));
+    const key = `${itemType}:${itemKey}`;
+    const current = grouped.get(key) || {
+      itemType,
+      itemKey,
+      totalPrice: 0,
+      totalQuantity: 0,
+      minPrice: unitPrice,
+      maxPrice: unitPrice,
+    };
+
+    current.totalPrice += price;
+    current.totalQuantity += quantity;
+    current.minPrice = Math.min(current.minPrice, unitPrice);
+    current.maxPrice = Math.max(current.maxPrice, unitPrice);
+    grouped.set(key, current);
+  });
+
+  return Array.from(grouped.values()).map((entry) => ({
+    itemType: entry.itemType,
+    itemKey: entry.itemKey,
+    avgPrice: Math.max(1, Math.round(entry.totalPrice / Math.max(entry.totalQuantity, 1))),
+    minPrice: Math.max(1, entry.minPrice),
+    maxPrice: Math.max(1, entry.maxPrice),
+    volume: Math.max(0, entry.totalQuantity),
+    recordedAt: timestamp,
+  }));
+}
+
 async function createEconomySnapshot(
   prisma,
   {
@@ -169,7 +252,7 @@ async function createEconomySnapshot(
   const lookbackHours = toPositiveInt(priceLookbackHours, DEFAULTS.priceLookbackHours);
   const priceWindowStart = new Date(timestamp.getTime() - lookbackHours * MS_IN_HOUR);
 
-  const [goldAgg, tradeVolumeAgg, groupedResources, groupedPrices] = await Promise.all([
+  const [goldAgg, tradeVolumeAgg, groupedResources, groupedPrices, pricedTrades] = await Promise.all([
     prisma.character.aggregate({
       _sum: {
         gold: true,
@@ -189,6 +272,20 @@ async function createEconomySnapshot(
     getGroupedResourcePrices(prisma, {
       fromDate: priceWindowStart,
       toDate: timestamp,
+    }),
+    prisma.tradeHistory.findMany({
+      where: {
+        createdAt: {
+          gte: priceWindowStart,
+          lte: timestamp,
+        },
+      },
+      select: {
+        itemType: true,
+        itemKey: true,
+        quantity: true,
+        price: true,
+      },
     }),
   ]);
 
@@ -221,6 +318,13 @@ async function createEconomySnapshot(
   if (priceHistoryRows.length > 0) {
     await prisma.resourcePriceHistory.createMany({
       data: priceHistoryRows,
+    });
+  }
+
+  const itemPriceHistoryRows = buildItemPriceHistoryRowsFromTrades(pricedTrades, timestamp);
+  if (itemPriceHistoryRows.length > 0) {
+    await prisma.itemPriceHistory.createMany({
+      data: itemPriceHistoryRows,
     });
   }
 
@@ -634,23 +738,335 @@ function toDayKey(date) {
   return new Date(date).toISOString().slice(0, 10);
 }
 
+function toStartOfUtcDay(date) {
+  const d = new Date(date);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+function buildDayKeys(now, days) {
+  const safeDays = toPositiveInt(days, DEFAULTS.priceTrendDays);
+  const dayKeys = [];
+  const endDay = toStartOfUtcDay(now);
+
+  for (let offset = safeDays - 1; offset >= 0; offset -= 1) {
+    const day = new Date(endDay);
+    day.setUTCDate(day.getUTCDate() - offset);
+    dayKeys.push(toDayKey(day));
+  }
+
+  return dayKeys;
+}
+
+function createSparkline(values) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return '데이터 없음';
+  }
+
+  const sanitized = values.map((value) => (Number.isFinite(value) && value > 0 ? value : null));
+  const numeric = sanitized.filter((value) => value !== null);
+
+  if (numeric.length === 0) {
+    return '데이터 없음';
+  }
+
+  const min = Math.min(...numeric);
+  const max = Math.max(...numeric);
+  let carry = numeric[0];
+
+  return sanitized.map((value) => {
+    const current = value === null ? carry : value;
+    carry = current;
+
+    if (max === min) {
+      return SPARKLINE_BLOCKS[Math.floor((SPARKLINE_BLOCKS.length - 1) / 2)];
+    }
+
+    const ratio = (current - min) / (max - min);
+    const index = Math.max(
+      0,
+      Math.min(
+        SPARKLINE_BLOCKS.length - 1,
+        Math.round(ratio * (SPARKLINE_BLOCKS.length - 1)),
+      ),
+    );
+
+    return SPARKLINE_BLOCKS[index];
+  }).join('');
+}
+
+function buildPriceTrendRowsFromTrades(trades) {
+  return (Array.isArray(trades) ? trades : [])
+    .map((trade) => {
+      const quantity = trade?.quantity || 0;
+      const price = trade?.price || 0;
+      if (quantity <= 0 || price <= 0) {
+        return null;
+      }
+
+      return {
+        itemType: trade.itemType,
+        itemKey: trade.itemKey,
+        avgPrice: Math.max(1, Math.round(price / quantity)),
+        volume: quantity,
+        recordedAt: trade.createdAt,
+      };
+    })
+    .filter(Boolean);
+}
+
+async function getItemPriceTrend(
+  prisma,
+  {
+    now = new Date(),
+    days = DEFAULTS.priceTrendDays,
+    limit = 3,
+    itemType = STATS_ITEM_TYPES.all,
+  } = {},
+) {
+  const safeDays = toPositiveInt(days, DEFAULTS.priceTrendDays);
+  const safeLimit = toPositiveInt(limit, 3);
+  const normalizedItemType = normalizeStatsItemType(itemType);
+  const dayKeys = buildDayKeys(now, safeDays);
+  const rangeStart = toStartOfUtcDay(new Date(now.getTime() - (safeDays - 1) * MS_IN_DAY));
+
+  const historyWhere = {
+    recordedAt: {
+      gte: rangeStart,
+      lte: now,
+    },
+  };
+
+  if (normalizedItemType !== STATS_ITEM_TYPES.all) {
+    historyWhere.itemType = normalizedItemType;
+  }
+
+  let rows = await prisma.itemPriceHistory.findMany({
+    where: historyWhere,
+    select: {
+      itemType: true,
+      itemKey: true,
+      avgPrice: true,
+      volume: true,
+      recordedAt: true,
+    },
+    orderBy: {
+      recordedAt: 'asc',
+    },
+  });
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    const tradeWhere = {
+      createdAt: {
+        gte: rangeStart,
+        lte: now,
+      },
+    };
+
+    if (normalizedItemType !== STATS_ITEM_TYPES.all) {
+      tradeWhere.itemType = normalizedItemType;
+    }
+
+    const trades = await prisma.tradeHistory.findMany({
+      where: tradeWhere,
+      select: {
+        itemType: true,
+        itemKey: true,
+        quantity: true,
+        price: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    rows = buildPriceTrendRowsFromTrades(trades);
+  }
+
+  const grouped = new Map();
+
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    if (!row?.itemType || !row?.itemKey) {
+      return;
+    }
+
+    const avgPrice = row?.avgPrice || 0;
+    const volume = row?.volume || 0;
+
+    if (avgPrice <= 0 || volume <= 0) {
+      return;
+    }
+
+    const key = `${row.itemType}:${row.itemKey}`;
+    const dayKey = toDayKey(row.recordedAt);
+    const current = grouped.get(key) || {
+      itemType: row.itemType,
+      itemKey: row.itemKey,
+      totalVolume: 0,
+      daily: new Map(),
+    };
+    const dayEntry = current.daily.get(dayKey) || {
+      weightedPrice: 0,
+      volume: 0,
+    };
+
+    dayEntry.weightedPrice += avgPrice * volume;
+    dayEntry.volume += volume;
+    current.daily.set(dayKey, dayEntry);
+    current.totalVolume += volume;
+    grouped.set(key, current);
+  });
+
+  const items = Array.from(grouped.values())
+    .map((entry) => {
+      const series = dayKeys.map((dayKey) => {
+        const day = entry.daily.get(dayKey);
+        if (!day || day.volume <= 0) {
+          return null;
+        }
+
+        return Math.round(day.weightedPrice / day.volume);
+      });
+
+      const validPoints = series.filter((value) => Number.isFinite(value) && value > 0);
+      const firstPrice = validPoints[0] || 0;
+      const lastPrice = validPoints[validPoints.length - 1] || 0;
+      const changeRate = firstPrice > 0
+        ? ((lastPrice - firstPrice) / firstPrice) * 100
+        : null;
+
+      return {
+        itemType: entry.itemType,
+        itemKey: entry.itemKey,
+        itemName: toItemDisplayName(entry.itemType, entry.itemKey),
+        emoji: toItemEmoji(entry.itemType, entry.itemKey),
+        totalVolume: entry.totalVolume,
+        series,
+        sparkline: createSparkline(series),
+        firstPrice,
+        lastPrice,
+        changeRate,
+      };
+    })
+    .sort((a, b) => b.totalVolume - a.totalVolume || a.itemName.localeCompare(b.itemName))
+    .slice(0, safeLimit);
+
+  return {
+    days: safeDays,
+    itemType: normalizedItemType,
+    dayKeys,
+    items,
+  };
+}
+
+async function getItemTradeVolumeTop(
+  prisma,
+  {
+    limit = DEFAULTS.statsLimit,
+    now = new Date(),
+    days = DEFAULTS.tradeActivityDays,
+    itemType = STATS_ITEM_TYPES.all,
+  } = {},
+) {
+  const safeLimit = toPositiveInt(limit, DEFAULTS.statsLimit);
+  const safeDays = toPositiveInt(days, DEFAULTS.tradeActivityDays);
+  const normalizedItemType = normalizeStatsItemType(itemType);
+  const start = new Date(now.getTime() - safeDays * MS_IN_DAY);
+
+  const where = {
+    createdAt: {
+      gte: start,
+      lte: now,
+    },
+  };
+
+  if (normalizedItemType !== STATS_ITEM_TYPES.all) {
+    where.itemType = normalizedItemType;
+  }
+
+  const trades = await prisma.tradeHistory.findMany({
+    where,
+    select: {
+      itemType: true,
+      itemKey: true,
+      itemName: true,
+      quantity: true,
+      price: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  const grouped = new Map();
+
+  (Array.isArray(trades) ? trades : []).forEach((trade) => {
+    if (!trade?.itemType || !trade?.itemKey) {
+      return;
+    }
+
+    const key = `${trade.itemType}:${trade.itemKey}`;
+    const quantity = Math.max(0, trade.quantity || 0);
+    const totalPrice = Math.max(0, trade.price || 0);
+    const current = grouped.get(key) || {
+      itemType: trade.itemType,
+      itemKey: trade.itemKey,
+      itemName: toItemDisplayName(trade.itemType, trade.itemKey, trade.itemName),
+      quantity: 0,
+      totalVolume: 0,
+      tradeCount: 0,
+    };
+
+    current.quantity += quantity;
+    current.totalVolume += totalPrice;
+    current.tradeCount += 1;
+    if (!current.itemName || current.itemName === current.itemKey) {
+      current.itemName = toItemDisplayName(trade.itemType, trade.itemKey, trade.itemName);
+    }
+
+    grouped.set(key, current);
+  });
+
+  return Array.from(grouped.values())
+    .sort((a, b) => b.totalVolume - a.totalVolume || b.quantity - a.quantity)
+    .slice(0, safeLimit)
+    .map((entry, index) => ({
+      rank: index + 1,
+      itemType: entry.itemType,
+      itemKey: entry.itemKey,
+      itemName: entry.itemName,
+      emoji: toItemEmoji(entry.itemType, entry.itemKey),
+      quantity: entry.quantity,
+      totalVolume: entry.totalVolume,
+      tradeCount: entry.tradeCount,
+      averageUnitPrice: entry.quantity > 0 ? Math.round(entry.totalVolume / entry.quantity) : 0,
+    }));
+}
+
 async function getTradeActivity(
   prisma,
   {
     now = new Date(),
     days = DEFAULTS.tradeActivityDays,
+    itemType = STATS_ITEM_TYPES.all,
   } = {},
 ) {
   const safeDays = toPositiveInt(days, DEFAULTS.tradeActivityDays);
+  const normalizedItemType = normalizeStatsItemType(itemType);
   const start = new Date(now.getTime() - safeDays * MS_IN_DAY);
+  const where = {
+    createdAt: {
+      gte: start,
+      lte: now,
+    },
+  };
+
+  if (normalizedItemType !== STATS_ITEM_TYPES.all) {
+    where.itemType = normalizedItemType;
+  }
 
   const trades = await prisma.tradeHistory.findMany({
-    where: {
-      createdAt: {
-        gte: start,
-        lte: now,
-      },
-    },
+    where,
     orderBy: {
       createdAt: 'asc',
     },
@@ -677,6 +1093,7 @@ async function getTradeActivity(
   });
 
   return {
+    itemType: normalizedItemType,
     days: safeDays,
     totalTrades: trades.length,
     totalVolume,
@@ -689,22 +1106,42 @@ async function getEconomyStatistics(
   {
     limit = DEFAULTS.statsLimit,
     activityDays = DEFAULTS.tradeActivityDays,
+    itemType = STATS_ITEM_TYPES.all,
+    priceTrendDays = DEFAULTS.priceTrendDays,
+    trendItemLimit = 3,
     now = new Date(),
   } = {},
 ) {
-  const [tradeVolumeTop10, richestRanking, tradeActivity] = await Promise.all([
+  const normalizedItemType = normalizeStatsItemType(itemType);
+  const [tradeVolumeTop10, richestRanking, tradeActivity, itemTradeVolumeTop10, priceTrend7d] = await Promise.all([
     getTradeVolumeTop(prisma, { limit }),
     getRichestRanking(prisma, { limit }),
     getTradeActivity(prisma, {
       now,
       days: activityDays,
+      itemType: normalizedItemType,
+    }),
+    getItemTradeVolumeTop(prisma, {
+      limit,
+      now,
+      days: activityDays,
+      itemType: normalizedItemType,
+    }),
+    getItemPriceTrend(prisma, {
+      now,
+      days: priceTrendDays,
+      limit: trendItemLimit,
+      itemType: normalizedItemType,
     }),
   ]);
 
   return {
+    itemType: normalizedItemType,
     tradeVolumeTop10,
+    itemTradeVolumeTop10,
     richestRanking,
     tradeActivity,
+    priceTrend7d,
   };
 }
 
@@ -749,10 +1186,13 @@ module.exports = {
   ALERT_TYPES,
   ALERT_SEVERITIES,
   DEFAULTS,
+  STATS_ITEM_TYPES,
   createEconomySnapshot,
   getEconomyDashboard,
   getEconomyStatistics,
   getTradeVolumeTop,
+  getItemTradeVolumeTop,
+  getItemPriceTrend,
   getRichestRanking,
   getTradeActivity,
   getRecentSnapshots,
@@ -765,4 +1205,5 @@ module.exports = {
   parseSnapshotMap,
   toSortedResourceList,
   toSortedPriceList,
+  createSparkline,
 };

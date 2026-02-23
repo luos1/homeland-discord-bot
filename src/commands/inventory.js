@@ -13,7 +13,9 @@ const {
   generateEquipment,
   calculateEquipmentStats,
 } = require('../game/equipment');
-const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { RESOURCES } = require('../game/production-classes');
+const { getResourceDynamicPrice } = require('../game/dynamic-pricing');
+const { EMBED_COLORS, createDivider, formatNumber } = require('../utils/ui');
 
 const INVENTORY_BUTTON_PREFIX = 'inventory:';
 const INVENTORY_ACTION = {
@@ -29,9 +31,13 @@ const INVENTORY_TAB = {
   equipment: 'equipment',
   consumable: 'consumable',
   skill: 'skill',
+  resource: 'resource',
 };
 
 const MAX_BUTTONS_PER_ROW = 5;
+const PRICE_HISTORY_LOOKBACK_HOURS = 48;
+const PRICE_HISTORY_COMPARE_HOURS = 1;
+const PRICE_HISTORY_RESOURCE_TYPE = 'resource';
 const FALLBACK_RARITY = {
   name: '일반',
   emoji: '⚪',
@@ -60,7 +66,203 @@ function normalizeCharacterCollections(character) {
     equipment: toSafeArray(character?.equipment),
     consumables: toSafeArray(character?.consumables),
     skills: toSafeArray(character?.skills),
+    resources: toSafeArray(character?.resources),
   };
+}
+
+function sortResourceInventory(resources) {
+  return toSafeArray(resources)
+    .filter((resource) => resource && Number(resource.quantity) > 0)
+    .sort((a, b) => {
+      const tierA = RESOURCES[a.type]?.tier || 0;
+      const tierB = RESOURCES[b.type]?.tier || 0;
+      if (tierA !== tierB) {
+        return tierA - tierB;
+      }
+
+      const nameA = RESOURCES[a.type]?.name || a.name || a.type;
+      const nameB = RESOURCES[b.type]?.name || b.name || b.type;
+      return nameA.localeCompare(nameB, 'ko-KR');
+    });
+}
+
+function resolvePriceTrendEmoji(changeRate) {
+  if (!Number.isFinite(changeRate)) {
+    return '➖';
+  }
+
+  if (changeRate > 0) {
+    return '📈';
+  }
+
+  if (changeRate < 0) {
+    return '📉';
+  }
+
+  return '➖';
+}
+
+function formatSignedPercent(value) {
+  if (!Number.isFinite(value)) {
+    return '데이터 부족';
+  }
+
+  const rounded = Math.round(value * 100) / 100;
+  const sign = rounded > 0 ? '+' : '';
+  return `${sign}${rounded.toFixed(2)}%`;
+}
+
+function buildResourceHistoryMap(rows, oneHourAgoMs) {
+  const grouped = new Map();
+
+  toSafeArray(rows).forEach((row) => {
+    if (!row?.itemKey) {
+      return;
+    }
+
+    const list = grouped.get(row.itemKey) || [];
+    list.push(row);
+    grouped.set(row.itemKey, list);
+  });
+
+  const historyMap = {};
+
+  grouped.forEach((list, itemKey) => {
+    const previous = list.find((row) => {
+      const recordedAtMs = new Date(row.recordedAt).getTime();
+      return Number.isFinite(recordedAtMs) && recordedAtMs <= oneHourAgoMs;
+    });
+
+    historyMap[itemKey] = {
+      previous1hPrice: Number(previous?.avgPrice) > 0 ? Number(previous.avgPrice) : null,
+    };
+  });
+
+  return historyMap;
+}
+
+async function getResourceHistoryMap(prisma, resourceKeys, now = new Date()) {
+  const keys = toSafeArray(resourceKeys).filter(Boolean);
+  if (keys.length === 0) {
+    return {};
+  }
+
+  if (!prisma?.itemPriceHistory?.findMany) {
+    return {};
+  }
+
+  const lookbackStart = new Date(now.getTime() - PRICE_HISTORY_LOOKBACK_HOURS * 60 * 60 * 1000);
+  const oneHourAgoMs = now.getTime() - PRICE_HISTORY_COMPARE_HOURS * 60 * 60 * 1000;
+
+  const rows = await prisma.itemPriceHistory.findMany({
+    where: {
+      itemType: PRICE_HISTORY_RESOURCE_TYPE,
+      itemKey: {
+        in: keys,
+      },
+      recordedAt: {
+        gte: lookbackStart,
+        lte: now,
+      },
+    },
+    select: {
+      itemKey: true,
+      avgPrice: true,
+      recordedAt: true,
+    },
+    orderBy: [
+      {
+        itemKey: 'asc',
+      },
+      {
+        recordedAt: 'desc',
+      },
+    ],
+  });
+
+  return buildResourceHistoryMap(rows, oneHourAgoMs);
+}
+
+async function createResourceInventoryEmbed(character, resources, prisma) {
+  const sortedResources = sortResourceInventory(resources);
+
+  if (sortedResources.length === 0) {
+    return new EmbedBuilder()
+      .setColor(EMBED_COLORS.profile)
+      .setTitle(`📦 ${character?.name || '모험가'}의 자원`)
+      .setDescription(
+        [
+          createDivider(),
+          '보유한 자원이 없습니다.',
+          '',
+          '💡 `/gather`로 자원을 채집하세요',
+          createDivider(),
+        ].join('\n'),
+      )
+      .setFooter({
+        text: '자원은 제작과 판매에 사용됩니다',
+      });
+  }
+
+  const now = new Date();
+  const itemKeys = sortedResources.map((resource) => resource.type);
+  const [historyMap, priceRows] = await Promise.all([
+    getResourceHistoryMap(prisma, itemKeys, now),
+    Promise.all(
+      sortedResources.map((resource) => getResourceDynamicPrice(prisma, resource.type, { now })),
+    ),
+  ]);
+
+  const lines = sortedResources.slice(0, 15).map((resource, index) => {
+    const info = RESOURCES[resource.type] || {};
+    const name = info.name || resource.name || resource.type;
+    const emoji = info.emoji || '📦';
+    const quantity = Math.max(0, Number(resource.quantity) || 0);
+    const rawNpcBuyPrice = Number(priceRows[index]?.npcBuyPrice);
+    const currentNpcBuyPrice = Number.isFinite(rawNpcBuyPrice) && rawNpcBuyPrice > 0
+      ? Math.floor(rawNpcBuyPrice)
+      : 0;
+    const previous1hPrice = Number(historyMap[resource.type]?.previous1hPrice) || 0;
+
+    let trendEmoji = '➖';
+    let trendText = '1h 데이터 부족';
+
+    if (currentNpcBuyPrice > 0 && previous1hPrice > 0) {
+      const changeRate = ((currentNpcBuyPrice - previous1hPrice) / previous1hPrice) * 100;
+      trendEmoji = resolvePriceTrendEmoji(changeRate);
+      trendText = `${formatSignedPercent(changeRate)} (1h)`;
+    }
+
+    const npcPriceText = currentNpcBuyPrice > 0
+      ? `${formatNumber(currentNpcBuyPrice)}G`
+      : '조회 실패';
+
+    return [
+      `${index + 1}. ${emoji} **${name}** x${formatNumber(quantity)}`,
+      `   💰 NPC 매입가: ${npcPriceText} | ${trendEmoji} ${trendText}`,
+    ].join('\n');
+  });
+
+  return new EmbedBuilder()
+    .setColor(EMBED_COLORS.profile)
+    .setTitle(`📦 ${character?.name || '모험가'}의 자원`)
+    .setDescription(
+      [
+        createDivider(),
+        '보유 자원 시세',
+        '',
+        lines.join('\n\n'),
+        sortedResources.length > 15 ? `... 외 ${sortedResources.length - 15}종` : '',
+        '',
+        createDivider(),
+        '💡 `/sell_resources`로 NPC 매입가에 빠르게 판매할 수 있습니다',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    )
+    .setFooter({
+      text: '1시간 등락률은 ItemPriceHistory 스냅샷 기준입니다',
+    });
 }
 
 function createSafeActionRow(buttons) {
@@ -292,6 +494,11 @@ function createInventoryActionRow(equipmentList) {
       .setEmoji('💊')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:resource`)
+      .setLabel('자원')
+      .setEmoji('📦')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('back_to_profile')
       .setLabel('프로필로')
       .setEmoji('👤')
@@ -361,6 +568,11 @@ function createSkillActionRow(skills) {
       .setEmoji('💊')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:resource`)
+      .setLabel('자원')
+      .setEmoji('📦')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('back_to_profile')
       .setLabel('프로필로')
       .setEmoji('👤')
@@ -407,6 +619,11 @@ function createConsumableActionRow(consumables) {
       .setLabel('스킬')
       .setEmoji('📚')
       .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:resource`)
+      .setLabel('자원')
+      .setEmoji('📦')
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('back_to_profile')
       .setLabel('프로필로')
@@ -468,6 +685,33 @@ function createEquipmentDetailEmbed(equipment) {
     .setFooter({
       text: '장비 관리',
     });
+}
+
+function createResourceActionRow() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:equipment`)
+        .setLabel('장비')
+        .setEmoji('⚔️')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:consumable`)
+        .setLabel('소비템')
+        .setEmoji('💊')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`${INVENTORY_BUTTON_PREFIX}tab:skill`)
+        .setLabel('스킬')
+        .setEmoji('📚')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('back_to_profile')
+        .setLabel('프로필로')
+        .setEmoji('👤')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  ];
 }
 
 function createEquipmentActionRow(equipment) {
@@ -548,6 +792,9 @@ module.exports = {
         skills: {
           orderBy: { skillLevel: 'desc' },
         },
+        resources: {
+          orderBy: { type: 'asc' },
+        },
       },
     });
 
@@ -612,6 +859,9 @@ module.exports = {
           skills: {
             orderBy: { skillLevel: 'desc' },
           },
+          resources: {
+            orderBy: { type: 'asc' },
+          },
         },
       });
 
@@ -649,6 +899,21 @@ module.exports = {
         await interaction.update({
           embeds: [createSkillInventoryEmbed(normalizedCharacter, normalizedCharacter.skills)],
           components: createSkillActionRow(normalizedCharacter.skills),
+        });
+
+        return true;
+      }
+
+      if (param === INVENTORY_TAB.resource) {
+        await interaction.update({
+          embeds: [
+            await createResourceInventoryEmbed(
+              normalizedCharacter,
+              normalizedCharacter.resources,
+              prisma,
+            ),
+          ],
+          components: createResourceActionRow(),
         });
 
         return true;

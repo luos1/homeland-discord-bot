@@ -8,6 +8,10 @@ const {
   calculateExchangeQuote,
   getGemMarketSnapshot,
 } = require('../game/gem-exchange');
+const {
+  FEE_CONFIG_KEYS,
+  resolveFeeRate,
+} = require('../game/fee-config');
 
 const CASH_PURCHASE_USD_PER_GEM = 0.05;
 
@@ -15,7 +19,16 @@ function formatUsd(amount) {
   return `$${amount.toFixed(2)}`;
 }
 
-function createGemStatusEmbed({ character, marketSnapshot }) {
+async function getGemFeeRate(prisma, now = new Date()) {
+  try {
+    return await resolveFeeRate(prisma, FEE_CONFIG_KEYS.gem, { now });
+  } catch (error) {
+    console.error('젬 수수료 조회 실패, 기본값 사용:', error);
+    return GEM_EXCHANGE_FEE_RATE;
+  }
+}
+
+function createGemStatusEmbed({ character, marketSnapshot, feeRate }) {
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
     .setTitle('💠 젬 거래소')
@@ -29,7 +42,7 @@ function createGemStatusEmbed({ character, marketSnapshot }) {
         `🛒 매수 수요(24h): ${formatNumber(marketSnapshot.demand)}젬`,
         `📦 매도 공급(24h): ${formatNumber(marketSnapshot.supply)}젬`,
         `🔄 거래량(24h): ${formatNumber(marketSnapshot.volume)}젬 (${marketSnapshot.recentCount}건)`,
-        `💸 거래 수수료: ${Math.round(GEM_EXCHANGE_FEE_RATE * 100)}%`,
+        `💸 거래 수수료: ${Math.round(feeRate * 100)}%`,
         createDivider(),
         '',
         '명령어',
@@ -91,6 +104,7 @@ module.exports = {
 
   async execute(interaction, { prisma }) {
     const subcommand = interaction.options.getSubcommand();
+    const now = new Date();
 
     const character = await prisma.character.findUnique({
       where: {
@@ -107,10 +121,11 @@ module.exports = {
     }
 
     const marketSnapshot = await getGemMarketSnapshot(prisma);
+    const gemFeeRate = await getGemFeeRate(prisma, now);
 
     if (subcommand === 'status') {
       await interaction.reply({
-        embeds: [createGemStatusEmbed({ character, marketSnapshot })],
+        embeds: [createGemStatusEmbed({ character, marketSnapshot, feeRate: gemFeeRate })],
         components: [createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.premium })],
         ephemeral: true,
       });
@@ -175,6 +190,7 @@ module.exports = {
         orderType: subcommand,
         amount,
         rate: marketSnapshot.rate,
+        feeRate: gemFeeRate,
       });
 
       if (subcommand === 'buy' && character.gold < quote.totalGoldCost) {
@@ -259,7 +275,7 @@ module.exports = {
             createDivider(),
             `수량: ${formatNumber(amount)}젬`,
             `환율: 1젬 = ${formatNumber(quote.rate)}G`,
-            `수수료(${Math.round(GEM_EXCHANGE_FEE_RATE * 100)}%): ${formatNumber(quote.fee)}G`,
+            `수수료(${Math.round(gemFeeRate * 100)}%): ${formatNumber(quote.fee)}G`,
             isBuy
               ? `총 차감 골드: ${formatNumber(quote.totalGoldCost)}G`
               : `순수령 골드: ${formatNumber(quote.netGoldPayout)}G`,

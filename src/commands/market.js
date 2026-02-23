@@ -22,11 +22,16 @@ const {
   sendOnboardingFeedback,
 } = require('../game/onboarding');
 const {
-  MARKET_FEE_RATE,
   PRICE_LOOKBACK_HOURS,
   getResourceBasePrice,
   calculateNpcResourcePrice,
 } = require('../game/economy');
+const {
+  FEE_CONFIG_KEYS,
+  FEE_DEFAULTS,
+  resolveFeeRate,
+} = require('../game/fee-config');
+const { getResourcePriceRecommendation } = require('../game/price-recommendation');
 
 const MARKET_BUTTON_PREFIX = 'market:';
 const MAX_PRICE_PER_UNIT = 100000;
@@ -34,6 +39,7 @@ const ORDERBOOK_DEPTH = 5;
 const RECENT_TRADE_LIMIT = 5;
 const MAX_SELECT_OPTIONS = 25;
 const EQUIPMENT_MAX_PRICE = 100000000;
+const DEFAULT_MARKET_FEE_RATE = FEE_DEFAULTS[FEE_CONFIG_KEYS.market].currentRate;
 const EQUIPMENT_RARITY_FILTERS = {
   all: { label: '전체', emoji: '📋' },
   common: { label: '일반', emoji: '⚪' },
@@ -70,6 +76,15 @@ function getResourceInfo(itemKey) {
 
 function formatGold(value) {
   return `${value.toLocaleString('ko-KR')}G`;
+}
+
+async function getMarketFeeRate(prisma, now = new Date()) {
+  try {
+    return await resolveFeeRate(prisma, FEE_CONFIG_KEYS.market, { now });
+  } catch (error) {
+    console.error('시장 수수료 조회 실패, 기본값 사용:', error);
+    return DEFAULT_MARKET_FEE_RATE;
+  }
 }
 
 function truncateLabel(text, maxLength = 100) {
@@ -164,7 +179,7 @@ function filterEquipmentListings(listings, filters) {
   });
 }
 
-function createEquipmentMarketEmbed(listings, filters) {
+function createEquipmentMarketEmbed(listings, filters, feeRate = DEFAULT_MARKET_FEE_RATE) {
   const rarity = EQUIPMENT_RARITY_FILTERS[filters.rarity];
   const type = EQUIPMENT_TYPE_FILTERS[filters.type];
 
@@ -189,7 +204,7 @@ function createEquipmentMarketEmbed(listings, filters) {
       ].join('\n'),
     )
     .setFooter({
-      text: `거래 수수료 ${Math.round(MARKET_FEE_RATE * 100)}% (판매자 부담)`,
+      text: `거래 수수료 ${Math.round(feeRate * 100)}% (판매자 부담)`,
     });
 }
 
@@ -266,8 +281,9 @@ function createEquipmentMarketActionRows(listings, filters) {
   return rows;
 }
 
-async function renderEquipmentMarket(interaction, prisma, filters = {}) {
+async function renderEquipmentMarket(interaction, prisma, filters = {}, feeRate = null) {
   const normalizedFilters = normalizeEquipmentFilters(filters);
+  const appliedFeeRate = Number.isFinite(feeRate) ? feeRate : await getMarketFeeRate(prisma);
   const activeListings = await prisma.marketListing.findMany({
     where: {
       itemType: 'equipment',
@@ -280,7 +296,7 @@ async function renderEquipmentMarket(interaction, prisma, filters = {}) {
   const filtered = filterEquipmentListings(activeListings, normalizedFilters);
 
   await interaction.update({
-    embeds: [createEquipmentMarketEmbed(filtered, normalizedFilters)],
+    embeds: [createEquipmentMarketEmbed(filtered, normalizedFilters, appliedFeeRate)],
     components: createEquipmentMarketActionRows(filtered, normalizedFilters),
   });
 }
@@ -297,7 +313,34 @@ function formatTrendLabel(trend) {
   return '➖ 안정';
 }
 
-function createMarketMainEmbed() {
+function formatRatePercent(rate) {
+  if (!Number.isFinite(rate)) {
+    return '0.0%';
+  }
+
+  const percent = rate * 100;
+  const sign = percent > 0 ? '+' : '';
+  return `${sign}${percent.toFixed(1)}%`;
+}
+
+function buildRecommendationLines(recommendation) {
+  if (!recommendation) {
+    return [
+      '🤖 **AI 추천가**',
+      '거래 데이터가 부족해 추천가를 계산하지 못했습니다.',
+    ];
+  }
+
+  return [
+    '🤖 **AI 추천가**',
+    `${formatGold(recommendation.recommendedPrice)} · 신뢰도 ${recommendation.confidence}%`,
+    `7일 평균 ${formatGold(recommendation.avg7d)} / 24h 평균 ${formatGold(recommendation.avg24h)} (${formatRatePercent(recommendation.trendRate)})`,
+    `최근 ${recommendation.recentTradeCount}건 ${formatGold(recommendation.recentAvg)}`,
+    `빠른 판매 ${formatGold(recommendation.quickSellPrice)} · 높은 수익 ${formatGold(recommendation.highProfitPrice)}`,
+  ];
+}
+
+function createMarketMainEmbed(feeRate = DEFAULT_MARKET_FEE_RATE) {
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
     .setTitle('🏪 거래소')
@@ -309,7 +352,7 @@ function createMarketMainEmbed() {
         '📉 자원 매도/매수: 동일 가격 주문 자동 체결',
         '⚔️ 장비 거래: 등록 후 즉시 구매 방식',
         '',
-        `💰 체결 수수료: ${Math.round(MARKET_FEE_RATE * 100)}% (판매자 부담)`,
+        `💰 체결 수수료: ${Math.round(feeRate * 100)}% (판매자 부담)`,
         '',
         createDivider(),
       ].join('\n'),
@@ -461,7 +504,7 @@ function formatRecentTrades(trades) {
     .join('\n');
 }
 
-function createOrderBookEmbed(itemKey, snapshot) {
+function createOrderBookEmbed(itemKey, snapshot, recommendation = null) {
   const resource = getResourceInfo(itemKey);
   const bestAsk = snapshot.sellLevels[0]?.price ?? null;
   const bestBid = snapshot.buyLevels[0]?.price ?? null;
@@ -495,6 +538,8 @@ function createOrderBookEmbed(itemKey, snapshot) {
         `${formatGold(npcPrice.unitPrice)}/개 · ${formatTrendLabel(npcPrice.trend)}`,
         `공급 ${npcPrice.supplyQuantity} / 수요 ${npcPrice.demandQuantity}`,
         npcPrice.circuitBreakerTriggered ? '🛑 서킷브레이커 발동(급변동 완화)' : '✅ 서킷브레이커 정상',
+        '',
+        ...buildRecommendationLines(recommendation),
         '',
         createDivider(),
       ].join('\n'),
@@ -621,6 +666,15 @@ function parsePositiveInteger(rawValue) {
   }
 
   return parsed;
+}
+
+async function getSafePriceRecommendation(prisma, itemKey) {
+  try {
+    return await getResourcePriceRecommendation(prisma, itemKey);
+  } catch (error) {
+    console.error(`[market] 추천가 계산 실패 (${itemKey}):`, error);
+    return null;
+  }
 }
 
 async function fetchOrderBookSnapshot(prisma, itemKey) {
@@ -759,7 +813,15 @@ async function addResourceToCharacter(tx, { characterId, itemKey, itemName, quan
   });
 }
 
-async function placeOrderWithMatching({ prisma, character, side, itemKey, quantity, price }) {
+async function placeOrderWithMatching({
+  prisma,
+  character,
+  side,
+  itemKey,
+  quantity,
+  price,
+  feeRate = DEFAULT_MARKET_FEE_RATE,
+}) {
   const resource = getResourceInfo(itemKey);
   const reserveAmount = quantity * price;
 
@@ -850,7 +912,7 @@ async function placeOrderWithMatching({ prisma, character, side, itemKey, quanti
       const now = new Date();
       const matchedQuantity = Math.min(remainingQuantity, oppositeOrder.quantity);
       const tradedGold = matchedQuantity * price;
-      const fee = Math.floor(tradedGold * MARKET_FEE_RATE);
+      const fee = Math.floor(tradedGold * feeRate);
       const sellerNet = tradedGold - fee;
 
       const buyerId = side === 'buy' ? character.id : oppositeOrder.characterId;
@@ -1031,7 +1093,7 @@ async function cancelOrder({ prisma, characterId, orderId }) {
   });
 }
 
-function createOrderModal({ side, itemKey, quantityLabel, title }) {
+function createOrderModal({ side, itemKey, quantityLabel, title, recommendation = null }) {
   const modal = new ModalBuilder()
     .setCustomId(`${MARKET_BUTTON_PREFIX}ordermodal:${side}:${itemKey}`)
     .setTitle(title);
@@ -1045,11 +1107,16 @@ function createOrderModal({ side, itemKey, quantityLabel, title }) {
     .setMinLength(1)
     .setMaxLength(10);
 
+  const recommendedPrice = recommendation?.recommendedPrice || null;
+  const priceLabel = recommendedPrice
+    ? `개당 가격 (추천 ${formatGold(recommendedPrice)})`
+    : '개당 가격 (골드)';
+
   const priceInput = new TextInputBuilder()
     .setCustomId('price')
-    .setLabel('개당 가격 (골드)')
+    .setLabel(priceLabel)
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('100')
+    .setPlaceholder(recommendedPrice ? `${recommendedPrice}` : '100')
     .setRequired(true)
     .setMinLength(1)
     .setMaxLength(10);
@@ -1117,8 +1184,9 @@ module.exports = {
       return;
     }
 
+    const marketFeeRate = await getMarketFeeRate(prisma);
     await interaction.reply({
-      embeds: [createMarketMainEmbed()],
+      embeds: [createMarketMainEmbed(marketFeeRate)],
       components: [createMarketMainActionRow()],
     });
 
@@ -1139,8 +1207,9 @@ module.exports = {
     const [action, param1, param2] = customId.split(':');
 
     if (action === 'back') {
+      const marketFeeRate = await getMarketFeeRate(prisma);
       await interaction.update({
-        embeds: [createMarketMainEmbed()],
+        embeds: [createMarketMainEmbed(marketFeeRate)],
         components: [createMarketMainActionRow()],
       });
       return true;
@@ -1239,10 +1308,13 @@ module.exports = {
         return true;
       }
 
-      const snapshot = await fetchOrderBookSnapshot(prisma, itemKey);
+      const [snapshot, recommendation] = await Promise.all([
+        fetchOrderBookSnapshot(prisma, itemKey),
+        getSafePriceRecommendation(prisma, itemKey),
+      ]);
 
       await interaction.update({
-        embeds: [createOrderBookEmbed(itemKey, snapshot)],
+        embeds: [createOrderBookEmbed(itemKey, snapshot, recommendation)],
         components: createOrderBookActionRows(itemKey),
       });
       return true;
@@ -1312,22 +1384,26 @@ module.exports = {
           return true;
         }
 
+        const recommendation = await getSafePriceRecommendation(prisma, itemKey);
         const modal = createOrderModal({
           side,
           itemKey,
           quantityLabel: `매도 수량 (최대 ${owned.quantity}개)`,
           title: `${resource.name} 매도 등록`,
+          recommendation,
         });
 
         await interaction.showModal(modal);
         return true;
       }
 
+      const recommendation = await getSafePriceRecommendation(prisma, itemKey);
       const modal = createOrderModal({
         side,
         itemKey,
         quantityLabel: '매수 수량',
         title: `${resource.name} 매수 등록`,
+        recommendation,
       });
 
       await interaction.showModal(modal);
@@ -1518,7 +1594,8 @@ module.exports = {
         return true;
       }
 
-      const fee = Math.floor(totalPrice * MARKET_FEE_RATE);
+      const marketFeeRate = await getMarketFeeRate(prisma);
+      const fee = Math.floor(totalPrice * marketFeeRate);
       const sellerNet = totalPrice - fee;
 
       try {
@@ -1693,10 +1770,13 @@ module.exports = {
         return true;
       }
 
-      const snapshot = await fetchOrderBookSnapshot(prisma, itemKey);
+      const [snapshot, recommendation] = await Promise.all([
+        fetchOrderBookSnapshot(prisma, itemKey),
+        getSafePriceRecommendation(prisma, itemKey),
+      ]);
 
       await interaction.update({
-        embeds: [createOrderBookEmbed(itemKey, snapshot)],
+        embeds: [createOrderBookEmbed(itemKey, snapshot, recommendation)],
         components: createOrderBookActionRows(itemKey),
       });
       return true;
@@ -1843,7 +1923,8 @@ module.exports = {
       }
 
       const totalPrice = pricePerUnit;
-      const fee = Math.floor(totalPrice * MARKET_FEE_RATE);
+      const marketFeeRate = await getMarketFeeRate(prisma);
+      const fee = Math.floor(totalPrice * marketFeeRate);
       const netProfit = totalPrice - fee;
 
       try {
@@ -1934,7 +2015,7 @@ module.exports = {
           `${rarityData.emoji} **${equipment.name}${levelSuffix}**`,
           `🧩 ${rarityData.name} ${typeData.name}`,
           `💰 ${formatGold(totalPrice)}`,
-          `📊 판매 시 수수료 ${Math.round(MARKET_FEE_RATE * 100)}% (${formatGold(fee)})`,
+          `📊 판매 시 수수료 ${Math.round(marketFeeRate * 100)}% (${formatGold(fee)})`,
           `💵 실수령액: ${formatGold(netProfit)}`,
           '',
           '💡 `/market`에서 판매 현황을 확인하세요',
@@ -2151,6 +2232,7 @@ module.exports = {
     }
 
     let placement;
+    const marketFeeRate = await getMarketFeeRate(prisma);
 
     try {
       placement = await placeOrderWithMatching({
@@ -2160,6 +2242,7 @@ module.exports = {
         itemKey,
         quantity,
         price,
+        feeRate: marketFeeRate,
       });
     } catch (error) {
       if (error.message === 'INSUFFICIENT_RESOURCE') {
@@ -2246,5 +2329,5 @@ module.exports = {
   },
 
   MARKET_BUTTON_PREFIX,
-  MARKET_FEE_RATE,
+  MARKET_FEE_RATE: DEFAULT_MARKET_FEE_RATE,
 };

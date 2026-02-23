@@ -562,12 +562,14 @@ module.exports = {
       const potionConfig = potionType === 'health'
         ? {
           name: '💊 체력 회복 포션',
+          itemKey: 'health_potion',
           type: 'potion',
           effect: 'heal_hp',
           power: 35,
         }
         : {
           name: '🔷 마나 회복 포션',
+          itemKey: 'mana_potion',
           type: 'potion',
           effect: 'heal_mp',
           power: 50,
@@ -604,6 +606,17 @@ module.exports = {
             power: potionConfig.power,
             duration: null,
             quantity: 1,
+          },
+        });
+
+        await tx.npcShopSale.create({
+          data: {
+            characterId: character.id,
+            saleType: 'consumable',
+            itemKey: potionConfig.itemKey,
+            itemName: potionConfig.name,
+            quantity: 1,
+            totalPrice: price,
           },
         });
       });
