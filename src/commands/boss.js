@@ -7,7 +7,7 @@ const {
 } = require('discord.js');
 
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
-const { buildVillageHomeCustomId } = require('../utils/village');
+const { createVillageHomeButton } = require('../utils/village');
 const { getAllBosses, getBossById } = require('../game/bosses');
 
 module.exports = {
@@ -176,11 +176,7 @@ async function handleBossList(interaction, { prisma }) {
     .setLabel('프로필로')
     .setEmoji('👤')
     .setStyle(ButtonStyle.Secondary);
-  const villageButton = new ButtonBuilder()
-    .setCustomId(buildVillageHomeCustomId())
-    .setLabel('마을')
-    .setEmoji('🏘️')
-    .setStyle(ButtonStyle.Success);
+  const villageButton = createVillageHomeButton();
 
   rows.push(new ActionRowBuilder().addComponents(backButton, villageButton));
 

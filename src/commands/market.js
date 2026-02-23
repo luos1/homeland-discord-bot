@@ -15,7 +15,7 @@ const { EQUIPMENT_TYPES, RARITIES } = require('../game/equipment');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('../game/daily-quests');
 const { logTradePricePoint } = require('../game/economy-monitor');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
-const { buildVillageHomeCustomId } = require('../utils/village');
+const { createBackButton, createVillageHomeButton } = require('../utils/village');
 const {
   handleOnboardingEvent,
   maybeSendGuideTip,
@@ -259,11 +259,7 @@ function createEquipmentMarketActionRows(listings, filters) {
         .setLabel('등록')
         .setEmoji('💰')
         .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId(`${MARKET_BUTTON_PREFIX}back`)
-        .setLabel('뒤로')
-        .setEmoji('🔙')
-        .setStyle(ButtonStyle.Secondary),
+      createBackButton({ customId: `${MARKET_BUTTON_PREFIX}back` }),
     ),
   );
 
@@ -340,11 +336,7 @@ function createMarketMainActionRow() {
       .setLabel('내 주문')
       .setEmoji('📊')
       .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(buildVillageHomeCustomId())
-      .setLabel('마을')
-      .setEmoji('🏘️')
-      .setStyle(ButtonStyle.Secondary),
+    createVillageHomeButton({ style: ButtonStyle.Secondary }),
   );
 }
 
@@ -410,11 +402,7 @@ function createResourceSelectionActionRows() {
 
   rows.push(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`${MARKET_BUTTON_PREFIX}back`)
-        .setLabel('뒤로')
-        .setEmoji('🔙')
-        .setStyle(ButtonStyle.Secondary),
+      createBackButton({ customId: `${MARKET_BUTTON_PREFIX}back` }),
     ),
   );
 
@@ -618,11 +606,7 @@ function createMyOrdersActionRows(orders) {
         .setLabel('자원 거래소')
         .setEmoji('📦')
         .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(`${MARKET_BUTTON_PREFIX}back`)
-        .setLabel('뒤로')
-        .setEmoji('🔙')
-        .setStyle(ButtonStyle.Secondary),
+      createBackButton({ customId: `${MARKET_BUTTON_PREFIX}back` }),
     ),
   );
 
@@ -1228,11 +1212,7 @@ module.exports = {
               .addOptions(options),
           ),
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId(`${MARKET_BUTTON_PREFIX}equipment`)
-              .setLabel('뒤로')
-              .setEmoji('🔙')
-              .setStyle(ButtonStyle.Secondary),
+            createBackButton({ customId: `${MARKET_BUTTON_PREFIX}equipment` }),
           ),
         ],
       });

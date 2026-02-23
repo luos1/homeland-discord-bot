@@ -12,7 +12,11 @@ const {
   PRODUCTION_CLASSES,
 } = require('../game/production-classes');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
-const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
+const {
+  createBackButton,
+  createVillageNavigationRow,
+  VILLAGE_MENU_KEYS,
+} = require('../utils/village');
 const { maybeSendGuideTip } = require('../game/onboarding');
 
 const PRODUCTION_BUTTON_PREFIX = 'production:';
@@ -124,11 +128,7 @@ function createClassSelectActionRow(category) {
   });
 
   buttons.push(
-    new ButtonBuilder()
-      .setCustomId(`${PRODUCTION_BUTTON_PREFIX}back`)
-      .setLabel('뒤로')
-      .setEmoji('🔙')
-      .setStyle(ButtonStyle.Secondary),
+    createBackButton({ customId: `${PRODUCTION_BUTTON_PREFIX}back` }),
   );
 
   return new ActionRowBuilder().addComponents(buttons);

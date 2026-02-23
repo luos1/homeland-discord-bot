@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 
 const { PROFILE_BUTTON_IDS } = require('./profile');
+const { createVillageHomeButton } = require('../utils/village');
 const {
   EMBED_COLORS,
   createDivider,
@@ -43,16 +44,17 @@ const CLASS_PRESETS = {
 
 function createCharacterActionRow() {
   return new ActionRowBuilder().addComponents(
+    createVillageHomeButton(),
+    new ButtonBuilder()
+      .setCustomId(PROFILE_BUTTON_IDS.stats)
+      .setLabel('프로필')
+      .setEmoji('👤')
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(PROFILE_BUTTON_IDS.explore)
       .setLabel('탐험 시작')
       .setEmoji('⚔️')
       .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId(PROFILE_BUTTON_IDS.stats)
-      .setLabel('프로필 보기')
-      .setEmoji('📊')
-      .setStyle(ButtonStyle.Secondary),
   );
 }
 

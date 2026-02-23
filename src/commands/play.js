@@ -12,6 +12,7 @@ const {
   createProfileEmbed,
   getProfileCharacter,
 } = require('./profile');
+const { createVillageHomeButton } = require('../utils/village');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
 
 const PLAY_CREATE_BUTTON_PREFIX = 'play_create:';
@@ -55,17 +56,23 @@ function createPlayCreateActionRow() {
       .setCustomId(`${PLAY_CREATE_BUTTON_PREFIX}${classKey}`)
       .setLabel(CLASS_PRESETS[classKey].label)
       .setStyle(PLAY_CREATE_BUTTON_STYLES[classKey] ?? ButtonStyle.Secondary);
-    
+
     // Emoji는 선택적으로 추가
     const emoji = PLAY_CREATE_BUTTON_EMOJIS[classKey];
     if (emoji) {
       button.setEmoji(emoji);
     }
-    
+
     return button;
   });
 
   return new ActionRowBuilder().addComponents(...classButtons);
+}
+
+function createPlayVillageActionRow() {
+  return new ActionRowBuilder().addComponents(
+    createVillageHomeButton(),
+  );
 }
 
 function getPlayCreateClassChoice(customId) {
@@ -93,8 +100,7 @@ module.exports = {
     if (!character) {
       await interaction.reply({
         embeds: [createPlayCreateEmbed()],
-        // components 임시 제거 - 버튼 에러 회피
-        // components: [createPlayCreateActionRow()],
+        components: [createPlayCreateActionRow(), createPlayVillageActionRow()],
         ephemeral: true,
       });
 

@@ -14,7 +14,7 @@ const { calculateEquipmentStats } = require('../game/equipment');
 const { getStreakDisplay } = require('../game/streak');
 const { cleanupOldSessions } = require('../game/session-cleanup');
 const { resolvePremiumBenefits } = require('../game/premium');
-const { buildVillageHomeCustomId } = require('../utils/village');
+const { createVillageHomeButton } = require('../utils/village');
 const {
   EMBED_COLORS,
   createDivider,
@@ -205,12 +205,7 @@ function createProfileActionRow(options = {}) {
       .setEmoji('📈')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId(buildVillageHomeCustomId())
-      .setLabel('마을')
-      .setEmoji('🏘️')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(disabled),
+    createVillageHomeButton({ disabled }),
   ];
 
   // 전직 가능하면 전직 버튼 추가

@@ -20,7 +20,7 @@ const {
   handleOnboardingEvent,
   sendOnboardingFeedback,
 } = require('../game/onboarding');
-const { buildVillageHomeCustomId } = require('../utils/village');
+const { createBackButton, createVillageHomeButton } = require('../utils/village');
 
 const SHOP_BUTTON_PREFIX = 'shop:';
 const SHOP_ACTIONS = {
@@ -134,11 +134,7 @@ function createShopMainActionRow(character) {
   }
 
   row2Buttons.push(
-    new ButtonBuilder()
-      .setCustomId(buildVillageHomeCustomId())
-      .setLabel('마을')
-      .setEmoji('🏘️')
-      .setStyle(ButtonStyle.Success),
+    createVillageHomeButton(),
     new ButtonBuilder()
       .setCustomId('back_to_profile')
       .setLabel('나가기')
@@ -194,11 +190,7 @@ function createPotionShopActionRow(character) {
       .setEmoji('🔷')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(!canBuyMana),
-    new ButtonBuilder()
-      .setCustomId(`${SHOP_BUTTON_PREFIX}main`)
-      .setLabel('뒤로가기')
-      .setEmoji('🔙')
-      .setStyle(ButtonStyle.Secondary),
+    createBackButton({ customId: `${SHOP_BUTTON_PREFIX}main` }),
   );
 }
 
@@ -261,11 +253,7 @@ function createEquipmentShopActionRow(character) {
       .setEmoji(RARITIES.epic.emoji)
       .setStyle(ButtonStyle.Danger)
       .setDisabled(character.gold < PRICES.equipmentEpic),
-    new ButtonBuilder()
-      .setCustomId(`${SHOP_BUTTON_PREFIX}main`)
-      .setLabel('뒤로')
-      .setEmoji('🔙')
-      .setStyle(ButtonStyle.Secondary),
+    createBackButton({ customId: `${SHOP_BUTTON_PREFIX}main` }),
   );
 }
 
@@ -314,11 +302,7 @@ function createSellShopActionRow(equipment) {
   });
 
   buttons.push(
-    new ButtonBuilder()
-      .setCustomId(`${SHOP_BUTTON_PREFIX}main`)
-      .setLabel('뒤로')
-      .setEmoji('🔙')
-      .setStyle(ButtonStyle.Secondary),
+    createBackButton({ customId: `${SHOP_BUTTON_PREFIX}main` }),
   );
 
   return new ActionRowBuilder().addComponents(buttons);
@@ -373,11 +357,7 @@ function createUpgradeShopActionRow(character, equipment) {
   });
 
   buttons.push(
-    new ButtonBuilder()
-      .setCustomId(`${SHOP_BUTTON_PREFIX}main`)
-      .setLabel('뒤로')
-      .setEmoji('🔙')
-      .setStyle(ButtonStyle.Secondary),
+    createBackButton({ customId: `${SHOP_BUTTON_PREFIX}main` }),
   );
 
   return new ActionRowBuilder().addComponents(buttons);

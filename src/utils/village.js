@@ -75,18 +75,35 @@ function parseVillageCustomId(customId) {
   return null;
 }
 
+function createVillageHomeButton({ style = ButtonStyle.Success, disabled = false } = {}) {
+  return new ButtonBuilder()
+    .setCustomId(buildVillageHomeCustomId())
+    .setLabel('마을로')
+    .setEmoji('🏘️')
+    .setStyle(style)
+    .setDisabled(disabled);
+}
+
+function createBackButton({
+  customId = buildVillageBackCustomId(VILLAGE_MENU_KEYS.main),
+  style = ButtonStyle.Secondary,
+  disabled = false,
+  label = '뒤로',
+} = {}) {
+  return new ButtonBuilder()
+    .setCustomId(customId)
+    .setLabel(label)
+    .setEmoji('🔙')
+    .setStyle(style)
+    .setDisabled(disabled);
+}
+
 function createVillageNavigationRow({ backTo = VILLAGE_MENU_KEYS.main } = {}) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(buildVillageHomeCustomId())
-      .setLabel('마을로')
-      .setEmoji('🏘️')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(buildVillageBackCustomId(backTo))
-      .setLabel('뒤로')
-      .setEmoji('🔙')
-      .setStyle(ButtonStyle.Secondary),
+    createVillageHomeButton(),
+    createBackButton({
+      customId: buildVillageBackCustomId(backTo),
+    }),
   );
 }
 
@@ -165,6 +182,8 @@ module.exports = {
   buildVillageOpenCustomId,
   isVillageButton,
   parseVillageCustomId,
+  createVillageHomeButton,
+  createBackButton,
   createVillageNavigationRow,
   withVillageNavigation,
 };

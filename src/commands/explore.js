@@ -16,7 +16,7 @@ const {
 } = require('../game/monsters');
 const { PROFILE_BUTTON_IDS } = require('./profile');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
-const { buildVillageHomeCustomId } = require('../utils/village');
+const { createVillageHomeButton } = require('../utils/village');
 const { cleanupOldSessions } = require('../game/session-cleanup');
 
 const zoneChoices = listZoneChoices();
@@ -172,11 +172,7 @@ function createZoneSelectionActionRows() {
         .setLabel('프로필')
         .setEmoji('📊')
         .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId(buildVillageHomeCustomId())
-        .setLabel('마을')
-        .setEmoji('🏘️')
-        .setStyle(ButtonStyle.Success),
+      createVillageHomeButton(),
     ),
   ];
 }
