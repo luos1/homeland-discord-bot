@@ -98,6 +98,8 @@ model Character {
   orderBookOrders  OrderBook[]
   rankingEvents    RankingEvent[]
   consumables      Consumable[]
+  wonFieldBosses   FieldBossEvent[]   @relation("FieldBossWinner")
+  fieldBossBids    FieldBossBid[]
   attendanceRecords AttendanceRecord[]
   dailyQuests      DailyQuest[]
   dailyQuestProfile DailyQuestProfile?
@@ -938,4 +940,72 @@ model PaymentHistory {
   paidAt                DateTime?
   failedAt              DateTime?
   createdAt             DateTime  @default(now())
+}
+
+model FieldBossEvent {
+  id          Int      @id @default(autoincrement())
+  bossName    String
+  bossLevel   Int
+  bossHp      Int
+  bossAttack  Int
+  minBid      Int
+  biddingEnd  DateTime
+  status      String   // BIDDING, FIGHTING, COMPLETED, CANCELLED
+  winnerId    Int?
+  winner      Player?  @relation("FieldBossWinner", fields: [winnerId], references: [id])
+  winningBid  Int?
+  rewards     String   // JSON
+  bids        FieldBossBid[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+}
+
+model FieldBossBid {
+  id        Int              @id @default(autoincrement())
+  eventId   Int
+  event     FieldBossEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  playerId  Int
+  player    Player           @relation(fields: [playerId], references: [id])
+  amount    Int
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([eventId, playerId])
+  @@index([eventId, amount])
+}
+
+model FieldBossEvent {
+  id          Int      @id @default(autoincrement())
+  bossName    String
+  bossLevel   Int
+  bossHp      Int
+  bossAttack  Int
+  minBid      Int
+  biddingEnd  DateTime
+  status      String   // BIDDING, FIGHTING, COMPLETED, CANCELLED
+  winnerId    Int?
+  winner      Character?  @relation("FieldBossWinner", fields: [winnerId], references: [id])
+  winningBid  Int?
+  rewards     String   // JSON
+  bids        FieldBossBid[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+}
+
+model FieldBossBid {
+  id        Int              @id @default(autoincrement())
+  eventId   Int
+  event     FieldBossEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  characterId  Int
+  character Character         @relation(fields: [characterId], references: [id])
+  amount    Int
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([eventId, characterId])
+  @@index([eventId, amount])
 }

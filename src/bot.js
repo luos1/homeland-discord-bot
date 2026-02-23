@@ -13,6 +13,7 @@ const { prisma } = require('./database/client');
 const { loadCommands, registerCommands } = require('./handlers/command-loader');
 const { handleInteraction } = require('./handlers/interaction-handler');
 const { startAll, stopAll } = require('./schedulers/scheduler-manager');
+const FieldBossSystem = require('./game/field-boss-system');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 
@@ -37,6 +38,11 @@ client.once(Events.ClientReady, async (readyClient) => {
   } catch (error) {
     console.error('슬래시 명령어 등록에 실패했습니다:', error);
   }
+
+  // Initialize Field Boss System
+  readyClient.fieldBossSystem = new FieldBossSystem(readyClient);
+  await readyClient.fieldBossSystem.start();
+  console.log('🐉 Field Boss System initialized');
 
   startAll(prisma, readyClient);
 });
