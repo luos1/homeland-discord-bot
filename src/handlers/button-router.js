@@ -52,6 +52,7 @@ const { listZones } = require('../game/monsters');
 const { GUILD_BUTTON_PREFIX, isGuildButton, handleGuildButton } = require('../game/guild-buttons');
 const { EMBED_COLORS, createDivider, localizeClassName } = require('../utils/ui');
 const { TRADE_BUTTON_PREFIX, isTradeButton, handleTradeButton } = require('../game/trade-buttons');
+const { joinFieldBoss, getEvent } = require('../game/field-boss-event');
 
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
 const MONSTER_SELECT_PREFIX = 'monster_select:';
@@ -89,6 +90,39 @@ async function handleButton(interaction, { prisma, client }) {
 
   if (isTradeButton(interaction.customId)) {
     return await handleTradeButton(interaction);
+  }
+
+  // 필드 보스 참여 버튼
+  if (interaction.customId.startsWith('field_boss_join_')) {
+    const eventId = interaction.customId.replace('field_boss_join_', '');
+    
+    const character = await prisma.character.findUnique({
+      where: { userId: interaction.user.id }
+    });
+    
+    if (!character) {
+      return interaction.reply({ content: '캐릭터가 없습니다. `/create`로 캐릭터를 만드세요.', ephemeral: true });
+    }
+    
+    const result = await joinFieldBoss(eventId, interaction.user.id, character);
+    
+    if (!result.success) {
+      return interaction.reply({ content: `❌ ${result.error}`, ephemeral: true });
+    }
+    
+    const event = result.event;
+    const embed = new EmbedBuilder()
+      .setColor(0x00FF00)
+      .setTitle('⚔️ 필드 보스 참여 완료!')
+      .setDescription([
+        `${event.boss.emoji} **${event.boss.name}** 전투에 참여했습니다!`,
+        '',
+        `👥 현재 참여 인원: **${result.participantCount}/${event.maxParticipants}**`,
+        '',
+        '전투가 곧 시작됩니다...'
+      ].join('\n'));
+    
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
   if (isCombatButton(interaction.customId)) {
