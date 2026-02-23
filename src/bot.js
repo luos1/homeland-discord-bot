@@ -256,6 +256,31 @@ client.once(Events.ClientReady, async (readyClient) => {
   } catch (error) {
     console.error('가격 알림 스케줄러 시작 실패:', error);
   }
+
+  // 랜덤 NPC 스폰 스케줄러
+  try {
+    const { spawnRandomNpc } = require('./game/random-npc-handler');
+    const { SPAWN_CONFIG } = require('./game/random-npcs');
+    
+    // 6-12시간마다 체크 (30% 확률로 스폰)
+    const checkIntervalMs = 6 * 60 * 60 * 1000; // 6시간
+    
+    setInterval(async () => {
+      try {
+        const shouldSpawn = Math.random() < SPAWN_CONFIG.spawnChance;
+        if (shouldSpawn) {
+          await spawnRandomNpc(prisma, readyClient);
+          console.log('✨ 랜덤 NPC 스폰됨');
+        }
+      } catch (error) {
+        console.error('랜덤 NPC 스폰 실패:', error);
+      }
+    }, checkIntervalMs);
+    
+    console.log(`✨ 랜덤 NPC 스폰 스케줄러 시작 (${checkIntervalMs / 3600000}시간마다 체크, ${SPAWN_CONFIG.spawnChance * 100}% 확률)`);
+  } catch (error) {
+    console.error('랜덤 NPC 스폰 스케줄러 시작 실패:', error);
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -486,6 +511,57 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
         }
+
+      // 랜덤 NPC 상호작용 버튼
+      if (interaction.customId.startsWith('random_npc:')) {
+        const [, action, spawnIdStr] = interaction.customId.split(':');
+        const spawnId = parseInt(spawnIdStr);
+        
+        if (action === 'interact') {
+          const { handleNpcInteraction } = require('./game/random-npc-handler');
+          await handleNpcInteraction(interaction, prisma, spawnId);
+          return;
+        }
+      }
+
+      // 상인 구매 버튼
+      if (interaction.customId.startsWith('npc_merchant:')) {
+        const [, action, spawnIdStr, itemIndexStr] = interaction.customId.split(':');
+        const spawnId = parseInt(spawnIdStr);
+        const itemIndex = parseInt(itemIndexStr);
+        
+        if (action === 'buy') {
+          const { handleMerchantPurchase } = require('./game/random-npc-actions');
+          await handleMerchantPurchase(interaction, prisma, spawnId, itemIndex);
+          return;
+        }
+      }
+
+      // 노인 축복 버튼
+      if (interaction.customId.startsWith('npc_elder:')) {
+        const [, action, spawnIdStr, blessingIndexStr] = interaction.customId.split(':');
+        const spawnId = parseInt(spawnIdStr);
+        const blessingIndex = parseInt(blessingIndexStr);
+        
+        if (action === 'bless') {
+          const { handleElderBlessing } = require('./game/random-npc-actions');
+          await handleElderBlessing(interaction, prisma, spawnId, blessingIndex);
+          return;
+        }
+      }
+
+      // 도박꾼 배팅 버튼
+      if (interaction.customId.startsWith('npc_gambler:')) {
+        const [, action, spawnIdStr, betAmountStr] = interaction.customId.split(':');
+        const spawnId = parseInt(spawnIdStr);
+        const betAmount = parseInt(betAmountStr);
+        
+        if (action === 'bet') {
+          const { handleGamblerBet } = require('./game/random-npc-actions');
+          await handleGamblerBet(interaction, prisma, spawnId, betAmount);
+          return;
+        }
+      }
       }
             },
             { prisma },

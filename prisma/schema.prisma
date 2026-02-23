@@ -663,3 +663,23 @@ model HiddenQuestTriggerStats {
   @@unique([characterId])
   @@index([characterId])
 }
+
+// 랜덤 NPC 시스템
+model RandomNpcSpawn {
+  id          Int       @id @default(autoincrement())
+  
+  npcType     String    // 'wandering_merchant', 'mysterious_elder', 'gambler'
+  spawnedAt   DateTime  @default(now())
+  expiresAt   DateTime  // 소멸 시간
+  isActive    Boolean   @default(true)
+  
+  // 상호작용한 플레이어 추적
+  interactedUserIds String[] @default([])
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([npcType])
+  @@index([isActive])
+  @@index([expiresAt])
+}
