@@ -14,6 +14,7 @@ const { loadCommands, registerCommands } = require('./handlers/command-loader');
 const { handleInteraction } = require('./handlers/interaction-handler');
 const { startAll, stopAll } = require('./schedulers/scheduler-manager');
 const FieldBossSystem = require('./game/field-boss-system');
+const GuildWarSystem = require('./game/guild-war-system');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 
@@ -43,6 +44,11 @@ client.once(Events.ClientReady, async (readyClient) => {
   readyClient.fieldBossSystem = new FieldBossSystem(readyClient);
   await readyClient.fieldBossSystem.start();
   console.log('🐉 Field Boss System initialized');
+
+  // Initialize Guild War System
+  readyClient.guildWarSystem = new GuildWarSystem(readyClient);
+  await readyClient.guildWarSystem.start();
+  console.log('⚔️ Guild War System initialized');
 
   startAll(prisma, readyClient);
 });

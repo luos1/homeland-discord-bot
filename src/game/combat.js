@@ -1825,6 +1825,20 @@ async function handleCombatButton({ interaction, prisma }) {
     } catch (error) {
       console.error('Daily quest progress update failed (kill monster):', error);
 
+    // Guild War contribution tracking
+    try {
+      if (interaction.client.guildWarSystem) {
+        const isBoss = session.monsterName.includes('Boss') || session.monsterName.includes('Dragon') || session.monsterName.includes('Ancient');
+        await interaction.client.guildWarSystem.recordContribution(
+          session.characterId,
+          isBoss ? 'BOSS_KILL' : 'MONSTER_KILL',
+          1
+        );
+      }
+    } catch (error) {
+      console.error('Guild war contribution tracking failed:', error);
+    }
+
       // 숨겨진 퀘스트 트리거 통계 업데이트
       try {
         const { updateHiddenQuestTriggerStats, checkAndDiscoverQuests } = require('./hidden-quest-handler');

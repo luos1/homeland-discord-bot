@@ -99,6 +99,7 @@ model Character {
   rankingEvents    RankingEvent[]
   consumables      Consumable[]
   wonFieldBosses   FieldBossEvent[]   @relation("FieldBossWinner")
+  guildWarContributions GuildWarContribution[]
   fieldBossBids    FieldBossBid[]
   attendanceRecords AttendanceRecord[]
   dailyQuests      DailyQuest[]
@@ -739,6 +740,7 @@ model Guild {
   gold          Int       @default(0) // 길드 자금
   
   maxMembers    Int       @default(10) // 최대 인원 (레벨업으로 증가)
+  memberCount   Int       @default(0) // 현재 멤버 수
   
   isRecruiting  Boolean   @default(true) // 모집 중 여부
   minLevel      Int       @default(1) // 가입 최소 레벨
@@ -747,6 +749,7 @@ model Guild {
   storage       GuildStorage[]
   buffs         GuildBuff[]
   npcs          GuildNPC[]
+  warParticipations GuildWarParticipant[]
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -1008,4 +1011,47 @@ model FieldBossBid {
 
   @@unique([eventId, characterId])
   @@index([eventId, amount])
+}
+
+model GuildWar {
+  id           Int      @id @default(autoincrement())
+  season       String   @unique
+  startTime    DateTime
+  endTime      DateTime
+  status       String   // ACTIVE, COMPLETED
+  participants GuildWarParticipant[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+}
+
+model GuildWarParticipant {
+  id            Int      @id @default(autoincrement())
+  warId         Int
+  war           GuildWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+  guildId       Int
+  guild         Guild    @relation(fields: [guildId], references: [id])
+  score         Int      @default(0)
+  contributions GuildWarContribution[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([warId, guildId])
+  @@index([warId, score])
+}
+
+model GuildWarContribution {
+  id            Int      @id @default(autoincrement())
+  participantId Int
+  participant   GuildWarParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  characterId   Int
+  character     Character @relation(fields: [characterId], references: [id])
+  type          String   // MONSTER_KILL, BOSS_KILL, RESOURCE_GATHER, GOLD_DONATE, QUEST_COMPLETE
+  value         Int
+  points        Int
+  createdAt     DateTime @default(now())
+
+  @@index([participantId])
+  @@index([characterId])
 }
