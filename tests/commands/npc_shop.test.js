@@ -61,7 +61,13 @@ describe('npc_shop command', () => {
     expect(interaction.reply).toHaveBeenCalledTimes(1);
     const payload = interaction.reply.mock.calls[0][0];
     expect(payload.embeds[0].data.title).toContain('NPC 동적 상점');
+    expect(payload.embeds[0].data.description).toContain('CONSUMABLES');
     expect(payload.components.length).toBeGreaterThan(0);
+    const flattenedComponents = payload.components.flatMap((row) => row.toJSON().components || []);
+    const buyHealthButton = flattenedComponents.find(
+      (component) => component.custom_id === 'npcshop:buy:basic_health_potion',
+    );
+    expect(buyHealthButton).toBeDefined();
     expect(getResourceDynamicPrice).toHaveBeenCalled();
   });
 
@@ -208,6 +214,89 @@ describe('npc_shop command', () => {
     );
     expect(interaction.reply).toHaveBeenCalledTimes(1);
     expect(interaction.reply.mock.calls[0][0].content).toContain('NPC 판매 완료');
+  });
+
+  test('소비 아이템 구매 시 골드 차감 후 Consumable 모델에 저장한다', async () => {
+    const interaction = createMockInteraction({
+      customId: 'npcshop:buy:basic_health_potion',
+    });
+
+    prisma.character.findUnique.mockResolvedValue({
+      id: 1,
+      name: '상점유저',
+      gold: 200,
+    });
+
+    tx.character.findUnique.mockResolvedValue({
+      id: 1,
+      gold: 200,
+    });
+
+    const handled = await npcShopCommand.handleNpcShopButton(interaction, { prisma });
+
+    expect(handled).toBe(true);
+    expect(tx.character.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: {
+        gold: { decrement: 50 },
+      },
+    });
+    expect(tx.consumable.upsert).toHaveBeenCalledWith({
+      where: {
+        characterId_type_effect: {
+          characterId: 1,
+          type: 'potion',
+          effect: 'heal_hp',
+        },
+      },
+      update: expect.objectContaining({
+        quantity: {
+          increment: 1,
+        },
+        name: '초급 체력 포션',
+        power: 30,
+      }),
+      create: expect.objectContaining({
+        characterId: 1,
+        name: '초급 체력 포션',
+        type: 'potion',
+        effect: 'heal_hp',
+        power: 30,
+        quantity: 1,
+      }),
+    });
+    expect(tx.npcShopSale.create).toHaveBeenCalledWith({
+      data: {
+        characterId: 1,
+        saleType: 'consumable',
+        itemKey: 'basic_health_potion',
+        itemName: '초급 체력 포션',
+        quantity: 1,
+        totalPrice: 50,
+      },
+    });
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(interaction.reply.mock.calls[0][0].content).toContain('초급 체력 포션');
+  });
+
+  test('소비 아이템 구매 시 골드가 부족하면 실패한다', async () => {
+    const interaction = createMockInteraction({
+      customId: 'npcshop:buy:basic_mana_potion',
+    });
+
+    prisma.character.findUnique.mockResolvedValue({
+      id: 1,
+      name: '상점유저',
+      gold: 10,
+    });
+
+    const handled = await npcShopCommand.handleNpcShopButton(interaction, { prisma });
+
+    expect(handled).toBe(true);
+    expect(tx.character.update).not.toHaveBeenCalled();
+    expect(tx.consumable.upsert).not.toHaveBeenCalled();
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(interaction.reply.mock.calls[0][0].content).toContain('골드가 부족');
   });
 
   test('refresh 버튼(main) 클릭 시 시세를 강제 갱신한다', async () => {

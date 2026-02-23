@@ -258,8 +258,16 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
   // 경험치 보상
   const xpReward = Math.floor(boss.xpReward * premiumBenefits.xpMultiplier);
 
-  // 레벨업 체크 (올바른 시그니처: character object, xp, currentHp, currentMana)
-  const leveling = applyExperience(character, xpReward, session.playerHp, character.mana ?? 0);
+  // 레벨업 체크 (character object, xp, currentHp, currentMana, options)
+  const leveling = applyExperience(
+    character,
+    xpReward,
+    session.playerHp,
+    character.mana ?? 0,
+    {
+      combatVictory: true,
+    },
+  );
 
   // 장비 드롭 (확정)
   const droppedEquipment = await generateBossEquipment({

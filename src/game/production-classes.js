@@ -47,7 +47,7 @@ const PRODUCTION_CLASSES = {
     emoji: '🎣',
     category: 'gathering',
     description: '물고기와 해산물을 잡습니다',
-    gatherTypes: ['fish', 'rare_fish', 'seafood', 'pearl'],
+    gatherTypes: ['fish', 'rare_fish', 'seafood', 'water', 'pearl'],
     baseGatherTime: 1800, // 30분
     levelBonus: {
       gatherSpeed: 0.05,
@@ -148,6 +148,7 @@ const RESOURCES = {
   fish: { name: '물고기', emoji: '🐟', tier: 1, gatherClass: 'fisher' },
   rare_fish: { name: '희귀 물고기', emoji: '🐠', tier: 2, gatherClass: 'fisher' },
   seafood: { name: '해산물', emoji: '🦐', tier: 2, gatherClass: 'fisher' },
+  water: { name: '물', emoji: '💧', tier: 1, gatherClass: 'fisher' },
   pearl: { name: '진주', emoji: '🫧', tier: 4, gatherClass: 'fisher' },
 
   // 사냥 자원
@@ -362,22 +363,39 @@ const RECIPES = {
       power: 30,
     },
   },
-  greater_health_potion: {
-    key: 'greater_health_potion',
-    name: '상급 체력 포션',
+  medium_health_potion: {
+    key: 'medium_health_potion',
+    name: '중급 체력 포션',
     emoji: '💊',
     type: 'potion',
     craftClass: 'alchemist',
-    craftTime: 1800, // 30분
-    requiredLevel: 3,
+    craftTime: 1200, // 20분
+    requiredLevel: 2,
     materials: {
-      medicinal_herb: 5,
-      rare_herb: 2,
+      herb: 3,
     },
     result: {
       type: 'consumable',
       effect: 'heal_hp',
-      power: 100,
+      power: 80,
+    },
+  },
+  greater_health_potion: {
+    key: 'greater_health_potion',
+    name: '고급 체력 포션',
+    emoji: '💊',
+    type: 'potion',
+    craftClass: 'alchemist',
+    craftTime: 2400, // 40분
+    requiredLevel: 4,
+    materials: {
+      herb: 5,
+      water: 2,
+    },
+    result: {
+      type: 'consumable',
+      effect: 'heal_hp',
+      power: 130,
     },
   },
 

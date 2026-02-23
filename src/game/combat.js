@@ -33,10 +33,14 @@ const COMBAT_ACTIONS = {
   attack: 'attack',
   defend: 'defend',
   potion: 'potion',
+  potionBase: 'potion_base',
+  potionDb: 'potion_db',
+  potionCancel: 'potion_cancel',
   skill: 'skill',
   flee: 'flee',
   reset: 'reset',
 };
+const COMBAT_ACTION_VALUE_SET = new Set(Object.values(COMBAT_ACTIONS));
 
 const COMBAT_END_ACTIONS = {
   retry: 'retry',
@@ -44,6 +48,7 @@ const COMBAT_END_ACTIONS = {
 };
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 const RARE_MONSTER_PREFIXES = ['빛나는 ', '강력한 '];
+const COMBAT_POTION_EFFECTS = new Set(['heal_hp', 'heal_mp']);
 
 function buildCombatCustomId(action, sessionId, skillKey = null) {
   if (skillKey) {
@@ -65,7 +70,7 @@ function parseCombatCustomId(customId) {
 
   const [, action, sessionId, skillKey] = parts;
 
-  if (!COMBAT_ACTIONS[action] || !sessionId) {
+  if (!COMBAT_ACTION_VALUE_SET.has(action) || !sessionId) {
     return null;
   }
 
@@ -303,6 +308,9 @@ function createCombatActionRows(sessionId, options = {}) {
   const disabled = options.disabled ?? false;
   const character = options.character ?? null;
   const currentMana = character?.mana ?? 0;
+  const showPotionOptions = options.showPotionOptions ?? false;
+  const sessionPotionsRemaining = options.sessionPotionsRemaining ?? 0;
+  const consumablePotions = normalizeCombatConsumablePotions(options.consumablePotions ?? []);
 
   // 첫 번째 줄: 기본 액션
   const mainRow = new ActionRowBuilder().addComponents(
@@ -378,6 +386,43 @@ function createCombatActionRows(sessionId, options = {}) {
     }
   }
 
+  if (showPotionOptions) {
+    // 디스코드 컴포넌트 제한(최대 5줄)을 넘지 않도록 포션 버튼 줄 수를 제한한다.
+    const maxPotionRows = Math.max(0, 4 - rows.length);
+    if (maxPotionRows > 0) {
+      const maxButtons = maxPotionRows * 5;
+      const maxConsumableButtons = Math.max(0, maxButtons - 2);
+      const visibleConsumables = consumablePotions.slice(0, maxConsumableButtons);
+      const potionButtons = [
+        new ButtonBuilder()
+          .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.potionBase, sessionId))
+          .setLabel(`기본 포션 (${sessionPotionsRemaining})`)
+          .setEmoji('💊')
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(disabled || sessionPotionsRemaining <= 0),
+        ...visibleConsumables.map((item) =>
+          new ButtonBuilder()
+            .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.potionDb, sessionId, String(item.id)))
+            .setLabel(limitButtonLabel(`${item.name} x${item.quantity}`))
+            .setEmoji('🧪')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disabled || item.quantity <= 0),
+        ),
+        new ButtonBuilder()
+          .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.potionCancel, sessionId))
+          .setLabel('포션 선택 닫기')
+          .setEmoji('↩️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(disabled),
+      ];
+
+      for (let index = 0; index < potionButtons.length; index += 5) {
+        const chunk = potionButtons.slice(index, index + 5);
+        rows.push(new ActionRowBuilder().addComponents(chunk));
+      }
+    }
+  }
+
   // 마지막 줄: 리셋 버튼
   const resetRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -390,6 +435,31 @@ function createCombatActionRows(sessionId, options = {}) {
   rows.push(resetRow);
 
   return rows;
+}
+
+function limitButtonLabel(label, maxLength = 40) {
+  if (!label || label.length <= maxLength) {
+    return label;
+  }
+
+  return `${label.slice(0, maxLength - 3)}...`;
+}
+
+function normalizeCombatConsumablePotions(consumables = []) {
+  return consumables
+    .filter(Boolean)
+    .filter((item) => {
+      const quantity = Number(item.quantity) || 0;
+      const type = String(item.type || '').toLowerCase();
+      const effect = String(item.effect || '').toLowerCase();
+
+      if (quantity <= 0) {
+        return false;
+      }
+
+      return type.includes('potion') || COMBAT_POTION_EFFECTS.has(effect);
+    })
+    .sort((a, b) => a.id - b.id);
 }
 
 function createCombatEndActionRow(zoneKey, options = {}) {
@@ -760,7 +830,13 @@ function rollDamage(attackPower, defenseValue, options = {}) {
   };
 }
 
-function resolveCombatTurn({ character, session, action, skillKey = null }) {
+function resolveCombatTurn({
+  character,
+  session,
+  action,
+  skillKey = null,
+  selectedConsumable = null,
+}) {
   let playerHp = session.playerHp;
   let playerMana = Math.max(character.mana ?? 0, 0);
   const maxMana = Math.max(character.maxMana ?? playerMana, 0);
@@ -768,6 +844,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
   let potionsRemaining = session.potionsRemaining;
   let playerDefending = false;
   let skillUsed = false;
+  let consumedConsumableId = null;
 
   const battleLog = [];
 
@@ -814,6 +891,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
         },
         meta: {
           skillUsed,
+          consumedConsumableId,
         },
       };
     }
@@ -903,7 +981,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
     battleLog.push('🛡️ 방어 태세를 취했습니다. 이번 턴 받는 피해가 감소합니다.');
   }
 
-  if (action === COMBAT_ACTIONS.potion) {
+  if (action === COMBAT_ACTIONS.potion || action === COMBAT_ACTIONS.potionBase) {
     if (potionsRemaining <= 0) {
       battleLog.push('❌ 남은 포션이 없습니다.');
     } else if (playerHp >= character.maxHp) {
@@ -917,6 +995,30 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       playerHp += healing;
       potionsRemaining -= 1;
       battleLog.push(`💊 포션 사용! 체력 ${healing} 회복`);
+    }
+  }
+
+  if (action === COMBAT_ACTIONS.potionDb) {
+    if (!selectedConsumable) {
+      battleLog.push('❌ 사용할 포션을 찾을 수 없습니다.');
+    } else {
+      const effect = String(selectedConsumable.effect || '').toLowerCase();
+      const power = Math.max(0, Number(selectedConsumable.power) || 0);
+      const itemName = selectedConsumable.name || '포션';
+
+      if (effect === 'heal_hp') {
+        const healing = Math.min(power, Math.max(character.maxHp - playerHp, 0));
+        playerHp += healing;
+        consumedConsumableId = selectedConsumable.id;
+        battleLog.push(`🧪 ${itemName} 사용! HP ${healing} 회복`);
+      } else if (effect === 'heal_mp') {
+        const manaRecovery = Math.min(power, Math.max(maxMana - playerMana, 0));
+        playerMana += manaRecovery;
+        consumedConsumableId = selectedConsumable.id;
+        battleLog.push(`🧪 ${itemName} 사용! MP ${manaRecovery} 회복`);
+      } else {
+        battleLog.push('❌ 전투 중에는 이 포션을 사용할 수 없습니다.');
+      }
     }
   }
 
@@ -945,6 +1047,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       },
       meta: {
         skillUsed,
+        consumedConsumableId,
       },
     };
   }
@@ -987,6 +1090,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
         },
         meta: {
           skillUsed,
+          consumedConsumableId,
         },
       };
     }
@@ -1144,6 +1248,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       droppedResource,
       meta: {
         skillUsed,
+        consumedConsumableId,
       },
     };
   }
@@ -1239,6 +1344,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
       },
       meta: {
         skillUsed,
+        consumedConsumableId,
       },
     };
   }
@@ -1259,6 +1365,7 @@ function resolveCombatTurn({ character, session, action, skillKey = null }) {
     },
     meta: {
       skillUsed,
+      consumedConsumableId,
     },
   };
 }
@@ -1330,6 +1437,7 @@ async function handleCombatButton({ interaction, prisma }) {
       character: {
         include: {
           skills: true,
+          consumables: true,
           premiumSubscription: true,
         },
       },
@@ -1354,11 +1462,62 @@ async function handleCombatButton({ interaction, prisma }) {
     return true;
   }
 
+  const combatConsumablePotions = normalizeCombatConsumablePotions(
+    session.character.consumables,
+  );
+
+  if (parsed.action === COMBAT_ACTIONS.potion) {
+    await interaction.editReply({
+      components: createCombatActionRows(session.id, {
+        character: session.character,
+        showPotionOptions: true,
+        sessionPotionsRemaining: session.potionsRemaining,
+        consumablePotions: combatConsumablePotions,
+      }),
+    });
+
+    return true;
+  }
+
+  if (parsed.action === COMBAT_ACTIONS.potionCancel) {
+    await interaction.editReply({
+      components: createCombatActionRows(session.id, {
+        character: session.character,
+      }),
+    });
+
+    return true;
+  }
+
+  let selectedConsumable = null;
+
+  if (parsed.action === COMBAT_ACTIONS.potionDb) {
+    const consumableId = Number.parseInt(parsed.skillKey ?? '', 10);
+
+    if (!Number.isInteger(consumableId)) {
+      await interaction.followUp({
+        content: '유효하지 않은 포션입니다.',
+        ephemeral: true,
+      });
+      return true;
+    }
+
+    selectedConsumable = combatConsumablePotions.find((item) => item.id === consumableId) ?? null;
+    if (!selectedConsumable) {
+      await interaction.followUp({
+        content: '전투에 사용할 수 있는 포션이 아닙니다.',
+        ephemeral: true,
+      });
+      return true;
+    }
+  }
+
   const outcome = resolveCombatTurn({
     character: session.character,
     session,
     action: parsed.action,
     skillKey: parsed.skillKey,
+    selectedConsumable,
   });
 
   // 캐릭터/세션 상태는 항상 함께 갱신되어야 하므로 트랜잭션으로 처리한다.
@@ -1369,6 +1528,33 @@ async function handleCombatButton({ interaction, prisma }) {
       },
       data: outcome.characterUpdate,
     });
+
+    if (outcome.meta?.consumedConsumableId) {
+      const usedConsumable = await tx.consumable.findUnique({
+        where: {
+          id: outcome.meta.consumedConsumableId,
+        },
+      });
+
+      if (usedConsumable && usedConsumable.characterId === session.characterId) {
+        if (usedConsumable.quantity > 1) {
+          await tx.consumable.update({
+            where: {
+              id: usedConsumable.id,
+            },
+            data: {
+              quantity: usedConsumable.quantity - 1,
+            },
+          });
+        } else {
+          await tx.consumable.delete({
+            where: {
+              id: usedConsumable.id,
+            },
+          });
+        }
+      }
+    }
 
     if (outcome.status === 'victory') {
       await tx.rankingEvent.create({

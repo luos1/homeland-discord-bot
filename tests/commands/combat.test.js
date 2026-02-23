@@ -3,7 +3,7 @@ const {
   createCombatActionRows,
   resolveCombatTurn,
 } = require('../../src/game/combat');
-const { createCharacter } = require('../helpers/factories');
+const { createCharacter, createConsumable } = require('../helpers/factories');
 
 function createSession(overrides = {}) {
   return {
@@ -38,6 +38,31 @@ describe('combat flow', () => {
     expect(customIds).toContain('combat:defend:session-1');
     expect(customIds).toContain('combat:potion:session-1');
     expect(customIds).toContain('combat:flee:session-1');
+  });
+
+  test('포션 선택 UI: 기본 포션과 Consumable 포션 버튼이 생성된다', () => {
+    const rows = createCombatActionRows('session-1', {
+      character: createCharacter(),
+      showPotionOptions: true,
+      sessionPotionsRemaining: 2,
+      consumablePotions: [
+        createConsumable({
+          id: 55,
+          name: '고급 체력 포션',
+          quantity: 3,
+          type: 'potion',
+          effect: 'heal_hp',
+        }),
+      ],
+    });
+
+    const customIds = rows
+      .flatMap((row) => row.toJSON().components)
+      .map((component) => component.custom_id);
+
+    expect(customIds).toContain('combat:potion_base:session-1');
+    expect(customIds).toContain('combat:potion_db:session-1:55');
+    expect(customIds).toContain('combat:potion_cancel:session-1');
   });
 
   test('턴 진행: 방어 선택 시 전투가 진행되고 턴이 증가한다', () => {
@@ -163,5 +188,75 @@ describe('combat flow', () => {
     expect(outcome.status).toBe('defeat');
     expect(outcome.characterUpdate.hp).toBe(character.maxHp);
     expect(outcome.sessionUpdate.turn).toBe(session.turn + 1);
+  });
+
+  test('기본 포션 사용: session.potionsRemaining이 감소한다', () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+
+    const character = createCharacter({
+      hp: 60,
+      maxHp: 120,
+      defense: 999,
+      mana: 20,
+      maxMana: 20,
+    });
+    const session = createSession({
+      playerHp: 60,
+      potionsRemaining: 3,
+      monsterAttack: 1,
+      monsterDefense: 999,
+    });
+
+    const outcome = resolveCombatTurn({
+      character,
+      session,
+      action: COMBAT_ACTIONS.potionBase,
+    });
+
+    expect(outcome.sessionUpdate.potionsRemaining).toBe(2);
+    expect(outcome.meta.consumedConsumableId).toBeNull();
+    expect(outcome.characterUpdate.hp).toBeGreaterThan(session.playerHp);
+
+    randomSpy.mockRestore();
+  });
+
+  test('DB 포션 사용: heal_hp 효과 적용 및 consumable 소비 메타를 반환한다', () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+
+    const character = createCharacter({
+      hp: 50,
+      maxHp: 120,
+      defense: 999,
+      mana: 20,
+      maxMana: 20,
+    });
+    const session = createSession({
+      playerHp: 50,
+      potionsRemaining: 3,
+      monsterAttack: 1,
+      monsterDefense: 999,
+    });
+    const selectedConsumable = createConsumable({
+      id: 77,
+      name: '전투용 체력 포션',
+      type: 'potion',
+      effect: 'heal_hp',
+      power: 40,
+      quantity: 5,
+    });
+
+    const outcome = resolveCombatTurn({
+      character,
+      session,
+      action: COMBAT_ACTIONS.potionDb,
+      selectedConsumable,
+    });
+
+    expect(outcome.meta.consumedConsumableId).toBe(77);
+    expect(outcome.sessionUpdate.potionsRemaining).toBe(3);
+    expect(outcome.characterUpdate.hp).toBeGreaterThan(session.playerHp);
+    expect(outcome.battleLog.some((line) => line.includes('전투용 체력 포션'))).toBe(true);
+
+    randomSpy.mockRestore();
   });
 });

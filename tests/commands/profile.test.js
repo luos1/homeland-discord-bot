@@ -64,6 +64,12 @@ describe('profile/create command', () => {
       userId: interaction.user.id,
       equipment: [createEquipment()],
       skills: [],
+      productionClass: 'blacksmith',
+      productionLevel: 3,
+      productionXp: 45,
+      gathererMastery: 2,
+      blacksmithMastery: 7,
+      alchemistMastery: 1,
     });
 
     prisma.character.findUnique.mockResolvedValue(character);
@@ -75,9 +81,37 @@ describe('profile/create command', () => {
     expect(payload.embeds).toHaveLength(1);
     expect(payload.components).toHaveLength(2);
     expect(payload.embeds[0].data.title).toContain(character.name);
+    expect(payload.embeds[0].data.description).toContain('🛠️ 숙련도:');
+    expect(payload.embeds[0].data.description).toContain('**🔨 대장장이 7**');
 
     const row2 = payload.components[1];
     const buttonIds = row2.components.map((button) => button.data.custom_id);
     expect(buttonIds).toContain('village:home');
+  });
+
+  test('프로필 조회: 현재 직업 숙련도 강조와 타 직업 숙련도를 모두 표시한다', async () => {
+    const interaction = createMockInteraction();
+    const character = createCharacter({
+      userId: interaction.user.id,
+      class: '전사',
+      warriorMastery: 12,
+      rangerMastery: 4,
+      mageMastery: 7,
+      equipment: [],
+      skills: [],
+    });
+
+    prisma.character.findUnique.mockResolvedValue(character);
+
+    await profileCommand.execute(interaction, { prisma });
+
+    const payload = interaction.reply.mock.calls[0][0];
+    const description = payload.embeds[0].data.description;
+
+    expect(description).toContain('🏅 전투 숙련도');
+    expect(description).toContain('🔥 현재 직업 숙련도: **전사 12**');
+    expect(description).toContain('⚔️ 전사: **12** ⬅ 현재');
+    expect(description).toContain('🏹 궁수: 4');
+    expect(description).toContain('🔮 마법사: 7');
   });
 });

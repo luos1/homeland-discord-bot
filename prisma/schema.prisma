@@ -79,6 +79,12 @@ model Character {
   tradeVolume      Int                @default(0)
   productionLevel  Int                @default(1)
   productionXp     Int                @default(0)
+  warriorMastery   Int                @default(0)
+  rangerMastery    Int                @default(0)
+  mageMastery      Int                @default(0)
+  gathererMastery  Int                @default(0)
+  blacksmithMastery Int               @default(0)
+  alchemistMastery Int                @default(0)
   combatSession    CombatSession?
   equipment        Equipment[]
   skills           Skill[]

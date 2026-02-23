@@ -23,6 +23,54 @@ const NPC_SHOP_BUTTON_PREFIX = 'npcshop:';
 const MAX_SELECT_OPTIONS = 25;
 const NPC_TRADER_ID = 0;
 const DYNAMIC_PRICE_ITEM_TYPE_RESOURCE = 'resource';
+const NPC_SHOP_SALE_TYPE_CONSUMABLE = 'consumable';
+const CONSUMABLES = Object.freeze([
+  {
+    key: 'basic_health_potion',
+    itemKey: 'basic_health_potion',
+    name: '초급 체력 포션',
+    emoji: '❤️',
+    buttonLabel: '체력포션',
+    description: 'HP 30 회복',
+    price: 50,
+    type: 'potion',
+    effect: 'heal_hp',
+    power: 30,
+    duration: null,
+    buttonStyle: ButtonStyle.Success,
+  },
+  {
+    key: 'basic_mana_potion',
+    itemKey: 'basic_mana_potion',
+    name: '초급 마나 포션',
+    emoji: '🔷',
+    buttonLabel: '마나포션',
+    description: 'MP 30 회복',
+    price: 50,
+    type: 'potion',
+    effect: 'heal_mp',
+    power: 30,
+    duration: null,
+    buttonStyle: ButtonStyle.Primary,
+  },
+  {
+    key: 'bread',
+    itemKey: 'bread',
+    name: '빵',
+    emoji: '🍞',
+    buttonLabel: '빵',
+    description: 'HP 10 회복',
+    price: 20,
+    type: 'food',
+    effect: 'heal_hp',
+    power: 10,
+    duration: null,
+    buttonStyle: ButtonStyle.Secondary,
+  },
+]);
+const CONSUMABLE_BY_KEY = Object.freeze(
+  Object.fromEntries(CONSUMABLES.map((item) => [item.key, item])),
+);
 
 function parsePositiveInteger(rawValue) {
   const parsed = Number.parseInt(rawValue, 10);
@@ -98,6 +146,9 @@ function createNpcShopOverviewEmbed({ character, rows }) {
       `   매입 ${formatGold(row.npcBuyPrice)} / 판매 ${formatGold(row.npcSellPrice)} · ${getSupplyDemandText(row.pressure)}`,
     ].join('\n');
   });
+  const consumableLines = CONSUMABLES.map((item, index) => (
+    `${index + 1}. ${item.emoji} **${item.name}** - ${formatGold(item.price)} (${item.description})`
+  ));
 
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
@@ -111,6 +162,10 @@ function createNpcShopOverviewEmbed({ character, rows }) {
         `📊 추적 자원: ${rows.length}종`,
         '',
         lines.length > 0 ? lines.join('\n\n') : '표시할 동적 가격 데이터가 없습니다.',
+        '',
+        createDivider(),
+        '🧪 CONSUMABLES',
+        consumableLines.join('\n'),
         '',
         createDivider(),
         '💡 자원을 선택하면 24h 수급 상세를 확인할 수 있습니다.',
@@ -156,7 +211,7 @@ function createNpcShopDetailEmbed(itemKey, price, { character = null } = {}) {
     .setDescription(detailLines.join('\n'));
 }
 
-function createOverviewActionRows(rows) {
+function createOverviewActionRows(rows, { character = null } = {}) {
   const options = rows.slice(0, MAX_SELECT_OPTIONS).map((row) => {
     const resource = RESOURCES[row.itemKey] || { emoji: '📦', name: row.itemKey };
     return {
@@ -179,6 +234,20 @@ function createOverviewActionRows(rows) {
       ),
     );
   }
+
+  const currentGold = Math.max(0, Number(character?.gold) || 0);
+  components.push(
+    new ActionRowBuilder().addComponents(
+      CONSUMABLES.map((item) => (
+        new ButtonBuilder()
+          .setCustomId(`${NPC_SHOP_BUTTON_PREFIX}buy:${item.key}`)
+          .setLabel(`${item.buttonLabel} ${formatGold(item.price)}`)
+          .setEmoji(item.emoji)
+          .setStyle(item.buttonStyle)
+          .setDisabled(!character || currentGold < item.price)
+      )),
+    ),
+  );
 
   components.push(
     new ActionRowBuilder().addComponents(
@@ -274,6 +343,94 @@ function createNpcResourceSaleError(code) {
   const error = new Error(code);
   error.code = code;
   return error;
+}
+
+function createNpcConsumablePurchaseError(code) {
+  const error = new Error(code);
+  error.code = code;
+  return error;
+}
+
+async function executeNpcConsumablePurchase(prisma, { characterId, consumableKey }) {
+  if (!Number.isInteger(characterId) || characterId <= 0) {
+    throw createNpcConsumablePurchaseError('INVALID_CHARACTER');
+  }
+
+  const consumable = CONSUMABLE_BY_KEY[consumableKey];
+  if (!consumable) {
+    throw createNpcConsumablePurchaseError('INVALID_CONSUMABLE');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const latestCharacter = await tx.character.findUnique({
+      where: {
+        id: characterId,
+      },
+      select: {
+        id: true,
+        gold: true,
+      },
+    });
+
+    if (!latestCharacter) {
+      throw createNpcConsumablePurchaseError('CHARACTER_NOT_FOUND');
+    }
+
+    if (latestCharacter.gold < consumable.price) {
+      throw createNpcConsumablePurchaseError('INSUFFICIENT_GOLD');
+    }
+
+    await tx.character.update({
+      where: {
+        id: characterId,
+      },
+      data: {
+        gold: {
+          decrement: consumable.price,
+        },
+      },
+    });
+
+    await tx.consumable.upsert({
+      where: {
+        characterId_type_effect: {
+          characterId,
+          type: consumable.type,
+          effect: consumable.effect,
+        },
+      },
+      update: {
+        quantity: {
+          increment: 1,
+        },
+        name: consumable.name,
+        power: consumable.power,
+        duration: consumable.duration,
+      },
+      create: {
+        characterId,
+        name: consumable.name,
+        type: consumable.type,
+        effect: consumable.effect,
+        power: consumable.power,
+        duration: consumable.duration,
+        quantity: 1,
+      },
+    });
+
+    await tx.npcShopSale.create({
+      data: {
+        characterId,
+        saleType: NPC_SHOP_SALE_TYPE_CONSUMABLE,
+        itemKey: consumable.itemKey,
+        itemName: consumable.name,
+        quantity: 1,
+        totalPrice: consumable.price,
+      },
+    });
+  });
+
+  return consumable;
 }
 
 async function executeNpcResourceSale(
@@ -441,7 +598,7 @@ async function renderNpcShopOverview(interaction, { prisma, mode = 'reply', forc
 
   const payload = {
     embeds: [createNpcShopOverviewEmbed({ character, rows })],
-    components: createOverviewActionRows(rows),
+    components: createOverviewActionRows(rows, { character }),
   };
 
   if (mode === 'update') {
@@ -627,6 +784,67 @@ module.exports = {
       return true;
     }
 
+    if (action === 'buy') {
+      const consumable = CONSUMABLE_BY_KEY[param];
+
+      if (!consumable) {
+        await interaction.reply({
+          content: '❌ 유효하지 않은 소비 아이템입니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      const character = await getNpcShopCharacter(prisma, interaction.user.id);
+
+      if (!character) {
+        await interaction.reply({
+          content: '캐릭터를 찾을 수 없습니다.',
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      if (character.gold < consumable.price) {
+        await interaction.reply({
+          content: `💰 골드가 부족합니다. (필요: ${formatGold(consumable.price)})`,
+          ephemeral: true,
+        });
+        return true;
+      }
+
+      try {
+        await executeNpcConsumablePurchase(prisma, {
+          characterId: character.id,
+          consumableKey: param,
+        });
+      } catch (error) {
+        if (error.code === 'INSUFFICIENT_GOLD') {
+          await interaction.reply({
+            content: `💰 골드가 부족합니다. (필요: ${formatGold(consumable.price)})`,
+            ephemeral: true,
+          });
+          return true;
+        }
+
+        if (error.code === 'CHARACTER_NOT_FOUND') {
+          await interaction.reply({
+            content: '캐릭터를 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+          return true;
+        }
+
+        throw error;
+      }
+
+      await interaction.reply({
+        content: `✅ ${consumable.emoji} ${consumable.name} 구매 완료! (-${formatGold(consumable.price)})\n💡 소비템 인벤토리에 추가되었습니다.`,
+        ephemeral: true,
+      });
+      return true;
+    }
+
     return false;
   },
 
@@ -746,4 +964,5 @@ module.exports = {
   getNpcShopCharacter,
   getOwnedResourceEntry,
   executeNpcResourceSale,
+  executeNpcConsumablePurchase,
 };

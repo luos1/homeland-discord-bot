@@ -36,6 +36,45 @@ const PROFILE_BUTTON_IDS = {
   jobchange: 'profile_jobchange',
 };
 
+const CLASS_MASTERY_FIELDS = {
+  warrior: 'warriorMastery',
+  ranger: 'rangerMastery',
+  mage: 'mageMastery',
+  sorcerer: 'mageMastery',
+  '전사': 'warriorMastery',
+  '궁수': 'rangerMastery',
+  '마법사': 'mageMastery',
+};
+
+function resolveMasteryField(className) {
+  const normalized = (className || '').toLowerCase();
+  return CLASS_MASTERY_FIELDS[normalized] || null;
+}
+
+function createMasteryLines(character) {
+  const masteryValues = {
+    warriorMastery: character.warriorMastery || 0,
+    rangerMastery: character.rangerMastery || 0,
+    mageMastery: character.mageMastery || 0,
+  };
+  const currentField = resolveMasteryField(character.class);
+  const currentMasteryValue = currentField ? masteryValues[currentField] : 0;
+
+  return [
+    '🏅 전투 숙련도',
+    `🔥 현재 직업 숙련도: **${localizeClassName(character.class)} ${formatNumber(currentMasteryValue)}**`,
+    currentField === 'warriorMastery'
+      ? `⚔️ 전사: **${formatNumber(masteryValues.warriorMastery)}** ⬅ 현재`
+      : `⚔️ 전사: ${formatNumber(masteryValues.warriorMastery)}`,
+    currentField === 'rangerMastery'
+      ? `🏹 궁수: **${formatNumber(masteryValues.rangerMastery)}** ⬅ 현재`
+      : `🏹 궁수: ${formatNumber(masteryValues.rangerMastery)}`,
+    currentField === 'mageMastery'
+      ? `🔮 마법사: **${formatNumber(masteryValues.mageMastery)}** ⬅ 현재`
+      : `🔮 마법사: ${formatNumber(masteryValues.mageMastery)}`,
+  ];
+}
+
 async function getProfileCharacter(prisma, userId) {
   // 오래된 세션 자동 정리 (30분 이상)
   const cleaned = await cleanupOldSessions(prisma, userId);
@@ -118,15 +157,35 @@ function createProfileEmbed(character) {
 
   // 생산 클래스 정보
   let productionLine = null;
+  let productionMasteryLine = null;
   if (character.productionClass) {
     const { PRODUCTION_CLASSES } = require('../game/production-classes');
-    const { getRequiredProductionXP } = require('../game/production-leveling');
+    const {
+      getRequiredProductionXP,
+      resolveProductionMasteryField,
+    } = require('../game/production-leveling');
     const classData = PRODUCTION_CLASSES[character.productionClass];
     const nextLevelXp = getRequiredProductionXP(character.productionLevel) || 1;
     const productionProgress = Math.floor((character.productionXp / nextLevelXp) * 100);
-    
-    const className = character.advancedProductionClass || classData.name;
-    productionLine = `${classData.emoji} ${className} Lv.${character.productionLevel} (${character.productionXp}/${nextLevelXp} | ${productionProgress}%)`;
+
+    const className = character.advancedProductionClass || classData?.name || character.productionClass;
+    const classEmoji = classData?.emoji || '🔨';
+    productionLine = `${classEmoji} ${className} Lv.${character.productionLevel} (${character.productionXp}/${nextLevelXp} | ${productionProgress}%)`;
+
+    const currentMasteryField = resolveProductionMasteryField(character.productionClass);
+    const masteryEntries = [
+      { field: 'gathererMastery', emoji: '📦', name: '채집가' },
+      { field: 'blacksmithMastery', emoji: '🔨', name: '대장장이' },
+      { field: 'alchemistMastery', emoji: '🧪', name: '연금술사' },
+    ];
+
+    const masteryTokens = masteryEntries.map((entry) => {
+      const masteryValue = character[entry.field] || 0;
+      const token = `${entry.emoji} ${entry.name} ${masteryValue}`;
+      return entry.field === currentMasteryField ? `**${token}**` : token;
+    });
+
+    productionMasteryLine = `🛠️ 숙련도: ${masteryTokens.join(' | ')}`;
   }
 
   return new EmbedBuilder()
@@ -139,6 +198,7 @@ function createProfileEmbed(character) {
         premiumStatusLine,
         jobLine,
         productionLine,
+        productionMasteryLine,
         streakLine,
         createDivider(),
         '',
@@ -154,6 +214,8 @@ function createProfileEmbed(character) {
         progress.required === null
           ? '🏆 최대 레벨에 도달했습니다!'
           : `🎯 다음 레벨까지 ${progress.remaining} 남음`,
+        '',
+        ...createMasteryLines(character),
         '',
         `🎮 현재 상태: ${combatStatus}`,
       ].filter((v) => v !== null && v !== undefined).join('\n'),

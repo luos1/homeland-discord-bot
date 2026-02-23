@@ -246,6 +246,7 @@ module.exports = {
           data: {
             productionLevel: levelingResult.productionLevel,
             productionXp: levelingResult.productionXp,
+            ...levelingResult.masteryUpdates,
             gold: levelingResult.levelsGained > 0 
               ? character.gold + getProductionLevelUpRewards(levelingResult.productionLevel).gold
               : character.gold,

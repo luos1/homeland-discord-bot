@@ -1,8 +1,40 @@
 // 생산 레벨링 시스템
+const { PRODUCTION_CLASSES } = require('./production-classes');
 
 // 레벨별 요구 경험치
 function getRequiredProductionXP(level) {
   return Math.floor(100 * Math.pow(1.5, level - 1));
+}
+
+function resolveProductionMasteryField(productionClass) {
+  const normalizedClass = (productionClass || '').toLowerCase();
+
+  if (!normalizedClass) {
+    return null;
+  }
+
+  if (normalizedClass === 'blacksmith') {
+    return 'blacksmithMastery';
+  }
+
+  if (normalizedClass === 'alchemist') {
+    return 'alchemistMastery';
+  }
+
+  if (normalizedClass === 'gatherer') {
+    return 'gathererMastery';
+  }
+
+  const classData = PRODUCTION_CLASSES[normalizedClass];
+  if (classData?.category === 'gathering') {
+    return 'gathererMastery';
+  }
+
+  if (classData?.category === 'crafting') {
+    return normalizedClass === 'alchemist' ? 'alchemistMastery' : 'blacksmithMastery';
+  }
+
+  return null;
 }
 
 // 경험치 적용 및 레벨업 처리
@@ -20,10 +52,18 @@ function applyProductionExperience(character, xpGain) {
     levelsGained += 1;
   }
 
+  const masteryField = resolveProductionMasteryField(character.productionClass);
+  const masteryUpdates = {};
+
+  if (masteryField) {
+    masteryUpdates[masteryField] = (character[masteryField] || 0) + 1;
+  }
+
   return {
     productionLevel: currentLevel,
     productionXp: currentXp,
     levelsGained,
+    masteryUpdates,
   };
 }
 
@@ -53,6 +93,7 @@ function getProductionLevelUpRewards(level) {
 
 module.exports = {
   getRequiredProductionXP,
+  resolveProductionMasteryField,
   applyProductionExperience,
   getProductionLevelUpRewards,
 };

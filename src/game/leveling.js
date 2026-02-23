@@ -1,5 +1,20 @@
 const LEVEL_CAP = 50;
 
+function resolveMasteryFieldByClass(className) {
+  const classMapping = {
+    warrior: 'warriorMastery',
+    ranger: 'rangerMastery',
+    mage: 'mageMastery',
+    sorcerer: 'mageMastery',
+    '전사': 'warriorMastery',
+    '궁수': 'rangerMastery',
+    '마법사': 'mageMastery',
+  };
+
+  const normalized = (className || '').toLowerCase();
+  return classMapping[normalized] || null;
+}
+
 function xpRequiredForLevel(level) {
   if (level >= LEVEL_CAP) {
     return null;
@@ -11,8 +26,15 @@ function xpRequiredForLevel(level) {
   return 50 + (level - 1) * 25;
 }
 
-function applyExperience(character, gainedXp, currentHp, currentMana = character.mana) {
+function applyExperience(
+  character,
+  gainedXp,
+  currentHp,
+  currentMana = character.mana,
+  options = {},
+) {
   const safeGain = Math.max(0, gainedXp);
+  const isCombatVictory = options.combatVictory === true;
 
   let level = character.level;
   let xp = character.xp + safeGain;
@@ -49,17 +71,26 @@ function applyExperience(character, gainedXp, currentHp, currentMana = character
     xp = 0;
   }
 
+  const characterUpdate = {
+    level,
+    xp,
+    hp,
+    maxHp,
+    mana,
+    maxMana,
+    attack,
+    defense,
+  };
+
+  if (isCombatVictory) {
+    const masteryField = resolveMasteryFieldByClass(character.class);
+    if (masteryField) {
+      characterUpdate[masteryField] = (character[masteryField] || 0) + 1;
+    }
+  }
+
   return {
-    characterUpdate: {
-      level,
-      xp,
-      hp,
-      maxHp,
-      mana,
-      maxMana,
-      attack,
-      defense,
-    },
+    characterUpdate,
     levelsGained,
     reachedCap: level >= LEVEL_CAP,
   };
