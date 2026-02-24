@@ -112,6 +112,7 @@ model Character {
   priceAlerts      PriceAlert[]
   npcShopSales     NpcShopSale[]
   jobRespecHistories JobRespecHistory[]
+  npcContributions NPCContribution[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -817,14 +818,54 @@ model GuildNPC {
   guildId       Int
   guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
   
-  npcType       String    // MERCHANT/ELDER/GAMBLER 등
+  npcType       String    @default("merchant") // merchant/blacksmith/elder
   npcName       String    // NPC 이름
   
-  purchasedAt   DateTime  @default(now())
+  hiredAt       DateTime  @default(now())
+  expiresAt     DateTime  // 임대 만료일
+  weeklyFee     Int       @default(10000) // 주간 임대비
   weeklyCut     Float     @default(0.0) // 이번 주 수익
+  
+  shopItems     NPCShopItem[]
+  contributions NPCContribution[]
   
   @@unique([guildId, npcType])
   @@index([guildId])
+  @@index([expiresAt])
+}
+
+model NPCShopItem {
+  id            Int       @id @default(autoincrement())
+  
+  npcId         Int
+  npc           GuildNPC  @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  
+  itemType      String    // potion/equipment/skill
+  itemKey       String    // mega_hp_potion
+  stock         Int       @default(0)
+  
+  @@unique([npcId, itemType, itemKey])
+  @@index([npcId])
+}
+
+model NPCContribution {
+  id            Int       @id @default(autoincrement())
+  
+  npcId         Int
+  npc           GuildNPC  @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  
+  characterId   Int
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  itemKey       String    // mega_hp_potion
+  materialsUsed String    // JSON: [{type:"wood",qty:50}]
+  quantity      Int       // 생성된 상품 수
+  
+  contributedAt DateTime  @default(now())
+  
+  @@index([npcId])
+  @@index([characterId])
+  @@index([contributedAt])
 }
 
 // ==========================================

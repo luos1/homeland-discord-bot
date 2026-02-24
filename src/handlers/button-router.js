@@ -94,6 +94,46 @@ async function handleButton(interaction, { prisma, client }) {
     return await handleGuildButton(interaction);
   }
 
+  // 도시 버튼
+  if (interaction.customId.startsWith('city_')) {
+    const { handleCityButton } = require('../game/guild-city-buttons');
+    return await handleCityButton(interaction, { prisma });
+  }
+
+  // 길드 관리 버튼
+  if (interaction.customId === 'guild_manage') {
+    const { handleGuildManageButton } = require('../game/guild-manage-buttons');
+    return await handleGuildManageButton(interaction, { prisma });
+  }
+
+  // NPC 임대 버튼
+  if (interaction.customId === 'guild_hire_npc') {
+    const { handleGuildHireNPC } = require('../game/guild-manage-buttons');
+    return await handleGuildHireNPC(interaction, { prisma });
+  }
+
+  // NPC 해고 버튼
+  if (interaction.customId === 'guild_fire_npc') {
+    const { handleGuildFireNPC } = require('../game/guild-manage-buttons');
+    return await handleGuildFireNPC(interaction, { prisma });
+  }
+
+  // 길드 정보 버튼
+  if (interaction.customId === 'guild_info') {
+    const guildCommand = client.commands.get('guild');
+    if (guildCommand) {
+      // /guild info 명령어 재실행
+      const fakeInteraction = {
+        ...interaction,
+        options: {
+          getSubcommand: () => 'info',
+        },
+        reply: interaction.update.bind(interaction),
+      };
+      return await guildCommand.execute(fakeInteraction);
+    }
+  }
+
   if (isTradeButton(interaction.customId)) {
     return await handleTradeButton(interaction);
   }

@@ -228,19 +228,46 @@ async function handleInfo(interaction) {
     embed.setFooter({ text: `[${guild.tag}]` });
   }
 
-  const row = new ActionRowBuilder()
-    .addComponents(
+  // 버튼 생성
+  const buttons = [
+    new ButtonBuilder()
+      .setCustomId(`guild_donate_${guild.id}`)
+      .setLabel('골드 기부')
+      .setStyle(ButtonStyle.Success)
+      .setEmoji('💰'),
+  ];
+
+  // 도시 버튼 (NPC 있을 때만)
+  if (guild.npcs && guild.npcs.length > 0) {
+    buttons.unshift(
       new ButtonBuilder()
-        .setCustomId(`guild_donate_${guild.id}`)
-        .setLabel('골드 기부')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('💰'),
-      new ButtonBuilder()
-        .setCustomId(`guild_leave_${guild.id}`)
-        .setLabel('탈퇴')
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji('🚪')
+        .setCustomId('city_main')
+        .setLabel('도시 가기')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🏙️')
     );
+  }
+
+  // 관리 버튼 (길드장만)
+  if (guild.masterId === userId) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId('guild_manage')
+        .setLabel('관리')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('⚙️')
+    );
+  }
+
+  buttons.push(
+    new ButtonBuilder()
+      .setCustomId(`guild_leave_${guild.id}`)
+      .setLabel('탈퇴')
+      .setStyle(ButtonStyle.Danger)
+      .setEmoji('🚪')
+  );
+
+  const row = new ActionRowBuilder().addComponents(buttons.slice(0, 5));
 
   await interaction.reply({ embeds: [embed], components: [row] });
 }

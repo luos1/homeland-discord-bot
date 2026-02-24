@@ -170,7 +170,8 @@ class GuildSystem {
                 { rank: 'asc' },
                 { contributedXp: 'desc' }
               ]
-            }
+            },
+            npcs: true
           }
         }
       }
