@@ -463,11 +463,23 @@
       </div>
 
       <div class="panel">
+        <h3>🔍 유저 검색</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>캐릭터 이름으로 검색</label>
+            <input type="text" class="form-input" id="giveSearchName" placeholder="캐릭터명 입력..." oninput="searchUsersForGive()">
+          </div>
+        </div>
+        <div id="giveUserResults" style="max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
+      </div>
+
+      <div class="panel">
         <h3>💰 골드/젬 지급</h3>
         <div class="form-row">
           <div class="form-group">
-            <label>Discord ID *</label>
-            <input type="text" class="form-input" id="giveDiscordId" placeholder="123456789012345678">
+            <label>선택된 유저 *</label>
+            <input type="text" class="form-input" id="giveDiscordId" placeholder="위에서 유저를 검색하세요" readonly style="background: #0a0a15;">
+            <small id="giveSelectedUser" style="color: #64ffda;"></small>
           </div>
           <div class="form-group">
             <label>지급 타입</label>
@@ -496,11 +508,23 @@
       </div>
 
       <div class="panel">
+        <h3>🔍 유저 검색</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>캐릭터 이름으로 검색</label>
+            <input type="text" class="form-input" id="premiumSearchName" placeholder="캐릭터명 입력..." oninput="searchUsersForPremium()">
+          </div>
+        </div>
+        <div id="premiumUserResults" style="max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
+      </div>
+
+      <div class="panel">
         <h3>⭐ 프리미엄 지급</h3>
         <div class="form-row">
           <div class="form-group">
-            <label>Discord ID *</label>
-            <input type="text" class="form-input" id="premiumDiscordId" placeholder="123456789012345678">
+            <label>선택된 유저 *</label>
+            <input type="text" class="form-input" id="premiumDiscordId" placeholder="위에서 유저를 검색하세요" readonly style="background: #0a0a15;">
+            <small id="premiumSelectedUser" style="color: #64ffda;"></small>
           </div>
           <div class="form-group">
             <label>기간 (일)</label>
@@ -810,8 +834,10 @@
             <td>💎${formatNumber(u.gems || 0)}</td>
             <td>${timeAgo(u.updatedAt)}</td>
             <td>
+              <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8rem; margin-right: 5px;" 
+                onclick="quickGive('${u.odUserId}', '${u.name}')">💰</button>
               <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8rem;" 
-                onclick="quickGive('${u.odUserId}')">지급</button>
+                onclick="quickPremium('${u.odUserId}', '${u.name}')">⭐</button>
             </td>
           </tr>
         `).join('');
@@ -827,9 +853,106 @@
       loadUsers();
     }
 
-    function quickGive(discordId) {
+    function quickGive(discordId, name = '') {
       document.getElementById('giveDiscordId').value = discordId;
+      document.getElementById('giveSelectedUser').textContent = name ? `선택: ${name}` : '';
       showSection('give');
+    }
+
+    function quickPremium(discordId, name = '') {
+      document.getElementById('premiumDiscordId').value = discordId;
+      document.getElementById('premiumSelectedUser').textContent = name ? `선택: ${name}` : '';
+      showSection('premium');
+    }
+
+    // 유저 검색 (Give 섹션용)
+    let giveSearchTimeout;
+    async function searchUsersForGive() {
+      clearTimeout(giveSearchTimeout);
+      const query = document.getElementById('giveSearchName').value.trim();
+      const container = document.getElementById('giveUserResults');
+      
+      if (query.length < 1) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      giveSearchTimeout = setTimeout(async () => {
+        const result = await apiCall(`/api/admin/users?limit=10&sort=level&order=desc`);
+        if (result && result.users) {
+          const filtered = result.users.filter(u => 
+            u.name.toLowerCase().includes(query.toLowerCase())
+          );
+          
+          if (filtered.length === 0) {
+            container.innerHTML = '<p style="color: #8892b0; padding: 10px;">검색 결과 없음</p>';
+            return;
+          }
+          
+          container.innerHTML = filtered.map(u => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #0f0f1a; border-radius: 8px; margin-bottom: 5px; cursor: pointer;" 
+                 onclick="selectUserForGive('${u.odUserId}', '${u.name}')">
+              <div>
+                <strong>${u.name}</strong> <span style="color: #8892b0;">Lv.${u.level}</span>
+                <br><small style="color: #666;">${u.odUserId}</small>
+              </div>
+              <span style="color: #64ffda;">선택</span>
+            </div>
+          `).join('');
+        }
+      }, 300);
+    }
+
+    function selectUserForGive(discordId, name) {
+      document.getElementById('giveDiscordId').value = discordId;
+      document.getElementById('giveSelectedUser').textContent = `선택됨: ${name}`;
+      document.getElementById('giveUserResults').innerHTML = '';
+      document.getElementById('giveSearchName').value = '';
+    }
+
+    // 유저 검색 (Premium 섹션용)
+    let premiumSearchTimeout;
+    async function searchUsersForPremium() {
+      clearTimeout(premiumSearchTimeout);
+      const query = document.getElementById('premiumSearchName').value.trim();
+      const container = document.getElementById('premiumUserResults');
+      
+      if (query.length < 1) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      premiumSearchTimeout = setTimeout(async () => {
+        const result = await apiCall(`/api/admin/users?limit=10&sort=level&order=desc`);
+        if (result && result.users) {
+          const filtered = result.users.filter(u => 
+            u.name.toLowerCase().includes(query.toLowerCase())
+          );
+          
+          if (filtered.length === 0) {
+            container.innerHTML = '<p style="color: #8892b0; padding: 10px;">검색 결과 없음</p>';
+            return;
+          }
+          
+          container.innerHTML = filtered.map(u => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #0f0f1a; border-radius: 8px; margin-bottom: 5px; cursor: pointer;" 
+                 onclick="selectUserForPremium('${u.odUserId}', '${u.name}')">
+              <div>
+                <strong>${u.name}</strong> <span style="color: #8892b0;">Lv.${u.level}</span>
+                <br><small style="color: #666;">${u.odUserId}</small>
+              </div>
+              <span style="color: #ffbd69;">선택</span>
+            </div>
+          `).join('');
+        }
+      }, 300);
+    }
+
+    function selectUserForPremium(discordId, name) {
+      document.getElementById('premiumDiscordId').value = discordId;
+      document.getElementById('premiumSelectedUser').textContent = `선택됨: ${name}`;
+      document.getElementById('premiumUserResults').innerHTML = '';
+      document.getElementById('premiumSearchName').value = '';
     }
 
     function timeAgo(dateStr) {
