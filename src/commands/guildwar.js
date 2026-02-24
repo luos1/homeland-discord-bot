@@ -5,19 +5,27 @@ const prisma = new PrismaClient();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('guildwar')
-    .setDescription('Guild war commands')
+    .setNameLocalizations({ ko: '길드전' })
+    .setDescription('길드전 명령어')
+    .setDescriptionLocalizations({ ko: '길드전 명령어' })
     .addSubcommand(subcommand =>
       subcommand
         .setName('status')
-        .setDescription('View current guild war status'))
+        .setNameLocalizations({ ko: '상태' })
+        .setDescription('현재 길드전 상태 확인')
+        .setDescriptionLocalizations({ ko: '현재 길드전 상태 확인' }))
     .addSubcommand(subcommand =>
       subcommand
         .setName('leaderboard')
-        .setDescription('View guild war leaderboard'))
+        .setNameLocalizations({ ko: '순위' })
+        .setDescription('길드전 순위 확인')
+        .setDescriptionLocalizations({ ko: '길드전 순위 확인' }))
     .addSubcommand(subcommand =>
       subcommand
         .setName('contributions')
-        .setDescription('View your guild\'s top contributors')),
+        .setNameLocalizations({ ko: '기여도' })
+        .setDescription('길드 기여도 순위 확인')
+        .setDescriptionLocalizations({ ko: '길드 기여도 순위 확인' })),
 
   async execute(interaction) {
     const subcommand = interaction.options.getSubcommand();
@@ -36,14 +44,14 @@ module.exports = {
 
     if (!guildWarSystem) {
       return await interaction.reply({
-        content: '❌ Guild war system not initialized!',
+        content: '❌ 길드전 시스템이 초기화되지 않았습니다!',
         ephemeral: true
       });
     }
 
     if (!guildWarSystem.activeWar) {
       return await interaction.reply({
-        content: '⏳ No active guild war. Wars happen every weekend (Sat 20:00 - Sun 22:00 KST)!',
+        content: '⏳ 현재 진행 중인 길드전이 없습니다. 길드전은 매주 주말 (토 20:00 - 일 22:00 KST)에 진행됩니다!',
         ephemeral: true
       });
     }
@@ -59,7 +67,7 @@ module.exports = {
 
       if (!character || !character.guildMember) {
         return await interaction.editReply({
-          content: '❌ You need to join a guild first! Use `/guild list` to find one.'
+          content: '❌ 먼저 길드에 가입해주세요! `/guild list`로 길드를 찾아보세요.'
         });
       }
 
@@ -67,7 +75,7 @@ module.exports = {
 
       if (!status) {
         return await interaction.editReply({
-          content: '❌ Your guild is not participating in the current war.'
+          content: '❌ 현재 길드전에 참가하고 있지 않습니다.'
         });
       }
 
@@ -111,7 +119,7 @@ module.exports = {
     } catch (error) {
       console.error('[GuildWar] Status error:', error);
       await interaction.editReply({
-        content: '❌ An error occurred while fetching guild war status.'
+        content: '❌ 길드전 상태를 불러오는 중 오류가 발생했습니다.'
       });
     }
   },
@@ -121,7 +129,7 @@ module.exports = {
 
     if (!guildWarSystem) {
       return await interaction.reply({
-        content: '❌ Guild war system not initialized!',
+        content: '❌ 길드전 시스템이 초기화되지 않았습니다!',
         ephemeral: true
       });
     }
@@ -130,7 +138,7 @@ module.exports = {
 
     if (!leaderboard) {
       return await interaction.reply({
-        content: '⏳ No active guild war. Wars happen every weekend (Sat 20:00 - Sun 22:00 KST)!',
+        content: '⏳ 현재 진행 중인 길드전이 없습니다. 길드전은 매주 주말 (토 20:00 - 일 22:00 KST)에 진행됩니다!',
         ephemeral: true
       });
     }
@@ -158,7 +166,7 @@ module.exports = {
       )
       .setColor(0xffd700)
       .setTimestamp()
-      .setFooter({ text: 'Keep fighting for your guild!' });
+      .setFooter({ text: '길드를 위해 계속 싸워주세요!' });
 
     await interaction.reply({ embeds: [embed] });
   },
@@ -168,14 +176,14 @@ module.exports = {
 
     if (!guildWarSystem) {
       return await interaction.reply({
-        content: '❌ Guild war system not initialized!',
+        content: '❌ 길드전 시스템이 초기화되지 않았습니다!',
         ephemeral: true
       });
     }
 
     if (!guildWarSystem.activeWar) {
       return await interaction.reply({
-        content: '⏳ No active guild war. Wars happen every weekend (Sat 20:00 - Sun 22:00 KST)!',
+        content: '⏳ 현재 진행 중인 길드전이 없습니다. 길드전은 매주 주말 (토 20:00 - 일 22:00 KST)에 진행됩니다!',
         ephemeral: true
       });
     }
@@ -191,7 +199,7 @@ module.exports = {
 
       if (!character || !character.guildMember) {
         return await interaction.editReply({
-          content: '❌ You need to join a guild first! Use `/guild list` to find one.'
+          content: '❌ 먼저 길드에 가입해주세요! `/guild list`로 길드를 찾아보세요.'
         });
       }
 
@@ -199,7 +207,7 @@ module.exports = {
 
       if (!status) {
         return await interaction.editReply({
-          content: '❌ Your guild is not participating in the current war.'
+          content: '❌ 현재 길드전에 참가하고 있지 않습니다.'
         });
       }
 
@@ -221,7 +229,7 @@ module.exports = {
 
       if (topContributors.length === 0) {
         return await interaction.editReply({
-          content: '📊 No contributions yet. Be the first to contribute!'
+          content: '📊 아직 기여 기록이 없습니다. 첫 번째 기여자가 되어보세요!'
         });
       }
 
@@ -239,14 +247,14 @@ module.exports = {
         )
         .setColor(0x00ff00)
         .setTimestamp()
-        .setFooter({ text: 'Every action counts!' });
+        .setFooter({ text: '모든 행동이 중요합니다!' });
 
       await interaction.editReply({ embeds: [embed] });
 
     } catch (error) {
       console.error('[GuildWar] Contributions error:', error);
       await interaction.editReply({
-        content: '❌ An error occurred while fetching contributions.'
+        content: '❌ 기여도를 불러오는 중 오류가 발생했습니다.'
       });
     }
   }
