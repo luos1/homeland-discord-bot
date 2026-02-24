@@ -231,6 +231,7 @@ function canUseSkill(character, skill) {
 
 module.exports = {
   SKILLS,
+  CLASS_NAME_MAP,
   getAvailableSkills,
   getCombatSkill,
   getSkillByKey,
