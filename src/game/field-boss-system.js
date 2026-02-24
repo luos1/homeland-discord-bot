@@ -245,11 +245,15 @@ class FieldBossSystem {
   async endBidding() {
     console.log('[FieldBoss] Bidding ended');
 
-    // Get highest bid
+    // Get highest bid - use 'player' relation (not 'character')
     const winningBid = await prisma.fieldBossBid.findFirst({
       where: { eventId: this.activeEvent.id },
       orderBy: { amount: 'desc' },
-      include: { player: true }
+      include: { 
+        player: {
+          include: { user: true }
+        }
+      }
     });
 
     if (!winningBid) {
@@ -363,17 +367,13 @@ class FieldBossSystem {
       return { success: false, message: '플레이어를 찾을 수 없습니다!' };
     }
 
-    // Check minimum bid
+    // Check minimum bid (프리미엄 기능은 subscription 테이블 체크 필요 - 일단 스킵)
     let minBid = this.activeEvent.minBid;
-    if (character.premiumUntil && character.premiumUntil > now) {
-      minBid = Math.floor(minBid * 0.8); // 20% discount for premium
-    }
 
     if (amount < minBid) {
       return { 
         success: false, 
-        message: `최소 입찰가는 ${minBid.toLocaleString()} 💰입니다` +
-          (character.premiumUntil && character.premiumUntil > now ? ' (프리미엄 할인 적용!)' : '')
+        message: `최소 입찰가는 ${minBid.toLocaleString()} 💰입니다`
       };
     }
 
@@ -391,10 +391,10 @@ class FieldBossSystem {
     }
 
     // Check player gold
-    if (character.gold < amount) {
+    if (player.gold < amount) {
       return { 
         success: false, 
-        message: `골드가 부족합니다! 보유: ${character.gold.toLocaleString()} 💰`
+        message: `골드가 부족합니다! 보유: ${player.gold.toLocaleString()} 💰`
       };
     }
 
@@ -402,14 +402,14 @@ class FieldBossSystem {
     const existingBid = await prisma.fieldBossBid.findFirst({
       where: {
         eventId: this.activeEvent.id,
-        playerId: character.id
+        playerId: player.id
       }
     });
 
     if (existingBid) {
       // Refund old bid
       await prisma.character.update({
-        where: { id: character.id },
+        where: { id: player.id },
         data: { gold: { increment: existingBid.amount } }
       });
 
@@ -423,7 +423,7 @@ class FieldBossSystem {
       await prisma.fieldBossBid.create({
         data: {
           eventId: this.activeEvent.id,
-          playerId: character.id,
+          playerId: player.id,
           amount
         }
       });
@@ -431,7 +431,7 @@ class FieldBossSystem {
 
     // Deduct gold
     await prisma.character.update({
-      where: { id: character.id },
+      where: { id: player.id },
       data: { gold: { decrement: amount } }
     });
 
