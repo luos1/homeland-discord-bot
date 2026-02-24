@@ -249,7 +249,7 @@ class FieldBossSystem {
     const winningBid = await prisma.fieldBossBid.findFirst({
       where: { eventId: this.activeEvent.id },
       orderBy: { amount: 'desc' },
-      include: { character: true }
+      include: { player: true }
     });
 
     if (!winningBid) {
@@ -268,7 +268,7 @@ class FieldBossSystem {
     await prisma.fieldBossEvent.update({
       where: { id: this.activeEvent.id },
       data: {
-        winnerId: winningBid.characterId,
+        winnerId: winningBid.playerId,
         winningBid: winningBid.amount,
         status: 'FIGHTING'
       }
@@ -278,7 +278,7 @@ class FieldBossSystem {
     await this.notifyWinner(winningBid);
 
     // Return bids to losers
-    await this.refundLosers(winningBid.characterId);
+    await this.refundLosers(winningBid.playerId);
 
     // Clear active event
     this.activeEvent = null;
@@ -298,7 +298,7 @@ class FieldBossSystem {
    */
   async notifyWinner(winningBid) {
     try {
-      const user = await this.client.users.fetch(winningBid.character.userId);
+      const user = await this.client.users.fetch(winningBid.player.userId);
       const event = await prisma.fieldBossEvent.findUnique({
         where: { id: this.activeEvent.id }
       });
@@ -327,13 +327,13 @@ class FieldBossSystem {
     const losingBids = await prisma.fieldBossBid.findMany({
       where: {
         eventId: this.activeEvent.id,
-        characterId: { not: winnerId }
+        playerId: { not: winnerId }
       }
     });
 
     for (const bid of losingBids) {
       await prisma.character.update({
-        where: { id: bid.characterId },
+        where: { id: bid.playerId },
         data: { gold: { increment: bid.amount } }
       });
     }
@@ -402,7 +402,7 @@ class FieldBossSystem {
     const existingBid = await prisma.fieldBossBid.findFirst({
       where: {
         eventId: this.activeEvent.id,
-        characterId: character.id
+        playerId: character.id
       }
     });
 
@@ -423,7 +423,7 @@ class FieldBossSystem {
       await prisma.fieldBossBid.create({
         data: {
           eventId: this.activeEvent.id,
-          characterId: character.id,
+          playerId: character.id,
           amount
         }
       });
@@ -450,7 +450,7 @@ class FieldBossSystem {
       where: { eventId: this.activeEvent.id },
       orderBy: { amount: 'desc' },
       take: 10,
-      include: { character: true }
+      include: { player: true }
     });
 
     return {
