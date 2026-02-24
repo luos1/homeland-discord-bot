@@ -158,6 +158,7 @@ function createCombatMenu(character) {
     '',
     '⚔️ 탐험: 일반 몬스터 전투',
     '🐉 보스: 필드 보스 도전',
+    '🗼 도전자의 탑: 100층 도전',
     '📚 튜토리얼: 튜토리얼 시작/재개',
     createDivider(),
   ].join('\n');
@@ -186,6 +187,11 @@ function createCombatMenu(character) {
           .setLabel('튜토리얼 시작')
           .setEmoji('📚')
           .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('tower_info')
+          .setLabel('도전자의 탑')
+          .setEmoji('🗼')
+          .setStyle(ButtonStyle.Primary),
       ),
       createVillageNavigationRow({ backTo: VILLAGE_MENU_KEYS.main }),
     ],

@@ -20,6 +20,11 @@ const prisma = new PrismaClient();
 async function handleTowerButton(interaction, { prisma }) {
   const customId = interaction.customId;
 
+  // 탑 정보
+  if (customId === 'tower_info') {
+    return await handleTowerInfo(interaction);
+  }
+
   // 티켓 구매
   if (customId.startsWith('tower_buy_ticket:')) {
     return await handleBuyTicket(interaction);
@@ -46,6 +51,22 @@ async function handleTowerButton(interaction, { prisma }) {
   }
 
   return interaction.reply({ content: '알 수 없는 탑 버튼입니다.', ephemeral: true });
+}
+
+// ===== 탑 정보 (버튼) =====
+
+async function handleTowerInfo(interaction) {
+  const towerCommand = interaction.client.commands.get('tower');
+  if (towerCommand) {
+    const fakeInteraction = {
+      ...interaction,
+      options: {
+        getSubcommand: () => 'info',
+      },
+      reply: interaction.update.bind(interaction),
+    };
+    return await towerCommand.execute(fakeInteraction, { prisma });
+  }
 }
 
 // ===== 티켓 구매 =====
