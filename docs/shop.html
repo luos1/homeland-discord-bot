@@ -4,32 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HOMELAND - 상점</title>
-  <script src="https://js.stripe.com/v3/"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Segoe UI', -apple-system, sans-serif;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
       color: #e4e4e4;
       min-height: 100vh;
       line-height: 1.6;
     }
     
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
+    .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
     
-    header {
-      text-align: center;
-      margin-bottom: 40px;
-    }
+    header { text-align: center; margin-bottom: 40px; }
     
     h1 {
       font-size: 2.5rem;
@@ -39,10 +27,30 @@
       margin-bottom: 10px;
     }
     
-    .subtitle {
-      color: #8892b0;
-      font-size: 1.1rem;
+    .subtitle { color: #8892b0; font-size: 1.1rem; }
+
+    /* Region Selector */
+    .region-selector {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 30px;
     }
+
+    .region-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 15px 30px;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .region-btn:hover { border-color: #e94560; }
+    .region-btn.active { border-color: #64ffda; background: rgba(100, 255, 218, 0.1); }
+    .region-btn .flag { font-size: 1.5rem; margin-right: 8px; }
 
     /* Discord ID Input */
     .discord-input-section {
@@ -54,17 +62,8 @@
       text-align: center;
     }
 
-    .discord-input-section h3 {
-      color: #5865F2;
-      margin-bottom: 15px;
-      font-size: 1.2rem;
-    }
-
-    .discord-input-section p {
-      color: #a8b2d1;
-      font-size: 0.9rem;
-      margin-bottom: 15px;
-    }
+    .discord-input-section h3 { color: #5865F2; margin-bottom: 15px; }
+    .discord-input-section p { color: #a8b2d1; font-size: 0.9rem; margin-bottom: 15px; }
 
     .discord-id-input {
       background: rgba(0, 0, 0, 0.3);
@@ -78,23 +77,10 @@
       text-align: center;
     }
 
-    .discord-id-input::placeholder {
-      color: #8892b0;
-    }
-
-    .discord-id-input:focus {
-      outline: none;
-      border-color: #7289da;
-      box-shadow: 0 0 0 3px rgba(114, 137, 218, 0.3);
-    }
-
-    .id-help {
-      margin-top: 10px;
-      font-size: 0.85rem;
-      color: #64ffda;
-    }
+    .discord-id-input:focus { outline: none; border-color: #7289da; box-shadow: 0 0 0 3px rgba(114, 137, 218, 0.3); }
+    .id-help { margin-top: 10px; font-size: 0.85rem; color: #64ffda; }
     
-    /* Product Sections */
+    /* Sections */
     .section {
       background: rgba(255, 255, 255, 0.05);
       border-radius: 16px;
@@ -107,9 +93,6 @@
       color: #ffbd69;
       font-size: 1.5rem;
       margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
     }
 
     /* Product Grid */
@@ -125,56 +108,18 @@
       border-radius: 16px;
       padding: 25px;
       text-align: center;
-      transition: all 0.3s ease;
+      transition: all 0.3s;
       cursor: pointer;
     }
 
-    .product-card:hover {
-      border-color: #e94560;
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(233, 69, 96, 0.2);
-    }
-
-    .product-card.selected {
-      border-color: #64ffda;
-      background: rgba(100, 255, 218, 0.1);
-    }
-
-    .product-card .icon {
-      font-size: 3rem;
-      margin-bottom: 15px;
-    }
-
-    .product-card h3 {
-      color: #fff;
-      font-size: 1.2rem;
-      margin-bottom: 10px;
-    }
-
-    .product-card .amount {
-      color: #64ffda;
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    .product-card .bonus {
-      color: #e94560;
-      font-size: 0.9rem;
-      margin-bottom: 10px;
-    }
-
-    .product-card .price {
-      color: #ffbd69;
-      font-size: 1.3rem;
-      font-weight: bold;
-    }
-
-    .product-card .original-price {
-      color: #8892b0;
-      text-decoration: line-through;
-      font-size: 0.9rem;
-    }
+    .product-card:hover { border-color: #e94560; transform: translateY(-5px); }
+    .product-card.selected { border-color: #64ffda; background: rgba(100, 255, 218, 0.1); }
+    .product-card .icon { font-size: 3rem; margin-bottom: 15px; }
+    .product-card h3 { color: #fff; font-size: 1.2rem; margin-bottom: 10px; }
+    .product-card .amount { color: #64ffda; font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; }
+    .product-card .bonus { color: #e94560; font-size: 0.9rem; margin-bottom: 10px; }
+    .product-card .price { color: #ffbd69; font-size: 1.3rem; font-weight: bold; }
+    .product-card .original-price { color: #8892b0; text-decoration: line-through; font-size: 0.9rem; }
 
     /* Premium Cards */
     .premium-card {
@@ -182,25 +127,11 @@
       border: 2px solid #e94560;
     }
 
-    .premium-card .benefits {
-      text-align: left;
-      margin: 15px 0;
-      padding: 0 10px;
-    }
+    .premium-card .benefits { text-align: left; margin: 15px 0; padding: 0 10px; }
+    .premium-card .benefits li { color: #a8b2d1; font-size: 0.9rem; margin: 5px 0; list-style: none; }
+    .premium-card .benefits li::before { content: "✓ "; color: #64ffda; }
 
-    .premium-card .benefits li {
-      color: #a8b2d1;
-      font-size: 0.9rem;
-      margin: 5px 0;
-      list-style: none;
-    }
-
-    .premium-card .benefits li::before {
-      content: "✓ ";
-      color: #64ffda;
-    }
-
-    /* Checkout Button */
+    /* Checkout */
     .checkout-section {
       text-align: center;
       margin-top: 30px;
@@ -209,21 +140,9 @@
       border-radius: 16px;
     }
 
-    .checkout-summary {
-      margin-bottom: 20px;
-    }
-
-    .checkout-summary .selected-product {
-      color: #64ffda;
-      font-size: 1.2rem;
-      margin-bottom: 5px;
-    }
-
-    .checkout-summary .selected-price {
-      color: #ffbd69;
-      font-size: 1.5rem;
-      font-weight: bold;
-    }
+    .checkout-summary { margin-bottom: 20px; }
+    .checkout-summary .selected-product { color: #64ffda; font-size: 1.2rem; margin-bottom: 5px; }
+    .checkout-summary .selected-price { color: #ffbd69; font-size: 1.5rem; font-weight: bold; }
 
     .checkout-btn {
       background: linear-gradient(90deg, #e94560, #ff6b6b);
@@ -234,30 +153,12 @@
       font-size: 1.2rem;
       font-weight: bold;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.3s;
     }
 
-    .checkout-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
-    }
-
-    .checkout-btn:disabled {
-      background: #555;
-      cursor: not-allowed;
-    }
-
-    .secure-note {
-      margin-top: 15px;
-      color: #8892b0;
-      font-size: 0.85rem;
-    }
-
-    .secure-note img {
-      height: 20px;
-      vertical-align: middle;
-      margin-left: 5px;
-    }
+    .checkout-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4); }
+    .checkout-btn:disabled { background: #555; cursor: not-allowed; }
+    .secure-note { margin-top: 15px; color: #8892b0; font-size: 0.85rem; }
 
     /* Info Box */
     .info-box {
@@ -267,53 +168,16 @@
       border-radius: 0 8px 8px 0;
       margin-top: 20px;
     }
+    .info-box p { color: #a8b2d1; font-size: 0.9rem; margin: 5px 0; }
+    .info-box strong { color: #64ffda; }
 
-    .info-box p {
-      color: #a8b2d1;
-      font-size: 0.9rem;
-      margin: 5px 0;
-    }
-
-    .info-box strong {
-      color: #64ffda;
-    }
-
-    /* Footer */
-    footer {
-      text-align: center;
-      padding: 30px;
-      color: #8892b0;
-      font-size: 0.85rem;
-    }
-
-    footer a {
-      color: #64ffda;
-      text-decoration: none;
-    }
-
-    /* Error/Success Messages */
-    .message {
-      padding: 15px;
-      border-radius: 8px;
-      margin: 20px 0;
-      text-align: center;
-    }
-
-    .message.error {
-      background: rgba(233, 69, 96, 0.2);
-      border: 1px solid #e94560;
-      color: #e94560;
-    }
-
-    .message.success {
-      background: rgba(100, 255, 218, 0.2);
-      border: 1px solid #64ffda;
-      color: #64ffda;
-    }
+    footer { text-align: center; padding: 30px; color: #8892b0; font-size: 0.85rem; }
+    footer a { color: #64ffda; text-decoration: none; }
 
     @media (max-width: 600px) {
       h1 { font-size: 2rem; }
       .product-grid { grid-template-columns: 1fr; }
+      .region-selector { flex-direction: column; }
     }
   </style>
 </head>
@@ -323,6 +187,16 @@
       <h1>💎 HOMELAND 상점</h1>
       <p class="subtitle">젬과 프리미엄으로 더 빠른 성장을!</p>
     </header>
+
+    <!-- Region Selector -->
+    <div class="region-selector">
+      <button class="region-btn active" data-region="kr" onclick="selectRegion('kr')">
+        <span class="flag">🇰🇷</span> 국내 결제
+      </button>
+      <button class="region-btn" data-region="global" onclick="selectRegion('global')">
+        <span class="flag">🌍</span> 해외 결제
+      </button>
+    </div>
 
     <!-- Discord ID Input -->
     <div class="discord-input-section">
@@ -336,38 +210,35 @@
     <section class="section">
       <h2>💎 젬 패키지</h2>
       <div class="product-grid">
-        <div class="product-card" data-product="gem_100" data-price="1.99" data-name="100 젬">
+        <div class="product-card" data-product="gem_100" data-price-kr="2500" data-price-usd="1.99" data-name="100 젬">
           <div class="icon">💎</div>
           <h3>스타터 팩</h3>
           <div class="amount">100 젬</div>
-          <div class="price">$1.99</div>
+          <div class="price price-display">₩2,500</div>
         </div>
         
-        <div class="product-card" data-product="gem_500" data-price="7.99" data-name="550 젬">
+        <div class="product-card" data-product="gem_500" data-price-kr="10000" data-price-usd="7.99" data-name="550 젬">
           <div class="icon">💎💎</div>
           <h3>모험가 팩</h3>
           <div class="amount">500 + 50 젬</div>
           <div class="bonus">+10% 보너스!</div>
-          <div class="price">$7.99</div>
-          <div class="original-price">$9.95</div>
+          <div class="price price-display">₩10,000</div>
         </div>
         
-        <div class="product-card" data-product="gem_1000" data-price="14.99" data-name="1200 젬">
+        <div class="product-card" data-product="gem_1000" data-price-kr="19000" data-price-usd="14.99" data-name="1200 젬">
           <div class="icon">💎💎💎</div>
           <h3>영웅 팩</h3>
           <div class="amount">1000 + 200 젬</div>
           <div class="bonus">+20% 보너스!</div>
-          <div class="price">$14.99</div>
-          <div class="original-price">$19.90</div>
+          <div class="price price-display">₩19,000</div>
         </div>
         
-        <div class="product-card" data-product="gem_3000" data-price="39.99" data-name="3900 젬">
+        <div class="product-card" data-product="gem_3000" data-price-kr="50000" data-price-usd="39.99" data-name="3900 젬">
           <div class="icon">👑</div>
           <h3>전설 팩</h3>
           <div class="amount">3000 + 900 젬</div>
           <div class="bonus">+30% 보너스!</div>
-          <div class="price">$39.99</div>
-          <div class="original-price">$59.70</div>
+          <div class="price price-display">₩50,000</div>
         </div>
       </div>
     </section>
@@ -376,7 +247,7 @@
     <section class="section">
       <h2>⭐ 프리미엄 패스</h2>
       <div class="product-grid">
-        <div class="product-card premium-card" data-product="premium_monthly" data-price="9.99" data-name="프리미엄 월간">
+        <div class="product-card premium-card" data-product="premium_monthly" data-price-kr="12000" data-price-usd="9.99" data-name="프리미엄 월간">
           <div class="icon">⭐</div>
           <h3>월간 구독</h3>
           <ul class="benefits">
@@ -384,22 +255,20 @@
             <li>골드 획득 +15%</li>
             <li>매일 10젬 지급</li>
             <li>자동 전투 기능</li>
-            <li>전용 칭호</li>
           </ul>
-          <div class="price">$9.99/월</div>
+          <div class="price price-display">₩12,000/월</div>
         </div>
         
-        <div class="product-card premium-card" data-product="premium_yearly" data-price="79.99" data-name="프리미엄 연간">
+        <div class="product-card premium-card" data-product="premium_yearly" data-price-kr="99000" data-price-usd="79.99" data-name="프리미엄 연간">
           <div class="icon">👑</div>
           <h3>연간 구독</h3>
           <ul class="benefits">
             <li>월간 혜택 모두 포함</li>
             <li>2개월 무료! (33% 할인)</li>
             <li>전설 칭호 추가</li>
-            <li>한정 아바타 프레임</li>
           </ul>
-          <div class="price">$79.99/년</div>
-          <div class="original-price">$119.88/년</div>
+          <div class="price price-display">₩99,000/년</div>
+          <div class="original-price">₩144,000/년</div>
         </div>
       </div>
     </section>
@@ -411,7 +280,7 @@
         <div class="selected-price" id="selectedPrice"></div>
       </div>
       <button class="checkout-btn" id="checkoutBtn" disabled>결제하기</button>
-      <p class="secure-note">🔒 안전한 결제 - Stripe 보안 결제</p>
+      <p class="secure-note" id="paymentNote">🔒 안전한 결제 - 토스페이먼츠</p>
     </div>
 
     <!-- Info -->
@@ -427,32 +296,76 @@
     </footer>
   </div>
 
+  <!-- Toss Payments SDK -->
+  <script src="https://js.tosspayments.com/v1/payment"></script>
+  
   <script>
     let selectedProduct = null;
-    const API_URL = 'https://homeland-discord-bot-production.up.railway.app';
+    let currentRegion = 'kr';
+    const PAYMENT_SERVER = 'https://homeland-payment.up.railway.app'; // 결제 서버 URL
 
-    // Product selection
+    // 지역 선택
+    function selectRegion(region) {
+      currentRegion = region;
+      document.querySelectorAll('.region-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.region === region);
+      });
+      
+      // 가격 업데이트
+      document.querySelectorAll('.product-card').forEach(card => {
+        const priceEl = card.querySelector('.price-display');
+        if (region === 'kr') {
+          const price = parseInt(card.dataset.priceKr);
+          priceEl.textContent = `₩${price.toLocaleString()}`;
+          if (card.dataset.product.includes('monthly')) priceEl.textContent += '/월';
+          if (card.dataset.product.includes('yearly')) priceEl.textContent += '/년';
+        } else {
+          const price = parseFloat(card.dataset.priceUsd);
+          priceEl.textContent = `$${price.toFixed(2)}`;
+          if (card.dataset.product.includes('monthly')) priceEl.textContent += '/mo';
+          if (card.dataset.product.includes('yearly')) priceEl.textContent += '/yr';
+        }
+      });
+      
+      // 결제 노트 업데이트
+      document.getElementById('paymentNote').textContent = region === 'kr' 
+        ? '🔒 안전한 결제 - 토스페이먼츠' 
+        : '🔒 Secure Payment - Paddle';
+      
+      // 선택된 상품 가격 업데이트
+      if (selectedProduct) {
+        updateSelectedPrice();
+      }
+    }
+
+    function updateSelectedPrice() {
+      if (!selectedProduct) return;
+      const price = currentRegion === 'kr' 
+        ? `₩${parseInt(selectedProduct.priceKr).toLocaleString()}`
+        : `$${parseFloat(selectedProduct.priceUsd).toFixed(2)}`;
+      document.getElementById('selectedPrice').textContent = price;
+    }
+
+    // 상품 선택
     document.querySelectorAll('.product-card').forEach(card => {
       card.addEventListener('click', () => {
-        // Remove previous selection
         document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
-        
-        // Select this card
         card.classList.add('selected');
+        
         selectedProduct = {
           id: card.dataset.product,
-          price: card.dataset.price,
+          priceKr: card.dataset.priceKr,
+          priceUsd: card.dataset.priceUsd,
           name: card.dataset.name
         };
 
-        // Update checkout section
         document.getElementById('selectedProduct').textContent = selectedProduct.name;
-        document.getElementById('selectedPrice').textContent = `$${selectedProduct.price}`;
+        updateSelectedPrice();
         document.getElementById('checkoutBtn').disabled = false;
       });
     });
 
-    // Checkout
+    // 결제
     document.getElementById('checkoutBtn').addEventListener('click', async () => {
       const discordId = document.getElementById('discordId').value.trim();
       
@@ -476,23 +389,12 @@
       btn.textContent = '처리 중...';
 
       try {
-        const response = await fetch(`${API_URL}/api/checkout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            discordId: discordId,
-            productId: selectedProduct.id,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.url) {
-          window.location.href = data.url;
+        if (currentRegion === 'kr') {
+          // 토스페이먼츠
+          await processTosspayments(discordId);
         } else {
-          throw new Error(data.error || '결제 세션 생성 실패');
+          // Paddle
+          await processPaddle(discordId);
         }
       } catch (error) {
         alert('결제 처리 중 오류가 발생했습니다.\n' + error.message);
@@ -500,6 +402,50 @@
         btn.textContent = '결제하기';
       }
     });
+
+    // 토스페이먼츠 결제
+    async function processTosspayments(discordId) {
+      const response = await fetch(`${PAYMENT_SERVER}/api/toss/prepare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          discordId,
+          productId: selectedProduct.id,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      const tossPayments = TossPayments(data.clientKey);
+      await tossPayments.requestPayment('카드', {
+        amount: data.amount,
+        orderId: data.orderId,
+        orderName: data.orderName,
+        customerName: discordId,
+        successUrl: data.successUrl + `?orderId=${data.orderId}`,
+        failUrl: data.failUrl,
+      });
+    }
+
+    // Paddle 결제
+    async function processPaddle(discordId) {
+      const response = await fetch(`${PAYMENT_SERVER}/api/paddle/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          discordId,
+          productId: selectedProduct.id,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Failed to create checkout');
+      }
+    }
   </script>
 </body>
 </html>
