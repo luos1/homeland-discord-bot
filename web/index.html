@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Homeland - Transform your Discord into an epic RPG adventure! 100+ levels, guilds, PvP, and more.">
+    <title>Homeland RPG - Epic Discord Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 20px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero p {
+            font-size: 1.5em;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 18px 48px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 50px;
+            text-decoration: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 80px 20px;
+        }
+
+        /* Features Section */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .feature-card ul {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .feature-card li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .feature-card li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        /* Stats Section */
+        .stats {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .stat {
+            padding: 20px;
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        /* Premium Section */
+        .premium {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            text-align: center;
+        }
+
+        .premium h2 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            color: #2d3436;
+        }
+
+        .price {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #2d3436;
+        }
+
+        .price-period {
+            font-size: 0.4em;
+            opacity: 0.7;
+        }
+
+        .premium-features {
+            max-width: 600px;
+            margin: 40px auto;
+            text-align: left;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        .premium-features li {
+            padding: 12px 0;
+            font-size: 1.1em;
+            list-style: none;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .premium-features li:before {
+            content: "💎";
+            position: absolute;
+            left: 0;
+        }
+
+        /* Footer */
+        footer {
+            background: #2d3436;
+            color: white;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        footer a {
+            color: #74b9ff;
+            text-decoration: none;
+            margin: 0 15px;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5em;
+            }
+
+            .hero p {
+                font-size: 1.2em;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>🏰 Homeland RPG</h1>
+        <p>Transform your Discord into an epic RPG adventure!</p>
+        <a href="#invite" class="cta-button">Add to Discord</a>
+    </section>
+
+    <!-- Features Section -->
+    <div class="container">
+        <h2 style="text-align: center; font-size: 2.5em; margin-bottom: 20px;">Epic Features</h2>
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">⚔️</div>
+                <h3>Deep RPG System</h3>
+                <ul>
+                    <li>9 unique classes</li>
+                    <li>100+ levels</li>
+                    <li>Turn-based combat</li>
+                    <li>30+ skills with combos</li>
+                    <li>4 tiers of gear</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">👥</div>
+                <h3>Social Features</h3>
+                <ul>
+                    <li>Guild system</li>
+                    <li>Party gameplay</li>
+                    <li>Player trading</li>
+                    <li>Guild wars (weekends)</li>
+                    <li>Shared progression</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🏆</div>
+                <h3>Competitive</h3>
+                <ul>
+                    <li>ELO-ranked PvP</li>
+                    <li>Field boss bidding</li>
+                    <li>Global leaderboards</li>
+                    <li>Seasonal rewards</li>
+                    <li>Guild vs Guild</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="container">
+            <h2 style="font-size: 2.5em; margin-bottom: 20px;">Join the Adventure</h2>
+            <div class="stats-grid">
+                <div class="stat">
+                    <div class="stat-number">500+</div>
+                    <div class="stat-label">Servers</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">15K+</div>
+                    <div class="stat-label">Characters</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">200+</div>
+                    <div class="stat-label">Guilds</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Premium Section -->
+    <section class="premium">
+        <div class="container">
+            <h2>Go Premium</h2>
+            <div class="price">
+                $9.99<span class="price-period">/month</span>
+            </div>
+            <div class="premium-features">
+                <ul>
+                    <li>20% XP Boost</li>
+                    <li>15% Gold Boost</li>
+                    <li>Daily Gem Rewards</li>
+                    <li>Reduced Boss Bid Costs</li>
+                    <li>Priority Support</li>
+                    <li>Exclusive Cosmetics</li>
+                </ul>
+            </div>
+            <a href="#premium" class="cta-button" style="background: #2d3436; color: white;">Subscribe Now</a>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <div class="container" style="text-align: center; padding: 100px 20px;">
+        <h2 style="font-size: 3em; margin-bottom: 30px;">Ready to Transform Your Server?</h2>
+        <a href="#invite" class="cta-button" style="font-size: 1.4em;">Add Homeland to Discord</a>
+        <p style="margin-top: 30px; font-size: 1.2em; color: #666;">
+            Free to start. No credit card required.
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 Homeland RPG. All rights reserved.</p>
+        <div style="margin-top: 20px;">
+            <a href="#support">Support Server</a>
+            <a href="#docs">Documentation</a>
+            <a href="#tos">Terms of Service</a>
+            <a href="#privacy">Privacy Policy</a>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Replace #invite links with actual invite URL when available
+        const inviteUrl = 'https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands';
+        document.querySelectorAll('a[href="#invite"]').forEach(link => {
+            // link.href = inviteUrl;
+            link.onclick = (e) => {
+                e.preventDefault();
+                alert('Bot invite link will be available after deployment!');
+            };
+        });
+    </script>
+</body>
+</html>
