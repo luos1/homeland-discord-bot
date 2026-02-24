@@ -118,8 +118,8 @@ client.once(Events.ClientReady, async (readyClient) => {
   // Health check
   app.get('/health', (req, res) => res.json({ status: 'ok' }));
   
-  const PORT = process.env.API_PORT || 3000;
-  app.listen(PORT, () => {
+  const PORT = process.env.PORT || process.env.API_PORT || 3000;
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🔧 API server running on port ${PORT}`);
     console.log(`📊 Admin dashboard: /api/admin`);
   });
