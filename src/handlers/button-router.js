@@ -64,7 +64,68 @@ const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
 const MONSTER_SELECT_PREFIX = 'monster_select:';
 const PROFILE_ZONE_KEYS = new Set(listZones().map((zone) => zone.key));
 
+// 도박 버튼 prefix
+const GAMBLE_BUTTON_PREFIXES = [
+  'gamble_slot_again:', 'gamble_slot_double:',
+  'gamble_vip_again:', 'gamble_vip_double:',
+  'gamble_coin_again:', 'gamble_coin_double:',
+  'gamble_dice_again:', 'gamble_dice_double:',
+  'gamble_stop'
+];
+
+function isGambleButton(customId) {
+  return GAMBLE_BUTTON_PREFIXES.some(prefix => customId.startsWith(prefix));
+}
+
 async function handleButton(interaction, { prisma, client }) {
+  // 도박 버튼 처리
+  if (isGambleButton(interaction.customId)) {
+    const customId = interaction.customId;
+    
+    // 그만하기 버튼
+    if (customId === 'gamble_stop') {
+      return interaction.update({ 
+        content: '🛑 게임을 종료했습니다. 다음에 또 만나요!', 
+        embeds: [], 
+        components: [] 
+      });
+    }
+    
+    // 슬롯 버튼
+    if (customId.startsWith('gamble_slot_')) {
+      const slotCommand = client.commands.get('slot');
+      if (slotCommand && slotCommand.handleButton) {
+        return slotCommand.handleButton(interaction, customId);
+      }
+    }
+    
+    // VIP 슬롯 버튼
+    if (customId.startsWith('gamble_vip_')) {
+      const vipslotCommand = client.commands.get('vipslot');
+      if (vipslotCommand && vipslotCommand.handleButton) {
+        return vipslotCommand.handleButton(interaction, customId);
+      }
+    }
+    
+    // 코인 버튼
+    if (customId.startsWith('gamble_coin_')) {
+      const coinCommand = client.commands.get('coin');
+      if (coinCommand && coinCommand.handleButton) {
+        return coinCommand.handleButton(interaction, customId);
+      }
+    }
+    
+    // 주사위 버튼
+    if (customId.startsWith('gamble_dice_')) {
+      const diceCommand = client.commands.get('dice');
+      if (diceCommand && diceCommand.handleButton) {
+        return diceCommand.handleButton(interaction, customId);
+      }
+    }
+    
+    return;
+  }
+
   if (isVillageButton(interaction.customId)) {
     const handled = await handleVillageButton(interaction, { prisma, client });
     if (handled) return;
