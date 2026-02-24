@@ -116,6 +116,8 @@ model Character {
   npcContributions NPCContribution[]
   ownedFields      FarmField[]
   fieldRaids       FieldRaid[]        @relation("FieldRaider")
+  towerRuns        TowerRun[]
+  towerRecord      TowerRecord?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -1117,4 +1119,42 @@ model FieldRaid {
   
   @@index([fieldId])
   @@index([raiderId])
+}
+
+// ==========================================
+// 🗼 Tower of Challengers
+// ==========================================
+
+model TowerRun {
+  id          Int       @id @default(autoincrement())
+  
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  startFloor  Int
+  currentFloor Int
+  endFloor    Int?
+  
+  active      Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([characterId])
+  @@index([active])
+}
+
+model TowerRecord {
+  id          Int       @id @default(autoincrement())
+  
+  characterId Int       @unique
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  highestFloor Int      @default(0)
+  totalClears  Int      @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([highestFloor, totalClears])
 }

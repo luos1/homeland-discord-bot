@@ -184,6 +184,12 @@ async function handleButton(interaction, { prisma, client }) {
     }
   }
 
+  // 타워 버튼
+  if (interaction.customId.startsWith('tower_')) {
+    const { handleTowerButton } = require('../game/tower-buttons');
+    return await handleTowerButton(interaction, { prisma });
+  }
+
   if (isTradeButton(interaction.customId)) {
     return await handleTradeButton(interaction);
   }
