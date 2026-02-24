@@ -20,6 +20,10 @@ const COMMAND_GROUPS = [
     names: ['shop', 'shop_skills', 'market', 'npc_shop', 'sell_resources', 'auction', 'alert', 'gem', 'stats', 'premium', 'inventory'],
   },
   {
+    title: '🎰 도박',
+    names: ['slot', 'coin', 'dice'],
+  },
+  {
     title: '📅 시즌/이벤트',
     names: ['daily', 'attendance'],
   },

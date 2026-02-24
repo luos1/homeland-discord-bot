@@ -12,19 +12,27 @@ function loadCommands(client) {
 
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
+    const loadedModule = require(filePath);
+    const commands = Array.isArray(loadedModule) ? loadedModule : [loadedModule];
 
-    if (command.isButtonHandlerOnly) {
-      continue;
+    for (const command of commands) {
+      if (!command || typeof command !== 'object') {
+        console.warn(`유효하지 않은 명령어 모듈을 건너뜁니다: ${file}`);
+        continue;
+      }
+
+      if (command.isButtonHandlerOnly) {
+        continue;
+      }
+
+      if (!command.data || !command.execute) {
+        console.warn(`유효하지 않은 명령어 모듈을 건너뜁니다: ${file}`);
+        continue;
+      }
+
+      client.commands.set(command.data.name, command);
+      commandData.push(command.data.toJSON());
     }
-
-    if (!command.data || !command.execute) {
-      console.warn(`유효하지 않은 명령어 모듈을 건너뜁니다: ${file}`);
-      continue;
-    }
-
-    client.commands.set(command.data.name, command);
-    commandData.push(command.data.toJSON());
   }
 
   return commandData;
