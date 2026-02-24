@@ -21,7 +21,7 @@ const COMMAND_GROUPS = [
   },
   {
     title: '🎰 도박',
-    names: ['slot', 'coin', 'dice'],
+    names: ['slot', 'freespin', 'vipslot', 'coin', 'dice'],
   },
   {
     title: '📅 시즌/이벤트',
