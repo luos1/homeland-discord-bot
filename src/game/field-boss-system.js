@@ -179,23 +179,23 @@ class FieldBossSystem {
     const guilds = this.client.guilds.cache;
     
     const embed = {
-      title: '🚨 FIELD BOSS APPEARED! 🚨',
-      description: `**${boss.name}** has appeared!\n\n` +
-        `**Level:** ${boss.level}\n` +
+      title: '🚨 필드 보스 출현! 🚨',
+      description: `⚡ **${boss.name}** 출현!\n\n` +
+        `**레벨:** ${boss.level}\n` +
         `**HP:** ${boss.hp.toLocaleString()}\n` +
-        `**Attack:** ${boss.attack.toLocaleString()}\n\n` +
-        `**Minimum Bid:** ${boss.minBid.toLocaleString()} 💰\n` +
-        `**Bidding Ends:** <t:${Math.floor(biddingEnd.getTime() / 1000)}:R>\n\n` +
-        `**Rewards:**\n` +
+        `**공격력:** ${boss.attack.toLocaleString()}\n\n` +
+        `**최소 입찰:** ${boss.minBid.toLocaleString()} 💰\n` +
+        `**입찰 마감:** <t:${Math.floor(biddingEnd.getTime() / 1000)}:R>\n\n` +
+        `**보상:**\n` +
         boss.rewards.map(r => 
           r.type === 'EQUIPMENT' ? `• ${r.name} (${r.rarity})` :
           r.type === 'GOLD' ? `• ${r.amount.toLocaleString()} 💰` :
           `• ${r.amount.toLocaleString()} XP`
         ).join('\n') +
-        `\n\n**Use \`/fieldboss bid <amount>\` to place your bid!**`,
+        `\n\n**\`/fieldboss bid <금액>\` 으로 입찰하세요!**`,
       color: 0xff0000,
       timestamp: new Date(),
-      footer: { text: 'Highest bidder wins the challenge!' }
+      footer: { text: '최고 입찰자가 보스에 도전합니다!' }
     };
 
     for (const [, guild] of guilds) {
@@ -304,12 +304,12 @@ class FieldBossSystem {
       });
 
       const embed = {
-        title: '🏆 YOU WON THE BID!',
-        description: `Congratulations! You won the bid for **${event.bossName}**!\n\n` +
-          `**Your Bid:** ${winningBid.amount.toLocaleString()} 💰\n\n` +
-          `The boss battle will begin in 5 minutes.\n` +
-          `Prepare your best equipment and skills!\n\n` +
-          `Use \`/fieldboss challenge\` when ready.`,
+        title: '🏆 입찰 성공!',
+        description: `축하합니다! **${event.bossName}** 입찰에 성공했습니다!\n\n` +
+          `**입찰 금액:** ${winningBid.amount.toLocaleString()} 💰\n\n` +
+          `5분 후 보스전이 시작됩니다.\n` +
+          `최고의 장비와 스킬을 준비하세요!\n\n` +
+          `준비되면 \`/fieldboss challenge\` 사용!`,
         color: 0x00ff00,
         timestamp: new Date()
       };
@@ -346,12 +346,12 @@ class FieldBossSystem {
    */
   async placeBid(characterId, amount) {
     if (!this.activeEvent) {
-      return { success: false, message: 'No active field boss event!' };
+      return { success: false, message: '현재 진행 중인 필드보스가 없습니다!' };
     }
 
     const now = new Date();
     if (now >= this.activeEvent.biddingEnd) {
-      return { success: false, message: 'Bidding period has ended!' };
+      return { success: false, message: '입찰 기간이 종료되었습니다!' };
     }
 
     // Get player
@@ -360,7 +360,7 @@ class FieldBossSystem {
     });
 
     if (!player) {
-      return { success: false, message: 'Player not found!' };
+      return { success: false, message: '플레이어를 찾을 수 없습니다!' };
     }
 
     // Check minimum bid
@@ -372,8 +372,8 @@ class FieldBossSystem {
     if (amount < minBid) {
       return { 
         success: false, 
-        message: `Minimum bid is ${minBid.toLocaleString()} 💰` +
-          (character.premiumUntil && character.premiumUntil > now ? ' (Premium discount applied!)' : '')
+        message: `최소 입찰가는 ${minBid.toLocaleString()} 💰입니다` +
+          (character.premiumUntil && character.premiumUntil > now ? ' (프리미엄 할인 적용!)' : '')
       };
     }
 
@@ -386,7 +386,7 @@ class FieldBossSystem {
     if (highestBid && amount <= highestBid.amount) {
       return { 
         success: false, 
-        message: `Current highest bid is ${highestBid.amount.toLocaleString()} 💰. You must bid higher!`
+        message: `현재 최고 입찰가는 ${highestBid.amount.toLocaleString()} 💰입니다. 더 높게 입찰하세요!`
       };
     }
 
@@ -394,7 +394,7 @@ class FieldBossSystem {
     if (character.gold < amount) {
       return { 
         success: false, 
-        message: `You don't have enough gold! You have ${character.gold.toLocaleString()} 💰`
+        message: `골드가 부족합니다! 보유: ${character.gold.toLocaleString()} 💰`
       };
     }
 

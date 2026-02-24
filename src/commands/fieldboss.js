@@ -5,25 +5,35 @@ const prisma = new PrismaClient();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('fieldboss')
-    .setDescription('Field boss bidding system')
+    .setNameLocalizations({ ko: '필드보스' })
+    .setDescription('필드보스 입찰 시스템')
+    .setDescriptionLocalizations({ ko: '필드보스 입찰 시스템' })
     .addSubcommand(subcommand =>
       subcommand
         .setName('info')
-        .setDescription('View current field boss event'))
+        .setNameLocalizations({ ko: '정보' })
+        .setDescription('현재 필드보스 이벤트 확인')
+        .setDescriptionLocalizations({ ko: '현재 필드보스 이벤트 확인' }))
     .addSubcommand(subcommand =>
       subcommand
         .setName('bid')
-        .setDescription('Place a bid on the current field boss')
+        .setNameLocalizations({ ko: '입찰' })
+        .setDescription('필드보스에 입찰하기')
+        .setDescriptionLocalizations({ ko: '필드보스에 입찰하기' })
         .addIntegerOption(option =>
           option
             .setName('amount')
-            .setDescription('Bid amount in gold')
+            .setNameLocalizations({ ko: '금액' })
+            .setDescription('입찰 금액 (골드)')
+            .setDescriptionLocalizations({ ko: '입찰 금액 (골드)' })
             .setRequired(true)
             .setMinValue(1)))
     .addSubcommand(subcommand =>
       subcommand
         .setName('challenge')
-        .setDescription('Challenge the field boss (winner only)')),
+        .setNameLocalizations({ ko: '도전' })
+        .setDescription('필드보스에 도전 (낙찰자 전용)')
+        .setDescriptionLocalizations({ ko: '필드보스에 도전 (낙찰자 전용)' })),
 
   async execute(interaction) {
     const subcommand = interaction.options.getSubcommand();
@@ -42,7 +52,7 @@ module.exports = {
 
     if (!fieldBossSystem) {
       return await interaction.reply({
-        content: '❌ Field boss system not initialized!',
+        content: '❌ 필드보스 시스템이 초기화되지 않았습니다!',
         ephemeral: true
       });
     }
@@ -51,7 +61,7 @@ module.exports = {
 
     if (!info) {
       return await interaction.reply({
-        content: '⏳ No active field boss event. Check back later!',
+        content: '⏳ 현재 진행 중인 필드보스가 없습니다. 나중에 다시 확인하세요!',
         ephemeral: true
       });
     }
@@ -63,12 +73,12 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(`🚨 ${event.bossName}`)
       .setDescription(
-        `**Level:** ${event.bossLevel}\n` +
+        `**레벨:** ${event.bossLevel}\n` +
         `**HP:** ${event.bossHp.toLocaleString()}\n` +
-        `**Attack:** ${event.bossAttack.toLocaleString()}\n\n` +
-        `**Minimum Bid:** ${event.minBid.toLocaleString()} 💰\n` +
-        `**Bidding Ends:** <t:${Math.floor(event.biddingEnd.getTime() / 1000)}:R>\n` +
-        `**Time Left:** ${Math.floor(timeLeft / 1000 / 60)} minutes`
+        `**공격력:** ${event.bossAttack.toLocaleString()}\n\n` +
+        `**최소 입찰:** ${event.minBid.toLocaleString()} 💰\n` +
+        `**입찰 마감:** <t:${Math.floor(event.biddingEnd.getTime() / 1000)}:R>\n` +
+        `**남은 시간:** ${Math.floor(timeLeft / 1000 / 60)}분`
       )
       .setColor(0xff0000)
       .setTimestamp();
@@ -76,17 +86,17 @@ module.exports = {
     if (bids.length > 0) {
       const bidList = bids.map((bid, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-        return `${medal} **${bid.amount.toLocaleString()}** 💰 - ${bid.player.name}`;
+        return `${medal} **${bid.amount.toLocaleString()}** 💰 - ${bid.character.name}`;
       }).join('\n');
 
       embed.addFields({
-        name: '💰 Current Bids',
-        value: bidList || 'No bids yet'
+        name: '💰 현재 입찰',
+        value: bidList || '아직 입찰 없음'
       });
     } else {
       embed.addFields({
-        name: '💰 Current Bids',
-        value: 'No bids yet. Be the first!'
+        name: '💰 현재 입찰',
+        value: '아직 입찰이 없습니다. 첫 번째 입찰자가 되세요!'
       });
     }
 
@@ -99,11 +109,11 @@ module.exports = {
     ).join('\n');
 
     embed.addFields({
-      name: '🎁 Rewards',
+      name: '🎁 보상',
       value: rewardText
     });
 
-    embed.setFooter({ text: 'Use /fieldboss bid <amount> to place your bid!' });
+    embed.setFooter({ text: '/fieldboss bid <금액> 으로 입찰하세요!' });
 
     await interaction.reply({ embeds: [embed] });
   },
@@ -114,7 +124,7 @@ module.exports = {
 
     if (!fieldBossSystem) {
       return await interaction.reply({
-        content: '❌ Field boss system not initialized!',
+        content: '❌ 필드보스 시스템이 초기화되지 않았습니다!',
         ephemeral: true
       });
     }
@@ -129,7 +139,7 @@ module.exports = {
 
       if (!player) {
         return await interaction.editReply({
-          content: '❌ You need to create a character first! Use `/create`'
+          content: '❌ 먼저 캐릭터를 생성해주세요! `/create` 사용'
         });
       }
 
@@ -143,10 +153,10 @@ module.exports = {
       }
 
       const embed = new EmbedBuilder()
-        .setTitle('✅ Bid Placed Successfully!')
+        .setTitle('✅ 입찰 성공!')
         .setDescription(
-          `You bid **${result.amount.toLocaleString()}** 💰\n\n` +
-          `Good luck! Check \`/fieldboss info\` to see current standings.`
+          `**${result.amount.toLocaleString()}** 💰 입찰 완료!\n\n` +
+          `행운을 빕니다! \`/fieldboss info\`로 현재 순위를 확인하세요.`
         )
         .setColor(0x00ff00)
         .setTimestamp();
@@ -156,9 +166,9 @@ module.exports = {
       // Announce new bid in channel
       const info = await fieldBossSystem.getEventInfo();
       const channelEmbed = new EmbedBuilder()
-        .setTitle('💰 New Bid Placed!')
+        .setTitle('💰 새 입찰!')
         .setDescription(
-          `**${player.name}** bid **${result.amount.toLocaleString()}** 💰 on **${info.event.bossName}**!`
+          `**${player.name}**님이 **${info.event.bossName}**에 **${result.amount.toLocaleString()}** 💰 입찰!`
         )
         .setColor(0xffaa00)
         .setTimestamp();
@@ -170,7 +180,7 @@ module.exports = {
     } catch (error) {
       console.error('[FieldBoss] Bid error:', error);
       await interaction.editReply({
-        content: '❌ An error occurred while placing your bid. Please try again.'
+        content: '❌ 입찰 중 오류가 발생했습니다. 다시 시도해주세요.'
       });
     }
   },
@@ -190,7 +200,7 @@ module.exports = {
 
       if (!player) {
         return await interaction.editReply({
-          content: '❌ You need to create a character first! Use `/create`'
+          content: '❌ 먼저 캐릭터를 생성해주세요! `/create` 사용'
         });
       }
 
@@ -204,7 +214,7 @@ module.exports = {
 
       if (!event) {
         return await interaction.editReply({
-          content: '❌ You haven\'t won any field boss bids!'
+          content: '❌ 낙찰받은 필드보스가 없습니다!'
         });
       }
 
@@ -215,7 +225,7 @@ module.exports = {
     } catch (error) {
       console.error('[FieldBoss] Challenge error:', error);
       await interaction.editReply({
-        content: '❌ An error occurred while starting the challenge. Please try again.'
+        content: '❌ 도전 시작 중 오류가 발생했습니다. 다시 시도해주세요.'
       });
     }
   }
