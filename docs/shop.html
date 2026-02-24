@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HOMELAND - 상점</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e4e4e4;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #e94560, #ffbd69);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #8892b0;
+      font-size: 1.1rem;
+    }
+
+    /* Discord ID Input */
+    .discord-input-section {
+      background: rgba(88, 101, 242, 0.1);
+      border: 2px solid #5865F2;
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .discord-input-section h3 {
+      color: #5865F2;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+    }
+
+    .discord-input-section p {
+      color: #a8b2d1;
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+    }
+
+    .discord-id-input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #5865F2;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 1rem;
+      color: #fff;
+      width: 100%;
+      max-width: 350px;
+      text-align: center;
+    }
+
+    .discord-id-input::placeholder {
+      color: #8892b0;
+    }
+
+    .discord-id-input:focus {
+      outline: none;
+      border-color: #7289da;
+      box-shadow: 0 0 0 3px rgba(114, 137, 218, 0.3);
+    }
+
+    .id-help {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #64ffda;
+    }
+    
+    /* Product Sections */
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 25px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .section h2 {
+      color: #ffbd69;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Product Grid */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .product-card {
+      background: rgba(0, 0, 0, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .product-card:hover {
+      border-color: #e94560;
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(233, 69, 96, 0.2);
+    }
+
+    .product-card.selected {
+      border-color: #64ffda;
+      background: rgba(100, 255, 218, 0.1);
+    }
+
+    .product-card .icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+
+    .product-card h3 {
+      color: #fff;
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+
+    .product-card .amount {
+      color: #64ffda;
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .product-card .bonus {
+      color: #e94560;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .product-card .price {
+      color: #ffbd69;
+      font-size: 1.3rem;
+      font-weight: bold;
+    }
+
+    .product-card .original-price {
+      color: #8892b0;
+      text-decoration: line-through;
+      font-size: 0.9rem;
+    }
+
+    /* Premium Cards */
+    .premium-card {
+      background: linear-gradient(135deg, rgba(233, 69, 96, 0.1), rgba(255, 189, 105, 0.1));
+      border: 2px solid #e94560;
+    }
+
+    .premium-card .benefits {
+      text-align: left;
+      margin: 15px 0;
+      padding: 0 10px;
+    }
+
+    .premium-card .benefits li {
+      color: #a8b2d1;
+      font-size: 0.9rem;
+      margin: 5px 0;
+      list-style: none;
+    }
+
+    .premium-card .benefits li::before {
+      content: "✓ ";
+      color: #64ffda;
+    }
+
+    /* Checkout Button */
+    .checkout-section {
+      text-align: center;
+      margin-top: 30px;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 16px;
+    }
+
+    .checkout-summary {
+      margin-bottom: 20px;
+    }
+
+    .checkout-summary .selected-product {
+      color: #64ffda;
+      font-size: 1.2rem;
+      margin-bottom: 5px;
+    }
+
+    .checkout-summary .selected-price {
+      color: #ffbd69;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .checkout-btn {
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      color: white;
+      border: none;
+      padding: 18px 60px;
+      border-radius: 30px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .checkout-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
+    }
+
+    .checkout-btn:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    .secure-note {
+      margin-top: 15px;
+      color: #8892b0;
+      font-size: 0.85rem;
+    }
+
+    .secure-note img {
+      height: 20px;
+      vertical-align: middle;
+      margin-left: 5px;
+    }
+
+    /* Info Box */
+    .info-box {
+      background: rgba(100, 255, 218, 0.1);
+      border-left: 4px solid #64ffda;
+      padding: 15px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 20px;
+    }
+
+    .info-box p {
+      color: #a8b2d1;
+      font-size: 0.9rem;
+      margin: 5px 0;
+    }
+
+    .info-box strong {
+      color: #64ffda;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 30px;
+      color: #8892b0;
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: #64ffda;
+      text-decoration: none;
+    }
+
+    /* Error/Success Messages */
+    .message {
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .message.error {
+      background: rgba(233, 69, 96, 0.2);
+      border: 1px solid #e94560;
+      color: #e94560;
+    }
+
+    .message.success {
+      background: rgba(100, 255, 218, 0.2);
+      border: 1px solid #64ffda;
+      color: #64ffda;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 2rem; }
+      .product-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>💎 HOMELAND 상점</h1>
+      <p class="subtitle">젬과 프리미엄으로 더 빠른 성장을!</p>
+    </header>
+
+    <!-- Discord ID Input -->
+    <div class="discord-input-section">
+      <h3>🎮 Discord 계정 연결</h3>
+      <p>구매한 아이템을 받을 Discord ID를 입력하세요</p>
+      <input type="text" id="discordId" class="discord-id-input" placeholder="Discord ID (예: 123456789012345678)">
+      <p class="id-help">💡 Discord에서 개발자 모드 켜고 → 내 프로필 우클릭 → "ID 복사"</p>
+    </div>
+
+    <!-- Gem Packages -->
+    <section class="section">
+      <h2>💎 젬 패키지</h2>
+      <div class="product-grid">
+        <div class="product-card" data-product="gem_100" data-price="1.99" data-name="100 젬">
+          <div class="icon">💎</div>
+          <h3>스타터 팩</h3>
+          <div class="amount">100 젬</div>
+          <div class="price">$1.99</div>
+        </div>
+        
+        <div class="product-card" data-product="gem_500" data-price="7.99" data-name="550 젬">
+          <div class="icon">💎💎</div>
+          <h3>모험가 팩</h3>
+          <div class="amount">500 + 50 젬</div>
+          <div class="bonus">+10% 보너스!</div>
+          <div class="price">$7.99</div>
+          <div class="original-price">$9.95</div>
+        </div>
+        
+        <div class="product-card" data-product="gem_1000" data-price="14.99" data-name="1200 젬">
+          <div class="icon">💎💎💎</div>
+          <h3>영웅 팩</h3>
+          <div class="amount">1000 + 200 젬</div>
+          <div class="bonus">+20% 보너스!</div>
+          <div class="price">$14.99</div>
+          <div class="original-price">$19.90</div>
+        </div>
+        
+        <div class="product-card" data-product="gem_3000" data-price="39.99" data-name="3900 젬">
+          <div class="icon">👑</div>
+          <h3>전설 팩</h3>
+          <div class="amount">3000 + 900 젬</div>
+          <div class="bonus">+30% 보너스!</div>
+          <div class="price">$39.99</div>
+          <div class="original-price">$59.70</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Premium Subscription -->
+    <section class="section">
+      <h2>⭐ 프리미엄 패스</h2>
+      <div class="product-grid">
+        <div class="product-card premium-card" data-product="premium_monthly" data-price="9.99" data-name="프리미엄 월간">
+          <div class="icon">⭐</div>
+          <h3>월간 구독</h3>
+          <ul class="benefits">
+            <li>경험치 +20% 부스트</li>
+            <li>골드 획득 +15%</li>
+            <li>매일 10젬 지급</li>
+            <li>자동 전투 기능</li>
+            <li>전용 칭호</li>
+          </ul>
+          <div class="price">$9.99/월</div>
+        </div>
+        
+        <div class="product-card premium-card" data-product="premium_yearly" data-price="79.99" data-name="프리미엄 연간">
+          <div class="icon">👑</div>
+          <h3>연간 구독</h3>
+          <ul class="benefits">
+            <li>월간 혜택 모두 포함</li>
+            <li>2개월 무료! (33% 할인)</li>
+            <li>전설 칭호 추가</li>
+            <li>한정 아바타 프레임</li>
+          </ul>
+          <div class="price">$79.99/년</div>
+          <div class="original-price">$119.88/년</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Checkout -->
+    <div class="checkout-section">
+      <div class="checkout-summary">
+        <div class="selected-product" id="selectedProduct">상품을 선택하세요</div>
+        <div class="selected-price" id="selectedPrice"></div>
+      </div>
+      <button class="checkout-btn" id="checkoutBtn" disabled>결제하기</button>
+      <p class="secure-note">🔒 안전한 결제 - Stripe 보안 결제</p>
+    </div>
+
+    <!-- Info -->
+    <div class="info-box">
+      <p><strong>💡 구매 안내</strong></p>
+      <p>• 결제 완료 후 1분 내로 디스코드 캐릭터에 자동 지급됩니다</p>
+      <p>• 문의: Discord 서버 내 #문의 채널</p>
+      <p>• 환불: 미사용 젬에 한해 7일 이내 환불 가능</p>
+    </div>
+
+    <footer>
+      <p>HOMELAND © 2025 | <a href="play-guide.html">플레이 가이드</a> | <a href="https://discord.gg/fKksCrpq">Discord 참가</a></p>
+    </footer>
+  </div>
+
+  <script>
+    let selectedProduct = null;
+    const API_URL = 'https://homeland-discord-bot-production.up.railway.app';
+
+    // Product selection
+    document.querySelectorAll('.product-card').forEach(card => {
+      card.addEventListener('click', () => {
+        // Remove previous selection
+        document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
+        
+        // Select this card
+        card.classList.add('selected');
+        selectedProduct = {
+          id: card.dataset.product,
+          price: card.dataset.price,
+          name: card.dataset.name
+        };
+
+        // Update checkout section
+        document.getElementById('selectedProduct').textContent = selectedProduct.name;
+        document.getElementById('selectedPrice').textContent = `$${selectedProduct.price}`;
+        document.getElementById('checkoutBtn').disabled = false;
+      });
+    });
+
+    // Checkout
+    document.getElementById('checkoutBtn').addEventListener('click', async () => {
+      const discordId = document.getElementById('discordId').value.trim();
+      
+      if (!discordId) {
+        alert('Discord ID를 입력해주세요!');
+        return;
+      }
+
+      if (!/^\d{17,19}$/.test(discordId)) {
+        alert('올바른 Discord ID를 입력해주세요!\n(17-19자리 숫자)');
+        return;
+      }
+
+      if (!selectedProduct) {
+        alert('상품을 선택해주세요!');
+        return;
+      }
+
+      const btn = document.getElementById('checkoutBtn');
+      btn.disabled = true;
+      btn.textContent = '처리 중...';
+
+      try {
+        const response = await fetch(`${API_URL}/api/checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            discordId: discordId,
+            productId: selectedProduct.id,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error(data.error || '결제 세션 생성 실패');
+        }
+      } catch (error) {
+        alert('결제 처리 중 오류가 발생했습니다.\n' + error.message);
+        btn.disabled = false;
+        btn.textContent = '결제하기';
+      }
+    });
+  </script>
+</body>
+</html>

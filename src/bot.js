@@ -38,6 +38,8 @@ const { handleInteraction } = require('./handlers/interaction-handler');
 const { startAll, stopAll } = require('./schedulers/scheduler-manager');
 const FieldBossSystem = require('./game/field-boss-system');
 const GuildWarSystem = require('./game/guild-war-system');
+const express = require('express');
+const { createStripeRouter } = require('./api/stripe');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 
@@ -74,6 +76,20 @@ client.once(Events.ClientReady, async (readyClient) => {
   console.log('⚔️ Guild War System initialized');
 
   startAll(prisma, readyClient);
+
+  // Start API server for Stripe payments
+  if (process.env.STRIPE_SECRET_KEY) {
+    const app = express();
+    app.use('/api', createStripeRouter(prisma, readyClient));
+    
+    // Health check
+    app.get('/health', (req, res) => res.json({ status: 'ok' }));
+    
+    const PORT = process.env.API_PORT || 3000;
+    app.listen(PORT, () => {
+      console.log(`💳 Payment API server running on port ${PORT}`);
+    });
+  }
 });
 
 client.on(Events.InteractionCreate, (interaction) => {
