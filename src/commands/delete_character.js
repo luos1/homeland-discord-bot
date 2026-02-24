@@ -6,6 +6,7 @@ const {
   ActionRowBuilder,
 } = require('discord.js');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -13,22 +14,11 @@ module.exports = {
     .setDescription('⚠️ 캐릭터를 완전히 삭제합니다 (되돌릴 수 없습니다!)'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '삭제할 캐릭터가 없습니다.',
-        ephemeral: true,
-      });
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
 
     const confirmEmbed = new EmbedBuilder()
-      .setColor('#FF0000')
+      .setColor(EMBED_COLORS.defeat)
       .setTitle('⚠️ 캐릭터 삭제 확인')
       .setDescription(
         [
@@ -71,20 +61,8 @@ module.exports = {
 
   async handleButton(interaction, { prisma }) {
     if (interaction.customId === 'confirm_delete_character') {
-      const character = await prisma.character.findUnique({
-        where: {
-          userId: interaction.user.id,
-        },
-      });
-
-      if (!character) {
-        await interaction.update({
-          content: '삭제할 캐릭터가 없습니다.',
-          embeds: [],
-          components: [],
-        });
-        return true;
-      }
+      const character = await requireCharacter(prisma, interaction);
+      if (!character) return true;
 
       try {
         // 활성 거래소 매물 취소 후 캐릭터 삭제 (트랜잭션)
@@ -118,7 +96,7 @@ module.exports = {
       }
 
       const resultEmbed = new EmbedBuilder()
-        .setColor('#00FF00')
+        .setColor(EMBED_COLORS.victory)
         .setTitle('✅ 캐릭터 삭제 완료')
         .setDescription(
           [

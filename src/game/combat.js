@@ -1900,7 +1900,7 @@ async function handleCombatButton({ interaction, prisma }) {
             '⚠️ 경고: 숨겨진 보스는 매우 강력합니다.\n' +
             '💎 보상: 전설 등급 장비 확정!'
           )
-          .setColor(0xfbbf24)
+          .setColor(EMBED_COLORS.amber)
           .setTimestamp();
         
         const exploreButton = new ButtonBuilder()

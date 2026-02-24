@@ -18,6 +18,7 @@ const {
   createDivider,
   localizeClassName,
 } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 
 const JOBCHANGE_BUTTON_PREFIX = 'jobchange:';
 
@@ -125,20 +126,8 @@ module.exports = {
     .setDescription('레벨 10 달성 시 상위 직업으로 전직합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
 
     const check = canJobChange(character);
 
@@ -184,20 +173,8 @@ module.exports = {
       .slice(JOBCHANGE_BUTTON_PREFIX.length)
       .split(':');
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.followUp({
-        content: '캐릭터가 없습니다.',
-        ephemeral: true,
-      });
-
-      return true;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return true;
 
     const check = canJobChange(character);
 

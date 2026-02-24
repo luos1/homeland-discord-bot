@@ -9,6 +9,7 @@ const {
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
 const { createVillageHomeButton } = require('../utils/village');
 const { getAllBosses, getBossById } = require('../game/bosses');
+const { requireCharacter } = require('../utils/response-helpers');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -55,22 +56,14 @@ module.exports = {
       return;
     }
 
-    const character = await prisma.character.findUnique({
-      where: { userId: interaction.user.id },
+    const character = await requireCharacter(prisma, interaction, {
       include: {
         combatSession: true,
         equipment: true,
         skills: true,
       },
     });
-
-    if (!character) {
-      await interaction.update({
-        content: '캐릭터를 찾을 수 없습니다.',
-        components: [],
-      });
-      return;
-    }
+    if (!character) return;
 
     if (character.combatSession) {
       await interaction.update({
@@ -199,22 +192,14 @@ async function handleBossChallenge(interaction, { prisma }) {
   }
 
   // 캐릭터 조회
-  const character = await prisma.character.findUnique({
-    where: { userId: interaction.user.id },
+  const character = await requireCharacter(prisma, interaction, {
     include: {
       combatSession: true,
       equipment: true,
       skills: true,
     },
   });
-
-  if (!character) {
-    await interaction.reply({
-      content: '캐릭터가 없습니다. `/start`로 시작해주세요.',
-      ephemeral: true,
-    });
-    return;
-  }
+  if (!character) return;
 
   // 이미 전투 중인지 확인
   if (character.combatSession) {

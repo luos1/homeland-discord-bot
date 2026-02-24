@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { TradingSystem } = require('../game/trading-system');
+const { EMBED_COLORS } = require('../utils/ui');
 
 
 module.exports = {
@@ -61,7 +62,7 @@ async function handleStart(interaction) {
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0x00FF00)
+    .setColor(EMBED_COLORS.victory)
     .setTitle('🤝 거래 시작')
     .setDescription(`${interaction.user}님과 ${targetUser}님의 거래가 시작되었습니다!`)
     .addFields(

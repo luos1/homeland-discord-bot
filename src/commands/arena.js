@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { ArenaSystem, ARENA_ENTRY_FEE } = require('../game/arena-system');
 const { handleCombatButton, createCombatEmbed, createCombatActionRows } = require('../game/combat');
+const { EMBED_COLORS } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 
 
 // 매칭 대기 중인 유저들
@@ -51,11 +53,8 @@ async function handleQueue(interaction) {
   const userId = interaction.user.id;
 
   // 골드 확인
-  const character = await prisma.character.findUnique({ where: { userId } });
-  
-  if (!character) {
-    return interaction.reply({ content: '❌ 캐릭터를 먼저 생성하세요!', ephemeral: true });
-  }
+  const character = await requireCharacter(prisma, interaction);
+  if (!character) return;
 
   if (character.gold < ARENA_ENTRY_FEE) {
     return interaction.reply({
@@ -80,7 +79,7 @@ async function handleQueue(interaction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0xFFD700)
+      .setColor(EMBED_COLORS.arena)
       .setTitle('⚔️ Arena 매칭 대기 중...')
       .setDescription('상대를 찾고 있습니다!')
       .addFields(
@@ -129,7 +128,7 @@ async function handleQueue(interaction) {
 
   // 전투 시작 알림
   const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
+    .setColor(EMBED_COLORS.defeat)
     .setTitle('⚔️ Arena 전투 시작!')
     .setDescription(`<@${userId}> vs <@${opponent.userId}>`)
     .addFields(
@@ -167,7 +166,7 @@ async function handleStats(interaction) {
   }).join('\n') || '_전투 기록 없음_';
 
   const embed = new EmbedBuilder()
-    .setColor(0xFFD700)
+    .setColor(EMBED_COLORS.arena)
     .setTitle(`⚔️ ${interaction.user.username}님의 Arena 전적`)
     .addFields(
       { name: 'ELO', value: `${elo.elo}`, inline: true },
@@ -188,7 +187,7 @@ async function handleRanking(interaction) {
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0xFFD700)
+    .setColor(EMBED_COLORS.arena)
     .setTitle('🏆 Arena 랭킹 TOP 10')
     .setDescription('주간 Arena ELO 순위')
     .setTimestamp();
@@ -233,7 +232,7 @@ async function startArenaCombat(interaction, player1Id, player2Id, battleId) {
 
   // 결과 알림
   const resultEmbed = new EmbedBuilder()
-    .setColor(winnerId === player1Id ? 0x00FF00 : 0xFF0000)
+    .setColor(winnerId === player1Id ? EMBED_COLORS.victory : EMBED_COLORS.defeat)
     .setTitle('⚔️ Arena 전투 종료!')
     .setDescription(`승자: <@${winnerId}>`)
     .addFields(

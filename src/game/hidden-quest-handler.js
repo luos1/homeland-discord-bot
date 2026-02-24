@@ -7,6 +7,7 @@ const {
   checkQuestObjectiveComplete,
   incrementQuestProgress,
 } = require('./hidden-quests');
+const { EMBED_COLORS } = require('../utils/ui');
 
 /**
  * 숨겨진 퀘스트 트리거 통계 업데이트
@@ -395,7 +396,7 @@ async function claimQuestReward(interaction, prisma, questKey) {
   const embed = new EmbedBuilder()
     .setTitle(`${quest.emoji} ${quest.name} 완료!`)
     .setDescription(quest.npcDialogue.complete)
-    .setColor(0xfbbf24);
+    .setColor(EMBED_COLORS.amber);
 
   const rewardFields = [];
   if (rewards.gold) {

@@ -14,6 +14,7 @@ const {
 } = require('../game/production-classes');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('../game/daily-quests');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 const {
   handleOnboardingEvent,
   sendOnboardingFeedback,
@@ -71,23 +72,8 @@ module.exports = {
     .setDescription('자원을 채집합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        gatherSessions: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction, { include: { gatherSessions: true } });
+    if (!character) return;
 
     if (!character.productionClass) {
       await interaction.reply({
@@ -253,23 +239,8 @@ module.exports = {
       return false;
     }
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        gatherSessions: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터를 찾을 수 없습니다.',
-        ephemeral: true,
-      });
-
-      return true;
-    }
+    const character = await requireCharacter(prisma, interaction, { include: { gatherSessions: true } });
+    if (!character) return true;
 
     if (character.gatherSessions.length > 0) {
       await interaction.reply({

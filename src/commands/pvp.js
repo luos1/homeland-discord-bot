@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { joinPvPQueue, leaveQueue, getPvPRankings } = require('../game/pvp-system');
+const { requireCharacter } = require('../utils/response-helpers');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -44,13 +45,8 @@ module.exports = {
 };
 
 async function handleQueue(interaction, { prisma }) {
-  const character = await prisma.character.findUnique({
-    where: { userId: interaction.user.id }
-  });
-
-  if (!character) {
-    return interaction.reply({ content: '캐릭터가 없습니다. `/create`로 생성하세요.', ephemeral: true });
-  }
+  const character = await requireCharacter(prisma, interaction);
+  if (!character) return;
 
   if (character.level < 10) {
     return interaction.reply({ content: 'PvP는 레벨 10 이상부터 가능합니다.', ephemeral: true });

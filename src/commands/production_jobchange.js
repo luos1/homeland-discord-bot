@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 const {
   canProductionJobChange,
   getProductionAdvancedClassChoices,
@@ -77,20 +78,8 @@ module.exports = {
     .setDescription('생산 레벨 5 달성 시 고급 생산 직업으로 전직합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
 
     const check = canProductionJobChange(character);
 
@@ -133,20 +122,8 @@ module.exports = {
       .slice(PRODUCTION_JOBCHANGE_BUTTON_PREFIX.length)
       .split(':');
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.followUp({
-        content: '캐릭터가 없습니다.',
-        ephemeral: true,
-      });
-
-      return true;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return true;
 
     const check = canProductionJobChange(character);
 

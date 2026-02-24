@@ -24,9 +24,23 @@ function truncateLabel(text, maxLength = 100) {
   return `${text.slice(0, maxLength - 3)}...`;
 }
 
+function calculateSessionRemainingTime(session) {
+  const now = new Date();
+  const completesAt = new Date(session.completesAt);
+  const remainingMs = Math.max(0, completesAt - now);
+  const remainingMin = Math.ceil(remainingMs / 1000 / 60);
+
+  return {
+    remainingMs,
+    remainingMin,
+    isComplete: remainingMs <= 0,
+  };
+}
+
 module.exports = {
   formatGold,
   toSafeNumber,
   parsePositiveInteger,
   truncateLabel,
+  calculateSessionRemainingTime,
 };

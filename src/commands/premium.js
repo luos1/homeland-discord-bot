@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 
 const { EMBED_COLORS, createDivider, formatNumber } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 const { buildVillageHomeCustomId } = require('../utils/village');
 const {
   PREMIUM_PLAN,
@@ -155,20 +156,8 @@ module.exports = {
     .setDescription('Premium Pass 상태와 자동 전투 설정을 확인합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
 
     const now = new Date();
     const subscription = await prisma.premiumSubscription.findUnique({
@@ -193,19 +182,8 @@ module.exports = {
       return false;
     }
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-      return true;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return true;
 
     const now = new Date();
     const subscription = await prisma.premiumSubscription.findUnique({

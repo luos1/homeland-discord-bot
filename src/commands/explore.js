@@ -18,6 +18,7 @@ const { PROFILE_BUTTON_IDS } = require('./profile');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
 const { createVillageHomeButton } = require('../utils/village');
 const { cleanupOldSessions } = require('../game/session-cleanup');
+const { requireCharacter } = require('../utils/response-helpers');
 
 const zoneChoices = listZoneChoices();
 const PROFILE_ZONE_BUTTON_PREFIX = 'profile_zone:';
@@ -324,24 +325,8 @@ module.exports = {
       console.log(`🧹 Cleaned ${cleaned} old session(s) for user ${interaction.user.id}`);
     }
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        combatSession: true,
-        skills: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction, { include: { combatSession: true, skills: true } });
+    if (!character) return;
 
     if (character.combatSession) {
       const embed = createCombatEmbed({

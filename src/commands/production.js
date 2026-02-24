@@ -18,6 +18,7 @@ const {
   VILLAGE_MENU_KEYS,
 } = require('../utils/village');
 const { maybeSendGuideTip } = require('../game/onboarding');
+const { requireCharacter } = require('../utils/response-helpers');
 
 const PRODUCTION_BUTTON_PREFIX = 'production:';
 
@@ -140,20 +141,8 @@ module.exports = {
     .setDescription('생산 직업을 선택하거나 확인합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
 
     const embed = createProductionMainEmbed(character);
     const components = character.productionClass
@@ -184,20 +173,8 @@ module.exports = {
     const customId = interaction.customId.slice(PRODUCTION_BUTTON_PREFIX.length);
     const [action, param] = customId.split(':');
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터를 찾을 수 없습니다.',
-        ephemeral: true,
-      });
-
-      return true;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return true;
 
     // 카테고리 선택
     if (action === 'category') {

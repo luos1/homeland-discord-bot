@@ -16,6 +16,7 @@ const {
 const { RESOURCES } = require('../game/production-classes');
 const { getResourceDynamicPrice } = require('../game/dynamic-pricing');
 const { EMBED_COLORS, createDivider, formatNumber } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 
 const INVENTORY_BUTTON_PREFIX = 'inventory:';
 const INVENTORY_ACTION = {
@@ -783,10 +784,7 @@ module.exports = {
       return;
     }
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
+    const character = await requireCharacter(prisma, interaction, {
       include: {
         equipment: {
           orderBy: [{ equipped: 'desc' }, { rarity: 'desc' }, { createdAt: 'desc' }],
@@ -802,15 +800,7 @@ module.exports = {
         },
       },
     });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    if (!character) return;
 
     const collections = normalizeCharacterCollections(character);
     const normalizedCharacter = { ...character, ...collections };
@@ -850,10 +840,7 @@ module.exports = {
 
     // 탭 전환
     if (action === 'tab') {
-      const character = await prisma.character.findUnique({
-        where: {
-          userId: interaction.user.id,
-        },
+      const character = await requireCharacter(prisma, interaction, {
         include: {
           equipment: {
             orderBy: [{ equipped: 'desc' }, { rarity: 'desc' }, { createdAt: 'desc' }],
@@ -869,15 +856,7 @@ module.exports = {
           },
         },
       });
-
-      if (!character) {
-        await interaction.reply({
-          content: '캐릭터를 찾을 수 없습니다.',
-          ephemeral: true,
-        });
-
-        return true;
-      }
+      if (!character) return true;
 
       const collections = normalizeCharacterCollections(character);
       const normalizedCharacter = { ...character, ...collections };

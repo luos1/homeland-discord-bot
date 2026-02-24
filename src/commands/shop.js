@@ -8,6 +8,7 @@ const {
 
 const { RARITIES, generateEquipment } = require('../game/equipment');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 const { getAdvancedSkillByKey } = require('../game/advanced-skills');
 const {
   createSkillShopEmbed,
@@ -399,23 +400,8 @@ module.exports = {
     .setDescription('상점에서 포션과 장비를 구매하거나 판매합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        equipment: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction, { include: { equipment: true } });
+    if (!character) return;
 
     const embed = createShopMainEmbed(character);
 
@@ -433,25 +419,14 @@ module.exports = {
     const customId = interaction.customId.slice(SHOP_BUTTON_PREFIX.length);
     const [action, param] = customId.split(':');
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
+    const character = await requireCharacter(prisma, interaction, {
       include: {
         equipment: {
           orderBy: [{ equipped: 'desc' }, { rarity: 'desc' }],
         },
       },
     });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터를 찾을 수 없습니다.',
-        ephemeral: true,
-      });
-
-      return true;
-    }
+    if (!character) return true;
 
     // 메인 메뉴
     if (action === 'main') {

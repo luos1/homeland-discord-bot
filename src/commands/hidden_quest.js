@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { HIDDEN_QUESTS } = require('../game/hidden-quests');
+const { requireCharacter } = require('../utils/response-helpers');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -7,20 +8,8 @@ module.exports = {
     .setDescription('숨겨진 퀘스트 확인 및 보상 수령'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: { userId: interaction.user.id },
-      include: {
-        hiddenQuests: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '먼저 `/create` 명령어로 캐릭터를 생성해주세요!',
-        ephemeral: true,
-      });
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction, { include: { hiddenQuests: true } });
+    if (!character) return;
 
     const quests = character.hiddenQuests;
 

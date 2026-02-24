@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { GuildSystem, GUILD_CREATION_COST } = require('../game/guild-system');
+const { EMBED_COLORS } = require('../utils/ui');
 
 
 module.exports = {
@@ -181,7 +182,7 @@ async function handleCreate(interaction) {
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0x00FF00)
+    .setColor(EMBED_COLORS.victory)
     .setTitle('🏰 길드 생성 완료!')
     .setDescription(`**${result.guild.name}** 길드가 생성되었습니다!`)
     .addFields(
@@ -212,7 +213,7 @@ async function handleInfo(interaction) {
     .join('\n');
 
   const embed = new EmbedBuilder()
-    .setColor(0xFFD700)
+    .setColor(EMBED_COLORS.levelUp)
     .setTitle(`🏰 ${guild.name}`)
     .setDescription(guild.description || '_길드 설명 없음_')
     .addFields(
@@ -400,7 +401,7 @@ async function handleDisband(interaction) {
 
   // 확인 버튼
   const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
+    .setColor(EMBED_COLORS.defeat)
     .setTitle('⚠️ 길드 해체 확인')
     .setDescription('정말로 길드를 해체하시겠습니까?\n\n**모든 길드 자산이 삭제되며 복구할 수 없습니다!**')
     .setTimestamp();

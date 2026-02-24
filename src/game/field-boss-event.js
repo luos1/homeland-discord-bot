@@ -9,6 +9,7 @@
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { MONSTERS } = require('./monsters');
+const { EMBED_COLORS } = require('../utils/ui');
 
 // 활성 필드 보스 이벤트
 const activeEvents = new Map();
@@ -88,7 +89,7 @@ async function spawnFieldBoss(client, channelId) {
   
   // 공지 메시지
   const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
+    .setColor(EMBED_COLORS.defeat)
     .setTitle(`${boss.emoji} 긴급! 필드 보스 출현!`)
     .setDescription([
       '━━━━━━━━━━━━━━━━━━━━',

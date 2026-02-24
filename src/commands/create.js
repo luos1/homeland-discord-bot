@@ -17,6 +17,7 @@ const {
   handleOnboardingEvent,
   sendOnboardingFeedback,
 } = require('../game/onboarding');
+const { SKILLS } = require('../game/skills');
 
 const CLASS_PRESETS = {
   warrior: {
@@ -144,6 +145,20 @@ module.exports = {
           defense: classPreset.defense,
         },
       });
+
+      // 🎯 기본 전투 스킬 부여 (Lv.1 스킬)
+      const classSkills = SKILLS[classChoice];
+      if (classSkills && classSkills.length > 0) {
+        const basicSkill = classSkills[0]; // Lv.1 스킬 (unlockLevel: 1)
+        await prisma.skill.create({
+          data: {
+            characterId: character.id,
+            skillKey: basicSkill.key,
+            skillLevel: 1,
+            equipped: true, // 기본 스킬은 자동 장착!
+          },
+        });
+      }
     } catch (error) {
       console.error('Character creation error:', error);
       await interaction.reply({
@@ -153,27 +168,42 @@ module.exports = {
       return;
     }
 
+    // 기본 스킬 정보 가져오기
+    const classSkills = SKILLS[classChoice];
+    const basicSkill = classSkills && classSkills.length > 0 ? classSkills[0] : null;
+
+    const descriptionLines = [
+      createDivider(),
+      `📛 이름: ${character.name}`,
+      `⚔️ 직업: ${localizeClassName(character.class)}`,
+      createDivider(),
+      '',
+      '📊 초기 능력치',
+      `❤️ 체력: ${character.hp}/${character.maxHp}`,
+      `🔷 마나: ${character.mana}/${character.maxMana}`,
+      `⚔️ 공격력: ${character.attack}`,
+      `🛡️ 방어력: ${character.defense}`,
+      `💰 골드: ${character.gold}G`,
+      `💠 젬: ${character.gems || 0}`,
+      '',
+    ];
+
+    // 기본 스킬 정보 추가
+    if (basicSkill) {
+      descriptionLines.push(
+        '🎁 기본 스킬 획득!',
+        `${basicSkill.emoji} **${basicSkill.name}** - ${basicSkill.description}`,
+        `   💧 마나: ${basicSkill.manaCost}`,
+        '',
+      );
+    }
+
+    descriptionLines.push('🎯 전투를 시작해보세요!');
+
     const embed = new EmbedBuilder()
       .setColor(EMBED_COLORS.create)
       .setTitle(`⚔️ ${localizeClassName(character.class)} 캐릭터 생성 완료!`)
-      .setDescription(
-        [
-          createDivider(),
-          `📛 이름: ${character.name}`,
-          `⚔️ 직업: ${localizeClassName(character.class)}`,
-          createDivider(),
-          '',
-          '📊 초기 능력치',
-          `❤️ 체력: ${character.hp}/${character.maxHp}`,
-          `🔷 마나: ${character.mana}/${character.maxMana}`,
-          `⚔️ 공격력: ${character.attack}`,
-          `🛡️ 방어력: ${character.defense}`,
-          `💰 골드: ${character.gold}G`,
-          `💠 젬: ${character.gems || 0}`,
-          '',
-          '🎯 전투를 시작해보세요!',
-        ].join('\n'),
-      )
+      .setDescription(descriptionLines.join('\n'))
       .setFooter({
         text: '홈랜드 모험의 시작',
       });

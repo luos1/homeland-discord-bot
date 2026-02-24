@@ -14,6 +14,7 @@ const {
 } = require('../game/production-skills');
 const { PRODUCTION_CLASSES } = require('../game/production-classes');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 
 const PSKILL_BUTTON_PREFIX = 'pskill:';
 
@@ -83,23 +84,8 @@ module.exports = {
     .setDescription('생산 스킬을 확인하고 구매합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        skills: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction, { include: { skills: true } });
+    if (!character) return;
 
     if (!character.productionClass) {
       await interaction.reply({
@@ -139,23 +125,8 @@ module.exports = {
       return false;
     }
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        skills: true,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터를 찾을 수 없습니다.',
-        ephemeral: true,
-      });
-
-      return true;
-    }
+    const character = await requireCharacter(prisma, interaction, { include: { skills: true } });
+    if (!character) return true;
 
     const skill = PRODUCTION_SKILLS[skillKey];
 

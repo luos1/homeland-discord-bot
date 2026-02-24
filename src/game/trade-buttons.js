@@ -5,6 +5,7 @@
 const { TradingSystem } = require('./trading-system');
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { EMBED_COLORS } = require('../utils/ui');
 
 const TRADE_BUTTON_PREFIX = 'trade_';
 
@@ -142,7 +143,7 @@ async function handleConfirmButton(interaction) {
 
   // 거래 완료!
   const embed = new EmbedBuilder()
-    .setColor(0x00FF00)
+    .setColor(EMBED_COLORS.victory)
     .setTitle('🎉 거래 완료!')
     .setDescription('거래가 성공적으로 완료되었습니다!')
     .setTimestamp();

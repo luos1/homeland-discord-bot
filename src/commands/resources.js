@@ -2,6 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 const { RESOURCES, PRODUCTION_CLASSES } = require('../game/production-classes');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,27 +10,8 @@ module.exports = {
     .setDescription('보유한 자원을 확인합니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-      include: {
-        resources: {
-          orderBy: {
-            type: 'asc',
-          },
-        },
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction, { include: { resources: { orderBy: { type: 'asc' } } } });
+    if (!character) return;
 
     if (!character.productionClass) {
       await interaction.reply({

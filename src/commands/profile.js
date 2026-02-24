@@ -15,6 +15,7 @@ const { getStreakDisplay } = require('../game/streak');
 const { cleanupOldSessions } = require('../game/session-cleanup');
 const { resolvePremiumBenefits } = require('../game/premium');
 const { createVillageHomeButton } = require('../utils/village');
+const { replyNoCharacter } = require('../utils/response-helpers');
 const {
   EMBED_COLORS,
   createDivider,
@@ -328,13 +329,8 @@ module.exports = {
 
   async execute(interaction, { prisma }) {
     const character = await getProfileCharacter(prisma, interaction.user.id);
-
     if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
+      await replyNoCharacter(interaction);
       return;
     }
 

@@ -16,6 +16,7 @@ const {
 } = require('../utils/ui');
 const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/village');
 const { resolvePremiumBenefits } = require('../game/premium');
+const { requireCharacter } = require('../utils/response-helpers');
 
 function createRewardLines({ rewardPlan, grantedEquipment, premiumDailyGems = 0 }) {
   const lines = [`💰 골드 +${formatNumber(rewardPlan.gold)}G`];
@@ -134,20 +135,8 @@ module.exports = {
     .setDescription('하루 1회 출석 체크를 진행하고 보상을 받습니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
 
     const todayDateKey = getDateKeyInKST();
     const premiumSubscription = await prisma.premiumSubscription.findUnique({

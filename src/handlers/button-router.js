@@ -55,6 +55,8 @@ const {
 const { listZones } = require('../game/monsters');
 const { GUILD_BUTTON_PREFIX, isGuildButton, handleGuildButton } = require('../game/guild-buttons');
 const { EMBED_COLORS, createDivider, localizeClassName } = require('../utils/ui');
+const { requireCharacter, forwardCommandFromButton, navigateToProfile, replyEphemeral } = require('../utils/response-helpers');
+const { calculateSessionRemainingTime } = require('../utils/formatting');
 const { TRADE_BUTTON_PREFIX, isTradeButton, handleTradeButton } = require('../game/trade-buttons');
 const { joinFieldBoss, getEvent } = require('../game/field-boss-event');
 
@@ -124,24 +126,19 @@ async function handleButton(interaction, { prisma, client }) {
   // 필드 보스 참여 버튼
   if (interaction.customId.startsWith('field_boss_join_')) {
     const eventId = interaction.customId.replace('field_boss_join_', '');
-    
-    const character = await prisma.character.findUnique({
-      where: { userId: interaction.user.id }
-    });
-    
-    if (!character) {
-      return interaction.reply({ content: '캐릭터가 없습니다. `/create`로 캐릭터를 만드세요.', ephemeral: true });
-    }
-    
+
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
+
     const result = await joinFieldBoss(eventId, interaction.user.id, character);
-    
+
     if (!result.success) {
-      return interaction.reply({ content: `❌ ${result.error}`, ephemeral: true });
+      return replyEphemeral(interaction, `❌ ${result.error}`);
     }
-    
+
     const event = result.event;
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(EMBED_COLORS.victory)
       .setTitle('⚔️ 필드 보스 참여 완료!')
       .setDescription([
         `${event.boss.emoji} **${event.boss.name}** 전투에 참여했습니다!`,
@@ -150,14 +147,14 @@ async function handleButton(interaction, { prisma, client }) {
         '',
         '전투가 곧 시작됩니다...'
       ].join('\n'));
-    
+
     return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
   if (isCombatButton(interaction.customId)) {
     const handled = await handleCombatButton({ interaction, prisma });
     if (!handled && !interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: '유효하지 않은 전투 버튼입니다.', ephemeral: true });
+      await replyEphemeral(interaction, '유효하지 않은 전투 버튼입니다.');
     }
     return;
   }
@@ -337,15 +334,7 @@ async function handleButton(interaction, { prisma, client }) {
   }
 
   if (interaction.customId === 'back_to_profile') {
-    const character = await getProfileCharacter(prisma, interaction.user.id);
-    if (!character) {
-      await interaction.reply({ content: '캐릭터가 없습니다.', ephemeral: true });
-      return;
-    }
-    await interaction.update({
-      embeds: [createProfileEmbed(character)],
-      components: createProfileActionRow({ character }),
-    });
+    await navigateToProfile(interaction, prisma, { getProfileCharacter, createProfileEmbed, createProfileActionRow });
     return;
   }
 
@@ -370,15 +359,7 @@ async function handleButton(interaction, { prisma, client }) {
   }
 
   if (interaction.customId === PROFILE_BUTTON_IDS.stats) {
-    const character = await getProfileCharacter(prisma, interaction.user.id);
-    if (!character) {
-      await interaction.reply({ content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.', ephemeral: true });
-      return;
-    }
-    await interaction.update({
-      embeds: [createProfileEmbed(character)],
-      components: createProfileActionRow({ character }),
-    });
+    await navigateToProfile(interaction, prisma, { getProfileCharacter, createProfileEmbed, createProfileActionRow });
     return;
   }
 
@@ -418,15 +399,7 @@ async function handleButton(interaction, { prisma, client }) {
   }
 
   if (interaction.customId === 'production_menu_back') {
-    const character = await getProfileCharacter(prisma, interaction.user.id);
-    if (!character) {
-      await interaction.reply({ content: '캐릭터가 없습니다.', ephemeral: true });
-      return;
-    }
-    await interaction.update({
-      embeds: [createProfileEmbed(character)],
-      components: createProfileActionRow({ character }),
-    });
+    await navigateToProfile(interaction, prisma, { getProfileCharacter, createProfileEmbed, createProfileActionRow });
     return;
   }
 
@@ -495,7 +468,7 @@ async function handleButton(interaction, { prisma, client }) {
 
   // 어떤 버튼 핸들러에도 매칭되지 않은 경우
   if (!interaction.replied && !interaction.deferred) {
-    await interaction.reply({ content: '알 수 없는 버튼입니다.', ephemeral: true });
+    await replyEphemeral(interaction, '알 수 없는 버튼입니다.');
   }
 }
 
@@ -576,7 +549,7 @@ async function handleHiddenDungeonButton(interaction, { prisma }) {
         `**${interaction.user.username}**님이\n`
         + `비밀 통로에서 **고대의 수호자**를 발견했습니다!`,
       )
-      .setColor(0xfbbf24)
+      .setColor(EMBED_COLORS.amber)
       .setTimestamp();
 
     try {
@@ -591,14 +564,14 @@ async function handleCombatEndButton(interaction, { prisma, client }) {
   const combatEndAction = parseCombatEndCustomId(interaction.customId);
 
   if (!combatEndAction) {
-    await interaction.reply({ content: '유효하지 않은 전투 종료 버튼입니다.', ephemeral: true });
+    await replyEphemeral(interaction, '유효하지 않은 전투 종료 버튼입니다.');
     return;
   }
 
   const exploreCommand = client.commands.get('explore');
 
   if (!exploreCommand) {
-    await interaction.reply({ content: '탐험 명령어를 찾을 수 없습니다.', ephemeral: true });
+    await replyEphemeral(interaction, '탐험 명령어를 찾을 수 없습니다.');
     return;
   }
 
@@ -633,7 +606,7 @@ async function handlePlayCreateChoice(interaction, { prisma, client, playCreateC
   const createCommand = client.commands.get('create');
 
   if (!createCommand) {
-    await interaction.reply({ content: '캐릭터 생성 명령어를 찾을 수 없습니다.', ephemeral: true });
+    await replyEphemeral(interaction, '캐릭터 생성 명령어를 찾을 수 없습니다.');
     return;
   }
 
@@ -661,7 +634,7 @@ async function handleProfileExplore(interaction, { prisma, client }) {
   const exploreCommand = client.commands.get('explore');
 
   if (!exploreCommand) {
-    await interaction.reply({ content: '탐험 명령어를 찾을 수 없습니다.', ephemeral: true });
+    await replyEphemeral(interaction, '탐험 명령어를 찾을 수 없습니다.');
     return;
   }
 
@@ -676,92 +649,39 @@ async function handleProfileExplore(interaction, { prisma, client }) {
 }
 
 async function handleProfileBoss(interaction, { prisma, client }) {
-  await interaction.deferUpdate();
-
-  const bossCommand = client.commands.get('boss');
-
-  if (!bossCommand) {
-    await interaction.followUp({ content: '보스 명령어를 찾을 수 없습니다.', ephemeral: true });
-    return;
-  }
-
-  await bossCommand.execute(
-    {
-      user: interaction.user,
-      options: { getSubcommand: () => 'list' },
-      reply: interaction.followUp.bind(interaction),
-    },
-    { prisma },
-  );
+  await forwardCommandFromButton(interaction, { prisma, client }, {
+    commandName: 'boss',
+    errorLabel: '보스',
+    executeOptions: { options: { getSubcommand: () => 'list' } },
+  });
 }
 
 async function handleProfileShop(interaction, { prisma, client }) {
-  await interaction.deferUpdate();
-
-  const shopCommand = client.commands.get('shop');
-
-  if (!shopCommand) {
-    await interaction.followUp({ content: '상점 명령어를 찾을 수 없습니다.', ephemeral: true });
-    return;
-  }
-
-  await shopCommand.execute(
-    {
-      user: interaction.user,
-      reply: interaction.followUp.bind(interaction),
-    },
-    { prisma, client },
-  );
+  await forwardCommandFromButton(interaction, { prisma, client }, {
+    commandName: 'shop',
+    errorLabel: '상점',
+  });
 }
 
 async function handleProfileJobchange(interaction, { prisma, client }) {
-  await interaction.deferUpdate();
-
-  const jobchangeCommand = client.commands.get('jobchange');
-
-  if (!jobchangeCommand) {
-    await interaction.followUp({ content: '전직 명령어를 찾을 수 없습니다.', ephemeral: true });
-    return;
-  }
-
-  await jobchangeCommand.execute(
-    {
-      user: interaction.user,
-      reply: interaction.followUp.bind(interaction),
-    },
-    { prisma },
-  );
+  await forwardCommandFromButton(interaction, { prisma, client }, {
+    commandName: 'jobchange',
+    errorLabel: '전직',
+  });
 }
 
 async function handleProfileProductionJobchange(interaction, { prisma, client }) {
-  await interaction.deferUpdate();
-
-  const prodJobchangeCommand = client.commands.get('production_jobchange');
-
-  if (!prodJobchangeCommand) {
-    await interaction.followUp({ content: '생산 전직 명령어를 찾을 수 없습니다.', ephemeral: true });
-    return;
-  }
-
-  await prodJobchangeCommand.execute(
-    {
-      user: interaction.user,
-      reply: interaction.followUp.bind(interaction),
-    },
-    { prisma },
-  );
+  await forwardCommandFromButton(interaction, { prisma, client }, {
+    commandName: 'production_jobchange',
+    errorLabel: '생산 전직',
+  });
 }
 
 async function handleProfileProduction(interaction, { prisma }) {
-  const character = await prisma.character.findUnique({
-    where: { userId: interaction.user.id },
+  const character = await requireCharacter(prisma, interaction, {
     include: { gatherSessions: true, craftingSessions: true, resources: true },
   });
-
-  if (!character) {
-    await interaction.reply({ content: '캐릭터가 없습니다.', ephemeral: true });
-    return;
-  }
+  if (!character) return;
 
   const { PRODUCTION_CLASSES } = require('../game/production-classes');
   const { getRequiredProductionXP } = require('../game/production-leveling');
@@ -796,31 +716,17 @@ async function handleProfileProduction(interaction, { prisma }) {
 
     const sessionInfo = [];
     if (character.gatherSessions.length > 0) {
-      const session = character.gatherSessions[0];
-      const now = new Date();
-      const completesAt = new Date(session.completesAt);
-      const remainingMs = Math.max(0, completesAt - now);
-      const remainingMin = Math.ceil(remainingMs / 1000 / 60);
-
-      if (remainingMs > 0) {
-        sessionInfo.push(`⏱️ 채집 중... (${remainingMin}분 남음)`);
-      } else {
-        sessionInfo.push('✅ 채집 완료! /gather로 수령하세요');
-      }
+      const { remainingMin, isComplete } = calculateSessionRemainingTime(character.gatherSessions[0]);
+      sessionInfo.push(isComplete
+        ? '✅ 채집 완료! /gather로 수령하세요'
+        : `⏱️ 채집 중... (${remainingMin}분 남음)`);
     }
 
     if (character.craftingSessions.length > 0) {
-      const session = character.craftingSessions[0];
-      const now = new Date();
-      const completesAt = new Date(session.completesAt);
-      const remainingMs = Math.max(0, completesAt - now);
-      const remainingMin = Math.ceil(remainingMs / 1000 / 60);
-
-      if (remainingMs > 0) {
-        sessionInfo.push(`⏱️ 제작 중... (${remainingMin}분 남음)`);
-      } else {
-        sessionInfo.push('✅ 제작 완료! /craft로 수령하세요');
-      }
+      const { remainingMin, isComplete } = calculateSessionRemainingTime(character.craftingSessions[0]);
+      sessionInfo.push(isComplete
+        ? '✅ 제작 완료! /craft로 수령하세요'
+        : `⏱️ 제작 중... (${remainingMin}분 남음)`);
     }
 
     const resourceCount = character.resources.length;
@@ -913,15 +819,10 @@ async function handleProfileProduction(interaction, { prisma }) {
 }
 
 async function handleProfileEndCombat(interaction, { prisma }) {
-  const character = await prisma.character.findUnique({
-    where: { userId: interaction.user.id },
+  const character = await requireCharacter(prisma, interaction, {
     include: { combatSession: true },
   });
-
-  if (!character) {
-    await interaction.reply({ content: '캐릭터가 없습니다.', ephemeral: true });
-    return;
-  }
+  if (!character) return;
 
   if (!character.combatSession) {
     await interaction.reply({ content: '진행 중인 전투가 없습니다.', ephemeral: true });
@@ -963,14 +864,14 @@ async function handleZoneInfoButton(interaction, { prisma, client }) {
   const exploreCommand = client.commands.get('explore');
 
   if (!exploreCommand) {
-    await interaction.reply({ content: '탐험 명령어를 찾을 수 없습니다.', ephemeral: true });
+    await replyEphemeral(interaction, '탐험 명령어를 찾을 수 없습니다.');
     return;
   }
 
   const zone = getZone(zoneKey);
 
   if (!zone) {
-    await interaction.reply({ content: '유효하지 않은 존입니다.', ephemeral: true });
+    await replyEphemeral(interaction, '유효하지 않은 존입니다.');
     return;
   }
 
@@ -997,14 +898,14 @@ async function handleZoneSelectButton(interaction, { prisma, client }) {
   const zoneKey = interaction.customId.slice(PROFILE_ZONE_BUTTON_PREFIX.length);
 
   if (!PROFILE_ZONE_KEYS.has(zoneKey)) {
-    await interaction.reply({ content: '유효하지 않은 탐험지입니다.', ephemeral: true });
+    await replyEphemeral(interaction, '유효하지 않은 탐험지입니다.');
     return;
   }
 
   const exploreCommand = client.commands.get('explore');
 
   if (!exploreCommand) {
-    await interaction.reply({ content: '탐험 명령어를 찾을 수 없습니다.', ephemeral: true });
+    await replyEphemeral(interaction, '탐험 명령어를 찾을 수 없습니다.');
     return;
   }
 
@@ -1012,24 +913,15 @@ async function handleZoneSelectButton(interaction, { prisma, client }) {
   const zone = getZone(zoneKey);
 
   if (!zone) {
-    await interaction.reply({ content: '유효하지 않은 탐험지입니다.', ephemeral: true });
+    await replyEphemeral(interaction, '유효하지 않은 탐험지입니다.');
     return;
   }
 
-  const character = await prisma.character.findUnique({
-    where: { userId: interaction.user.id },
-  });
-
-  if (!character) {
-    await interaction.reply({ content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.', ephemeral: true });
-    return;
-  }
+  const character = await requireCharacter(prisma, interaction);
+  if (!character) return;
 
   if (character.level < zone.minLevel) {
-    await interaction.reply({
-      content: `${zone.name}은(는) 레벨 ${zone.minLevel}+ 권장 구역입니다. 현재 레벨은 ${character.level}입니다.`,
-      ephemeral: true,
-    });
+    await replyEphemeral(interaction, `${zone.name}은(는) 레벨 ${zone.minLevel}+ 권장 구역입니다. 현재 레벨은 ${character.level}입니다.`);
     return;
   }
 
@@ -1045,7 +937,7 @@ async function handleMonsterSelectButton(interaction, { prisma, client }) {
     .split(':');
 
   if (!zoneKey || !monsterKey) {
-    await interaction.reply({ content: '유효하지 않은 선택입니다.', ephemeral: true });
+    await replyEphemeral(interaction, '유효하지 않은 선택입니다.');
     return;
   }
 
@@ -1061,7 +953,7 @@ async function handleMonsterSelectButton(interaction, { prisma, client }) {
   const baseMonster = MONSTERS[monsterKey];
 
   if (!zone || !baseMonster) {
-    await interaction.reply({ content: '유효하지 않은 선택입니다.', ephemeral: true });
+    await replyEphemeral(interaction, '유효하지 않은 선택입니다.');
     return;
   }
 
@@ -1082,18 +974,13 @@ async function handleMonsterSelectButton(interaction, { prisma, client }) {
     }
   }
 
-  const character = await prisma.character.findUnique({
-    where: { userId: interaction.user.id },
+  const character = await requireCharacter(prisma, interaction, {
     include: { combatSession: true, skills: true },
   });
-
-  if (!character) {
-    await interaction.reply({ content: '캐릭터가 없습니다.', ephemeral: true });
-    return;
-  }
+  if (!character) return;
 
   if (character.combatSession) {
-    await interaction.reply({ content: '이미 진행 중인 전투가 있습니다.', ephemeral: true });
+    await replyEphemeral(interaction, '이미 진행 중인 전투가 있습니다.');
     return;
   }
 

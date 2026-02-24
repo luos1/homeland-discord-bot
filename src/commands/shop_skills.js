@@ -4,6 +4,7 @@ const {
   createSkillShopEmbed,
   createSkillShopActionRow,
 } = require('../game/shop-skills');
+const { requireCharacter } = require('../utils/response-helpers');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,19 +12,8 @@ module.exports = {
     .setDescription('[호환] 전직 스킬 상점을 엽니다'),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
 
     if (!character.advancedClass) {
       await interaction.reply({

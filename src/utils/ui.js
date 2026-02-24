@@ -8,6 +8,8 @@ const EMBED_COLORS = {
   warning: 0xf59e0b,
   levelUp: 0xffd700,
   neutral: 0x64748b,
+  amber: 0xfbbf24,
+  arena: 0xffd700,
 };
 
 const DIVIDERS = {

@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { enhanceEquipment, getEnhancementInfo } = require('../game/enhancement');
+const { EMBED_COLORS } = require('../utils/ui');
+const { requireCharacter } = require('../utils/response-helpers');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,14 +11,10 @@ module.exports = {
     .setDescriptionLocalizations({ ko: '장비 강화' }),
 
   async execute(interaction, { prisma }) {
-    const character = await prisma.character.findUnique({
-      where: { userId: interaction.user.id },
-      include: { equipment: { where: { equipped: true } } }
+    const character = await requireCharacter(prisma, interaction, {
+      include: { equipment: { where: { equipped: true } } },
     });
-
-    if (!character) {
-      return interaction.reply({ content: '캐릭터가 없습니다. `/create`로 생성하세요.', ephemeral: true });
-    }
+    if (!character) return;
 
     const equippedItems = character.equipment;
 
@@ -26,7 +24,7 @@ module.exports = {
 
     // 강화 가능한 장비 목록
     const embed = new EmbedBuilder()
-      .setColor(0x9B59B6)
+      .setColor(EMBED_COLORS.boss)
       .setTitle('⚒️ 장비 강화')
       .setDescription([
         '강화할 장비를 선택하세요.',

@@ -12,6 +12,7 @@ const {
   FEE_CONFIG_KEYS,
   resolveFeeRate,
 } = require('../game/fee-config');
+const { requireCharacter } = require('../utils/response-helpers');
 
 const CASH_PURCHASE_USD_PER_GEM = 0.05;
 
@@ -106,19 +107,8 @@ module.exports = {
     const subcommand = interaction.options.getSubcommand();
     const now = new Date();
 
-    const character = await prisma.character.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
-    });
-
-    if (!character) {
-      await interaction.reply({
-        content: '캐릭터가 없습니다. 먼저 `/create`를 사용해주세요.',
-        ephemeral: true,
-      });
-      return;
-    }
+    const character = await requireCharacter(prisma, interaction);
+    if (!character) return;
 
     const marketSnapshot = await getGemMarketSnapshot(prisma);
     const gemFeeRate = await getGemFeeRate(prisma, now);

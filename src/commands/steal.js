@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { EMBED_COLORS } = require('../utils/ui');
 
 
 // 쿨다운 (6시간)
@@ -106,7 +107,7 @@ module.exports = {
         });
 
         const embed = new EmbedBuilder()
-          .setColor(0x00FF00)
+          .setColor(EMBED_COLORS.victory)
           .setTitle('✅ 훔치기 성공!')
           .setDescription(`<@${targetId}>님으로부터 **${stolenAmount.toLocaleString()} 골드**를 훔쳤습니다!`)
           .addFields(
@@ -148,7 +149,7 @@ module.exports = {
         });
 
         const embed = new EmbedBuilder()
-          .setColor(0xFF0000)
+          .setColor(EMBED_COLORS.defeat)
           .setTitle('❌ 훔치기 실패!')
           .setDescription(`발각되어 **${STEAL_PENALTY.toLocaleString()} 골드** 벌금을 냈습니다!`)
           .addFields(
