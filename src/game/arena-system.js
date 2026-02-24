@@ -8,7 +8,7 @@
  * - 랭킹
  */
 
-const { prisma } = require('../database/prisma');
+
 
 // 입장료
 const ARENA_ENTRY_FEE = 100;

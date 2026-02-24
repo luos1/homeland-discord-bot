@@ -141,6 +141,80 @@ With 200 active premium subscribers: **$2,000/month**
 - [GM Commands](docs/gm-commands.md)
 - [Events Management](docs/events.md)
 
+## 🚀 Launch Tools
+
+### Marketing Automation
+Ready-to-use marketing materials in `/marketing/`:
+
+- **`launch-automation.js`** - Automated launch system
+  - Reddit posts (3 subreddits)
+  - Twitter posts (3 tweets)
+  - Top.gg submission data
+  - Support server setup guide
+  - One-command launch script
+
+```bash
+# Generate all marketing materials
+cd marketing && node launch-automation.js
+
+# Launch checklist
+./launch.sh
+```
+
+### Monitoring System
+Track progress toward $2,000/month goal in `/monitoring/`:
+
+- **`metrics-tracker.js`** - Automated metrics tracking
+  - Server count, user count, premium subscribers
+  - Revenue calculations and profit margins
+  - Daily reports to Discord #비서보고 channel
+  - Milestone tracking (5 → 200 subscribers)
+  - Growth rate analysis
+
+```bash
+# Test metrics
+node metrics-tracker.js set servers=5 users=150 premium=3
+
+# Generate report
+node metrics-tracker.js report
+
+# Send to Discord (requires DISCORD_TOKEN)
+node metrics-tracker.js discord
+```
+
+**Goal Tracking:**
+- Target: 200 premium subscribers = $1,998/month
+- Net profit: ~$1,870/month (93% margin after Stripe + hosting)
+- Automated daily progress reports
+- ETA calculation based on growth rate
+
+### Launch Checklist
+Complete deployment guide in `LAUNCH_CHECKLIST.md`:
+
+**Pre-Launch (✅ Complete):**
+- All 4 development phases complete
+- Marketing materials ready
+- Documentation complete
+- Payment system integrated
+
+**Launch Steps:**
+1. Create Discord bot (Discord Developer Portal)
+2. Deploy to Railway
+3. Configure environment variables
+4. Test in private server
+5. Submit to bot listings
+6. Execute marketing campaign
+
+**Week 1 Goals:**
+- 10+ servers
+- 50+ characters
+- First premium subscribers
+
+**Month 6 Goal:**
+- 🎯 $2,000/month revenue
+- 300+ active servers
+- 200+ premium subscribers
+
 ## 🔧 Technical Details
 
 ### Built With
@@ -148,12 +222,20 @@ With 200 active premium subscribers: **$2,000/month**
 - **Prisma** - Database ORM
 - **PostgreSQL** - Data storage
 - **Node.js** - Runtime
+- **Stripe** - Payment processing
 
 ### Performance
 - Optimized for servers of all sizes
 - Handles 1000+ concurrent players
 - Sub-second response times
 - Efficient resource usage
+
+### Deployment
+- **Hosting:** Railway.app
+- **Database:** PostgreSQL (Railway)
+- **Payment:** Stripe ($9.99/month subscriptions)
+- **Monitoring:** Automated metrics to Discord
+- **Cost:** ~$70/month (scales with usage)
 
 ## 🌐 Links
 

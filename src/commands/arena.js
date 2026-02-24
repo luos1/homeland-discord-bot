@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { ArenaSystem, ARENA_ENTRY_FEE } = require('../game/arena-system');
 const { handleCombatButton, createCombatEmbed, createCombatActionRows } = require('../game/combat');
-const { prisma } = require('../database/prisma');
+
 
 // 매칭 대기 중인 유저들
 const matchmakingQueue = new Map();

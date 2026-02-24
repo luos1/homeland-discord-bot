@@ -3,7 +3,7 @@
  */
 
 const { TradingSystem } = require('./trading-system');
-const { prisma } = require('../database/prisma');
+
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 const TRADE_BUTTON_PREFIX = 'trade_';

@@ -15,7 +15,7 @@ const PREMIUM_TIERS = {
     benefits: {
       xpBonus: 0.25, // +25%
       goldBonus: 0.25, // +25%
-      autoB attleLimit: 10, // 하루 10회
+      autoBattleLimit: 10, // 하루 10회
       dailyGems: 10, // 매일 10젬
       specialEmoji: true,
       adFree: true

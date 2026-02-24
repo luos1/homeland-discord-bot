@@ -677,7 +677,7 @@ model RandomNpcSpawn {
   isActive    Boolean   @default(true)
   
   // 상호작용한 플레이어 추적
-  interactedUserIds String @default("")
+  interactedUserIds String[] @default([])
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -942,7 +942,7 @@ model FieldBossEvent {
   biddingEnd  DateTime
   status      String   // BIDDING, FIGHTING, COMPLETED, CANCELLED
   winnerId    Int?
-  winner      Character?  @relation("FieldBossWinner", fields: [winnerId], references: [id])
+  winner      Player?  @relation("FieldBossWinner", fields: [winnerId], references: [id])
   winningBid  Int?
   rewards     String   // JSON
   bids        FieldBossBid[]
@@ -957,7 +957,7 @@ model FieldBossBid {
   eventId   Int
   event     FieldBossEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   playerId  Int
-  player    Character           @relation(fields: [playerId], references: [id])
+  player    Player           @relation(fields: [playerId], references: [id])
   amount    Int
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt

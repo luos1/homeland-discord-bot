@@ -1,0 +1,36 @@
+{
+  "shortDescription": "Full-featured RPG with guilds, PvP, field bosses, and auto-battle. Free to play!",
+  "longDescription": "# Homeland RPG - Complete Discord RPG Experience\n\n## 🎮 Core Features\n\n### Discovery Phase\n- **10 Unique Zones**: Forest → Desert → Mountains → Ocean → Volcano → Tundra → Jungle → Cave → Sky → Underworld\n- **Epic Boss Battles**: Defeat powerful bosses for legendary loot\n- **Equipment System**: Common → Rare → Epic → Legendary gear\n- **Skills & Combos**: Unlock powerful abilities as you level up\n- **Character Progression**: Level up, allocate stats, customize your build\n\n### Social Phase\n- **Guild System**: Create or join guilds with up to 50 members\n- **Guild Wars**: Weekend events with top 3 guilds earning rewards\n- **Party System**: Team up with friends for boss raids\n- **Trading**: Buy, sell, and trade items with other players\n- **Guild Storage**: Shared inventory for guild members\n\n### Competition Phase\n- **Arena PvP**: Battle other players with ELO rankings\n- **Theft System**: Risk-reward mechanic to steal gold from others\n- **Field Boss Bidding**: Compete for exclusive field boss kills every 3-6 hours\n- **Leaderboards**: Top players by level, gold, and arena rating\n\n### Polish Phase\n- **Auto-Battle**: Continue progressing even when offline\n- **Daily Quests**: Consistent rewards for regular play\n- **Attendance System**: Login rewards\n- **Premium Features**: Optional $9.99/month for convenience (20% faster auto-battle, better prices)\n- **GM Tools**: Server admins can manage events and economy\n\n## 💎 Premium Benefits (Optional)\n\n$9.99/month subscription includes:\n- 20% faster auto-battle speed\n- 15% better shop prices\n- 2x daily quest rewards\n- Access to premium-only field bosses\n- No cooldown on /attend command\n- Priority support\n\n**No pay-to-win!** Premium = convenience, not power.\n\n## 🚀 Getting Started\n\n1. Invite the bot to your server\n2. Use `/create` to make your character\n3. Start hunting with `/hunt`\n4. Join or create a guild with `/guild create`\n5. Compete in arena with `/arena queue`\n\n## 📊 Tech Stack\n\n- Node.js + Discord.js v14\n- PostgreSQL + Prisma ORM\n- Slash commands only\n- Deployed on Railway\n- Stripe payment integration\n\n## 🎯 Roadmap\n\n- Seasonal events\n- More zones and bosses\n- Guild alliances\n- Crafting system\n- Pet system\n- Mobile companion app\n\n## 🔗 Links\n\n- [Support Server](https://discord.gg/YOUR_INVITE)\n- [Website](https://luos1.github.io/homeland-discord-bot/)\n- [GitHub](https://github.com/luos1/homeland-discord-bot)\n\n## 📜 Commands\n\n50+ slash commands including:\n- `/create` - Create your character\n- `/profile` - View your stats\n- `/hunt` - Battle monsters\n- `/boss` - Fight zone bosses\n- `/shop` - Buy items\n- `/guild` - Guild management\n- `/arena` - PvP battles\n- `/trade` - Trade with players\n- `/autobattle` - Idle progression\n- And many more!\n\n---\n\n**Free to play. No ads. Open source.**\n\nJoin thousands of players in Homeland RPG! 🎮",
+  "tags": [
+    "RPG",
+    "Game",
+    "Economy",
+    "Leveling",
+    "PvP",
+    "Guild",
+    "Adventure",
+    "Multiplayer",
+    "Fun",
+    "Premium"
+  ],
+  "prefix": "/",
+  "owners": [
+    "766164672692224010"
+  ],
+  "links": {
+    "website": "https://luos1.github.io/homeland-discord-bot/",
+    "support": "https://discord.gg/YOUR_INVITE",
+    "github": "https://github.com/luos1/homeland-discord-bot"
+  },
+  "features": [
+    "Slash Commands",
+    "Premium",
+    "Economy",
+    "Leveling",
+    "PvP",
+    "Guilds",
+    "Trading",
+    "Auto-battle",
+    "Daily Rewards"
+  ]
+}

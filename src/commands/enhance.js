@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { enhanceEquipment, getEnhancementInfo } = require('../game/enhancement');
-const { prisma } = require('../database/prisma');
 
 module.exports = {
   data: new SlashCommandBuilder()

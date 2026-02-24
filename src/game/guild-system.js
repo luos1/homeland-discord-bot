@@ -10,7 +10,7 @@
  * - 길드 NPC 소유 (수익 공유)
  */
 
-const { prisma } = require('../database/prisma');
+
 
 // 길드 생성 비용
 const GUILD_CREATION_COST = 10000; // 10,000 골드

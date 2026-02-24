@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { GuildSystem, GUILD_CREATION_COST } = require('../game/guild-system');
-const { prisma } = require('../database/prisma');
+
 
 module.exports = {
   data: new SlashCommandBuilder()

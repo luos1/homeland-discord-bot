@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { prisma } = require('../database/prisma');
+
 
 // 쿨다운 (6시간)
 const STEAL_COOLDOWN = 6 * 60 * 60 * 1000;

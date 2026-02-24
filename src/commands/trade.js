@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { TradingSystem } = require('../game/trading-system');
-const { prisma } = require('../database/prisma');
+
 
 module.exports = {
   data: new SlashCommandBuilder()

@@ -9,7 +9,7 @@
  * - 거래 타임아웃 (5분)
  */
 
-const { prisma } = require('../database/prisma');
+
 
 // 진행 중인 거래 (메모리)
 const activeTrades = new Map();
