@@ -292,6 +292,7 @@ async function startBossFight(interaction, { prisma, character, boss }) {
       isBossFight: true,
       bossId: boss.id,
       monsterFirstStrike: boss.zone === 3, // Zone 3 bosses attack first
+      monsterImageUrl: boss.imageUrl || null,
     },
   });
 

@@ -828,13 +828,20 @@ function createCombatEmbed({
     });
   }
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(resolveCombatColor(status, levelUpDetails))
     .setTitle(resolvedTitle)
     .setDescription(description)
     .setFooter({
       text: '홈랜드 전투 시스템',
     });
+
+  // 몬스터 이미지 추가 (있으면)
+  if (session.monsterImageUrl) {
+    embed.setThumbnail(session.monsterImageUrl);
+  }
+
+  return embed;
 }
 
 function rollDamage(attackPower, defenseValue, options = {}) {

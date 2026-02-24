@@ -1,3 +1,19 @@
+// 몬스터 이미지 URL (임시 - 나중에 실제 이미지로 교체)
+const MONSTER_IMAGES = {
+  skeletonGrunt: 'https://via.placeholder.com/512/808080/FFFFFF?text=Skeleton',
+  direWolf: 'https://via.placeholder.com/512/8B4513/FFFFFF?text=Wolf',
+  undeadKnight: 'https://via.placeholder.com/512/4B0082/FFFFFF?text=Knight',
+  goblinShaman: 'https://via.placeholder.com/512/228B22/FFFFFF?text=Goblin',
+  ancientDragon: 'https://via.placeholder.com/512/FF4500/FFFFFF?text=Dragon',
+  lich: 'https://via.placeholder.com/512/8B008B/FFFFFF?text=Lich',
+  voidStalker: 'https://via.placeholder.com/512/000000/FFFFFF?text=Void',
+  abyssSentinel: 'https://via.placeholder.com/512/191970/FFFFFF?text=Abyss',
+  cursedTemplar: 'https://via.placeholder.com/512/DC143C/FFFFFF?text=Templar',
+  stormHarpy: 'https://via.placeholder.com/512/87CEEB/FFFFFF?text=Harpy',
+  flameTitan: 'https://via.placeholder.com/512/FF6347/FFFFFF?text=Titan',
+  ancientGuardian: 'https://via.placeholder.com/512/2F4F4F/FFFFFF?text=Guardian',
+};
+
 const MONSTERS = {
   skeletonGrunt: {
     name: '스켈레톤 그런트',
@@ -9,6 +25,7 @@ const MONSTERS = {
     goldMin: 10,
     goldMax: 20,
     isBoss: false,
+    imageUrl: MONSTER_IMAGES.skeletonGrunt,
   },
   direWolf: {
     name: '다이어울프',
@@ -19,6 +36,7 @@ const MONSTERS = {
     xpReward: 30,
     goldMin: 14,
     goldMax: 26,
+    imageUrl: MONSTER_IMAGES.direWolf,
   },
   undeadKnight: {
     name: '언데드 기사',
@@ -29,6 +47,7 @@ const MONSTERS = {
     xpReward: 44,
     goldMin: 24,
     goldMax: 38,
+    imageUrl: MONSTER_IMAGES.undeadKnight,
   },
   goblinShaman: {
     name: '고블린 주술사',
@@ -39,6 +58,7 @@ const MONSTERS = {
     xpReward: 48,
     goldMin: 26,
     goldMax: 40,
+    imageUrl: MONSTER_IMAGES.goblinShaman,
   },
   ancientDragon: {
     name: '고대 드래곤',
@@ -49,6 +69,7 @@ const MONSTERS = {
     xpReward: 86,
     goldMin: 60,
     goldMax: 90,
+    imageUrl: MONSTER_IMAGES.ancientDragon,
   },
   lich: {
     name: '리치 군주',
@@ -59,6 +80,7 @@ const MONSTERS = {
     xpReward: 76,
     goldMin: 52,
     goldMax: 82,
+    imageUrl: MONSTER_IMAGES.lich,
   },
   voidStalker: {
     name: '공허 추적자',
@@ -70,6 +92,7 @@ const MONSTERS = {
     goldMin: 96,
     goldMax: 138,
     trait: '은신 상태에서 기습적인 일격을 가합니다.',
+    imageUrl: MONSTER_IMAGES.voidStalker,
   },
   abyssSentinel: {
     name: '심연 감시자',
@@ -81,6 +104,7 @@ const MONSTERS = {
     goldMin: 108,
     goldMax: 162,
     trait: '높은 방어력으로 정면 교전을 선호합니다.',
+    imageUrl: MONSTER_IMAGES.abyssSentinel,
   },
   cursedTemplar: {
     name: '저주받은 성기사',
@@ -92,6 +116,7 @@ const MONSTERS = {
     goldMin: 124,
     goldMax: 188,
     trait: '광역 충격파로 전열을 무너뜨립니다.',
+    imageUrl: MONSTER_IMAGES.cursedTemplar,
   },
   stormHarpy: {
     name: '폭풍 하피',
@@ -103,6 +128,7 @@ const MONSTERS = {
     goldMin: 142,
     goldMax: 208,
     trait: '급강하 후 연속 공격으로 압박합니다.',
+    imageUrl: MONSTER_IMAGES.stormHarpy,
   },
   twilightBehemoth: {
     name: '황혼의 베히모스',
@@ -114,6 +140,7 @@ const MONSTERS = {
     goldMin: 176,
     goldMax: 248,
     trait: '느리지만 한 방이 매우 강력합니다.',
+    imageUrl: MONSTER_IMAGES.flameTitan,
   },
 
   // 필드 보스
@@ -133,6 +160,7 @@ const MONSTERS = {
       chance: 1.0,
     },
     description: '무리를 이끄는 강력한 늑대 우두머리',
+    imageUrl: MONSTER_IMAGES.direWolf,
   },
 
   corruptedKnight: {
@@ -151,6 +179,7 @@ const MONSTERS = {
       chance: 1.0,
     },
     description: '어둠에 잠식된 옛 영웅',
+    imageUrl: MONSTER_IMAGES.undeadKnight,
   },
 
   youngDragon: {
@@ -169,6 +198,7 @@ const MONSTERS = {
       chance: 1.0,
     },
     description: '아직 어리지만 강력한 고대의 후예',
+    imageUrl: MONSTER_IMAGES.ancientDragon,
   },
 
   shadowOverlord: {
@@ -269,6 +299,7 @@ const MONSTERS = {
       chance: 1.0,
     },
     description: '오랜 세월 비밀 통로를 지키고 있던 고대의 전사. 던전 10층 클리어 후 1% 확률로 등장.',
+    imageUrl: MONSTER_IMAGES.ancientGuardian,
     skillPatterns: [
       {
         name: '고대의 분노',

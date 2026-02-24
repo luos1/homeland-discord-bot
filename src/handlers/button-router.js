@@ -523,6 +523,7 @@ async function handleHiddenDungeonButton(interaction, { prisma }) {
         playerDefending: false,
         potionsRemaining: 3,
         turn: 1,
+        monsterImageUrl: hiddenBoss.imageUrl || null,
       },
     });
 
@@ -1008,6 +1009,7 @@ async function handleMonsterSelectButton(interaction, { prisma, client }) {
       playerHp,
       potionsRemaining: 3,
       monsterFirstStrike: zone.key === 'zone3',
+      monsterImageUrl: monster.imageUrl || null,
     },
   });
 
