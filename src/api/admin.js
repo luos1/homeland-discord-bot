@@ -76,7 +76,7 @@ function createAdminRouter(prisma, client) {
           orderBy,
           select: {
             id: true,
-            odUserId: true,
+            userId: true,
             name: true,
             level: true,
             class: true,
@@ -110,7 +110,7 @@ function createAdminRouter(prisma, client) {
       let user = null;
       if (discordId) {
         user = await prisma.character.findFirst({
-          where: { odUserId: discordId }
+          where: { userId: discordId }
         });
       } else if (name) {
         user = await prisma.character.findFirst({
@@ -139,7 +139,7 @@ function createAdminRouter(prisma, client) {
       }
 
       const character = await prisma.character.findFirst({
-        where: { odUserId: discordId }
+        where: { userId: discordId }
       });
 
       if (!character) {
@@ -185,7 +185,7 @@ function createAdminRouter(prisma, client) {
       }
 
       const character = await prisma.character.findFirst({
-        where: { odUserId: discordId }
+        where: { userId: discordId }
       });
 
       if (!character) {
@@ -196,9 +196,9 @@ function createAdminRouter(prisma, client) {
       const endDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
       await prisma.premiumSubscription.upsert({
-        where: { odUserId: discordId },
+        where: { userId: discordId },
         update: { endDate, updatedAt: now },
-        create: { odUserId: discordId, startDate: now, endDate }
+        create: { userId: discordId, startDate: now, endDate }
       });
 
       console.log(`[Admin] Gave ${days} days premium to ${character.name} (${discordId})`);
