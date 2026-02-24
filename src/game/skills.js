@@ -1,5 +1,15 @@
 const { randomInt } = require('./monsters');
 
+// 클래스 이름 매핑 (한글 → 영어)
+const CLASS_NAME_MAP = {
+  '전사': 'warrior',
+  '궁수': 'ranger',
+  '마법사': 'sorcerer',
+  'warrior': 'warrior',
+  'ranger': 'ranger',
+  'sorcerer': 'sorcerer',
+};
+
 // 각 직업별 스킬 3개 (Lv.1, Lv.3, Lv.5)
 const SKILLS = {
   warrior: [
@@ -174,7 +184,8 @@ const SKILLS = {
 
 // 캐릭터가 사용 가능한 스킬 목록 반환
 function getAvailableSkills(character) {
-  const classSkills = SKILLS[character.class] || [];
+  const classKey = CLASS_NAME_MAP[character.class] || character.class;
+  const classSkills = SKILLS[classKey] || [];
   return classSkills.filter((skill) => character.level >= skill.unlockLevel);
 }
 
@@ -191,7 +202,8 @@ function getCombatSkill(character) {
 
 // 스킬 키로 스킬 찾기
 function getSkillByKey(character, skillKey) {
-  const classSkills = SKILLS[character.class] || [];
+  const classKey = CLASS_NAME_MAP[character.class] || character.class;
+  const classSkills = SKILLS[classKey] || [];
   return classSkills.find((skill) => skill.key === skillKey);
 }
 
