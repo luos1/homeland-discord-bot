@@ -40,6 +40,7 @@ const FieldBossSystem = require('./game/field-boss-system');
 const GuildWarSystem = require('./game/guild-war-system');
 const express = require('express');
 const { createStripeRouter } = require('./api/stripe');
+const { createAdminRouter } = require('./api/admin');
 
 const REQUIRED_ENV = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DATABASE_URL'];
 
@@ -77,19 +78,25 @@ client.once(Events.ClientReady, async (readyClient) => {
 
   startAll(prisma, readyClient);
 
-  // Start API server for Stripe payments
+  // Start API server
+  const app = express();
+  
+  // Admin API (always available)
+  app.use('/api/admin', createAdminRouter(prisma, readyClient));
+  
+  // Stripe API (if configured)
   if (process.env.STRIPE_SECRET_KEY) {
-    const app = express();
     app.use('/api', createStripeRouter(prisma, readyClient));
-    
-    // Health check
-    app.get('/health', (req, res) => res.json({ status: 'ok' }));
-    
-    const PORT = process.env.API_PORT || 3000;
-    app.listen(PORT, () => {
-      console.log(`💳 Payment API server running on port ${PORT}`);
-    });
   }
+  
+  // Health check
+  app.get('/health', (req, res) => res.json({ status: 'ok' }));
+  
+  const PORT = process.env.API_PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🔧 API server running on port ${PORT}`);
+    console.log(`📊 Admin dashboard: /api/admin`);
+  });
 });
 
 client.on(Events.InteractionCreate, (interaction) => {
