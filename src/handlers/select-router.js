@@ -7,6 +7,15 @@ const { RANKING_COMPONENT_PREFIX } = require('../commands/ranking');
 const { TRADE_SELECT_PREFIX, isTradeSelect, handleTradeSelect } = require('../game/trade-select');
 
 async function handleSelectMenu(interaction, { prisma, client }) {
+  // Achievement Select
+  if (interaction.customId === 'achievement_category') {
+    const achievementsCommand = client.commands.get('achievements');
+    if (achievementsCommand && achievementsCommand.handleSelectMenu) {
+      const handled = await achievementsCommand.handleSelectMenu(interaction, { prisma });
+      if (handled) return;
+    }
+  }
+
   // Trade Select
   if (isTradeSelect(interaction.customId)) {
     return await handleTradeSelect(interaction);

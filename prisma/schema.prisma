@@ -118,6 +118,8 @@ model Character {
   fieldRaids       FieldRaid[]        @relation("FieldRaider")
   towerRuns        TowerRun[]
   towerRecord      TowerRecord?
+  achievements     CharacterAchievement[]
+  stats            CharacterStats?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -1157,4 +1159,38 @@ model TowerRecord {
   updatedAt   DateTime  @updatedAt
   
   @@index([highestFloor, totalClears])
+}
+
+model CharacterAchievement {
+  id            Int       @id @default(autoincrement())
+  
+  characterId   Int
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  achievementId String
+  unlockedAt    DateTime  @default(now())
+  
+  @@unique([characterId, achievementId])
+  @@index([characterId])
+  @@index([achievementId])
+}
+
+model CharacterStats {
+  id            Int       @id @default(autoincrement())
+  
+  characterId   Int       @unique
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  battlesWon    Int       @default(0)
+  bossesKilled  Int       @default(0)
+  goldEarned    Int       @default(0)
+  goldSpent     Int       @default(0)
+  gamblesPlayed Int       @default(0)
+  gamblesWon    Int       @default(0)
+  jackpotsWon   Int       @default(0)
+  maxWinStreak  Int       @default(0)
+  maxAttendanceStreak Int @default(0)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

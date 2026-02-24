@@ -24,6 +24,10 @@ const COMMAND_GROUPS = [
     names: ['slot', 'freespin', 'vipslot', 'coin', 'dice'],
   },
   {
+    title: '🏆 업적/수집',
+    names: ['achievements'],
+  },
+  {
     title: '📅 시즌/이벤트',
     names: ['daily', 'attendance'],
   },
