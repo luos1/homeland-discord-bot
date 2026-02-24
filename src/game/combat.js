@@ -315,8 +315,14 @@ function createCombatActionRows(sessionId, options = {}) {
   const sessionPotionsRemaining = options.sessionPotionsRemaining ?? 0;
   const consumablePotions = normalizeCombatConsumablePotions(options.consumablePotions ?? []);
 
-  // 첫 번째 줄: 기본 액션
-  const mainRow = new ActionRowBuilder().addComponents(
+  // 프리미엄 혜택 확인
+  const premiumBenefits = character?.premiumSubscription 
+    ? resolvePremiumBenefits(character.premiumSubscription)
+    : { autoFight: false };
+  const hasPremium = premiumBenefits.autoFight;
+
+  // 첫 번째 줄: 기본 액션 버튼 배열
+  const mainButtons = [
     new ButtonBuilder()
       .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.attack, sessionId))
       .setLabel('공격')
@@ -329,12 +335,21 @@ function createCombatActionRows(sessionId, options = {}) {
       .setEmoji('🛡️')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.auto, sessionId))
-      .setLabel('오토')
-      .setEmoji('⚡')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(disabled),
+  ];
+
+  // 프리미엄 전용: 오토 버튼
+  if (hasPremium) {
+    mainButtons.push(
+      new ButtonBuilder()
+        .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.auto, sessionId))
+        .setLabel('오토')
+        .setEmoji('⚡')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(disabled)
+    );
+  }
+
+  mainButtons.push(
     new ButtonBuilder()
       .setCustomId(buildCombatCustomId(COMBAT_ACTIONS.potion, sessionId))
       .setLabel('포션')
@@ -346,8 +361,10 @@ function createCombatActionRows(sessionId, options = {}) {
       .setLabel('도망')
       .setEmoji('🏃')
       .setStyle(ButtonStyle.Danger)
-      .setDisabled(disabled),
+      .setDisabled(disabled)
   );
+
+  const mainRow = new ActionRowBuilder().addComponents(...mainButtons);
 
   const rows = [mainRow];
 
