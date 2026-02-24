@@ -896,17 +896,20 @@ async function handleZoneInfoButton(interaction, { prisma, client }) {
 }
 
 async function handleZoneSelectButton(interaction, { prisma, client }) {
+  // Discord 3초 timeout 방지
+  await interaction.deferUpdate();
+  
   const zoneKey = interaction.customId.slice(PROFILE_ZONE_BUTTON_PREFIX.length);
 
   if (!PROFILE_ZONE_KEYS.has(zoneKey)) {
-    await replyEphemeral(interaction, '유효하지 않은 탐험지입니다.');
+    await interaction.followUp({ content: '유효하지 않은 탐험지입니다.', ephemeral: true });
     return;
   }
 
   const exploreCommand = client.commands.get('explore');
 
   if (!exploreCommand) {
-    await replyEphemeral(interaction, '탐험 명령어를 찾을 수 없습니다.');
+    await interaction.followUp({ content: '탐험 명령어를 찾을 수 없습니다.', ephemeral: true });
     return;
   }
 
@@ -914,7 +917,7 @@ async function handleZoneSelectButton(interaction, { prisma, client }) {
   const zone = getZone(zoneKey);
 
   if (!zone) {
-    await replyEphemeral(interaction, '유효하지 않은 탐험지입니다.');
+    await interaction.followUp({ content: '유효하지 않은 탐험지입니다.', ephemeral: true });
     return;
   }
 
@@ -922,120 +925,139 @@ async function handleZoneSelectButton(interaction, { prisma, client }) {
   if (!character) return;
 
   if (character.level < zone.minLevel) {
-    await replyEphemeral(interaction, `${zone.name}은(는) 레벨 ${zone.minLevel}+ 권장 구역입니다. 현재 레벨은 ${character.level}입니다.`);
+    await interaction.followUp({ content: `${zone.name}은(는) 레벨 ${zone.minLevel}+ 권장 구역입니다. 현재 레벨은 ${character.level}입니다.`, ephemeral: true });
     return;
   }
 
-  await interaction.update({
+  await interaction.editReply({
     embeds: [exploreCommand.createMonsterSelectionEmbed(zone)],
     components: exploreCommand.createMonsterSelectionActionRows(zoneKey, zone),
   });
 }
 
 async function handleMonsterSelectButton(interaction, { prisma, client }) {
-  const [zoneKey, monsterKey] = interaction.customId
-    .slice(MONSTER_SELECT_PREFIX.length)
-    .split(':');
+  try {
+    // Discord 3초 timeout 방지
+    await interaction.deferUpdate();
 
-  if (!zoneKey || !monsterKey) {
-    await replyEphemeral(interaction, '유효하지 않은 선택입니다.');
-    return;
-  }
+    const [zoneKey, monsterKey] = interaction.customId
+      .slice(MONSTER_SELECT_PREFIX.length)
+      .split(':');
 
-  const {
-    getZone,
-    getZoneWithTypeData,
-    MONSTERS,
-    rollRareMonster,
-    applyRareModifier,
-  } = require('../game/monsters');
+    console.log('[DEBUG] Monster select:', { customId: interaction.customId, zoneKey, monsterKey });
 
-  const zone = getZone(zoneKey);
-  const baseMonster = MONSTERS[monsterKey];
+    if (!zoneKey || !monsterKey) {
+      await interaction.followUp({ content: '유효하지 않은 선택입니다.', ephemeral: true });
+      return;
+    }
 
-  if (!zone || !baseMonster) {
-    await replyEphemeral(interaction, '유효하지 않은 선택입니다.');
-    return;
-  }
+    const {
+      getZone,
+      getZoneWithTypeData,
+      MONSTERS,
+      rollRareMonster,
+      applyRareModifier,
+    } = require('../game/monsters');
 
-  const zoneData = getZoneWithTypeData(zoneKey);
-  const statMult = zoneData?.typeData?.statMultiplier || 1.0;
+    const zone = getZone(zoneKey);
+    const baseMonster = MONSTERS[monsterKey];
 
-  let monster = {
-    ...baseMonster,
-    hp: Math.floor(baseMonster.hp * statMult),
-    attack: Math.floor(baseMonster.attack * statMult),
-    defense: Math.floor(baseMonster.defense * statMult),
-  };
+    console.log('[DEBUG] Zone and monster:', { zone: zone?.key, monster: baseMonster?.name });
 
-  if (!baseMonster.isBoss) {
-    const rareType = rollRareMonster(zoneKey);
-    if (rareType) {
-      monster = applyRareModifier(monster, rareType);
+    if (!zone || !baseMonster) {
+      await interaction.followUp({ content: '유효하지 않은 선택입니다.', ephemeral: true });
+      return;
+    }
+
+    const zoneData = getZoneWithTypeData(zoneKey);
+    const statMult = zoneData?.typeData?.statMultiplier || 1.0;
+
+    let monster = {
+      ...baseMonster,
+      hp: Math.floor(baseMonster.hp * statMult),
+      attack: Math.floor(baseMonster.attack * statMult),
+      defense: Math.floor(baseMonster.defense * statMult),
+    };
+
+    if (!baseMonster.isBoss) {
+      const rareType = rollRareMonster(zoneKey);
+      if (rareType) {
+        monster = applyRareModifier(monster, rareType);
+      }
+    }
+
+    const character = await requireCharacter(prisma, interaction, {
+      include: { combatSession: true, skills: true },
+    });
+    if (!character) return;
+
+    if (character.combatSession) {
+      await interaction.followUp({ content: '이미 진행 중인 전투가 있습니다.', ephemeral: true });
+      return;
+    }
+
+    let playerHp = character.hp;
+    if (playerHp <= 0) {
+      const revived = await prisma.character.update({
+        where: { id: character.id },
+        data: { hp: character.maxHp },
+      });
+      playerHp = revived.hp;
+    }
+
+    const session = await prisma.combatSession.create({
+      data: {
+        characterId: character.id,
+        zone: zone.key,
+        monsterName: monster.name,
+        monsterHp: monster.hp,
+        monsterMaxHp: monster.hp,
+        monsterAttack: monster.attack,
+        monsterDefense: monster.defense,
+        monsterXpReward: monster.xpReward,
+        monsterGoldMin: monster.goldMin,
+        monsterGoldMax: monster.goldMax,
+        playerHp,
+        potionsRemaining: 3,
+        monsterFirstStrike: zone.key === 'zone3',
+        monsterImageUrl: monster.imageUrl || null,
+      },
+    });
+
+    const embed = createCombatEmbed({
+      character: { ...character, hp: playerHp },
+      session,
+      battleLog: [
+        `${zone.emoji} ${zone.name}에 입장했습니다.`,
+        `👹 ${monster.name} 등장!`,
+        `🎯 ${localizeClassName(character.class)} ${character.name}, 전투 준비 완료!`,
+      ],
+      title: '💀 전투 시작!',
+      status: 'ongoing',
+    });
+
+    await interaction.editReply({
+      embeds: [embed],
+      components: createCombatActionRows(session.id, { character: { ...character, hp: playerHp } }),
+    });
+
+    await maybeSendGuideTip({
+      prisma,
+      user: interaction.user,
+      interaction,
+      category: 'combat',
+    });
+  } catch (error) {
+    console.error('[ERROR] Monster select failed:', error);
+    console.error('[ERROR] CustomId:', interaction.customId);
+    console.error('[ERROR] Stack:', error.stack);
+    
+    if (interaction.deferred) {
+      await interaction.editReply({ content: `❌ 전투 시작 중 오류가 발생했습니다: ${error.message}`, embeds: [], components: [] });
+    } else {
+      await interaction.followUp({ content: `❌ 전투 시작 중 오류가 발생했습니다: ${error.message}`, ephemeral: true });
     }
   }
-
-  const character = await requireCharacter(prisma, interaction, {
-    include: { combatSession: true, skills: true },
-  });
-  if (!character) return;
-
-  if (character.combatSession) {
-    await replyEphemeral(interaction, '이미 진행 중인 전투가 있습니다.');
-    return;
-  }
-
-  let playerHp = character.hp;
-  if (playerHp <= 0) {
-    const revived = await prisma.character.update({
-      where: { id: character.id },
-      data: { hp: character.maxHp },
-    });
-    playerHp = revived.hp;
-  }
-
-  const session = await prisma.combatSession.create({
-    data: {
-      characterId: character.id,
-      zone: zone.key,
-      monsterName: monster.name,
-      monsterHp: monster.hp,
-      monsterMaxHp: monster.hp,
-      monsterAttack: monster.attack,
-      monsterDefense: monster.defense,
-      monsterXpReward: monster.xpReward,
-      monsterGoldMin: monster.goldMin,
-      monsterGoldMax: monster.goldMax,
-      playerHp,
-      potionsRemaining: 3,
-      monsterFirstStrike: zone.key === 'zone3',
-      monsterImageUrl: monster.imageUrl || null,
-    },
-  });
-
-  const embed = createCombatEmbed({
-    character: { ...character, hp: playerHp },
-    session,
-    battleLog: [
-      `${zone.emoji} ${zone.name}에 입장했습니다.`,
-      `👹 ${monster.name} 등장!`,
-      `🎯 ${localizeClassName(character.class)} ${character.name}, 전투 준비 완료!`,
-    ],
-    title: '💀 전투 시작!',
-    status: 'ongoing',
-  });
-
-  await interaction.update({
-    embeds: [embed],
-    components: createCombatActionRows(session.id, { character: { ...character, hp: playerHp } }),
-  });
-
-  await maybeSendGuideTip({
-    prisma,
-    user: interaction.user,
-    interaction,
-    category: 'combat',
-  });
 }
 
 module.exports = {

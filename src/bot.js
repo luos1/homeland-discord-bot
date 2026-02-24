@@ -1,5 +1,28 @@
 require('dotenv').config();
 
+// ═══════════════════════════════════════════════════════════════
+// 전역 에러 핸들러 (봇 크래시 방지)
+// ═══════════════════════════════════════════════════════════════
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('[CRITICAL] Unhandled Promise Rejection');
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('Reason:', reason);
+  console.error('Promise:', promise);
+  console.error('Stack:', reason?.stack);
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('[CRITICAL] Uncaught Exception - Bot will restart');
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('Error:', error);
+  console.error('Stack:', error.stack);
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  process.exit(1); // PM2/systemd가 자동 재시작
+});
+
 const {
   Client,
   Events,
