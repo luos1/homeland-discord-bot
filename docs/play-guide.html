@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HOMELAND - 플레이 가이드</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e4e4e4;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    
+    h1 {
+      font-size: 3rem;
+      background: linear-gradient(90deg, #e94560, #ffbd69);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #8892b0;
+      font-size: 1.2rem;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #e94560;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin-top: 15px;
+    }
+    
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 25px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    
+    .section h2 {
+      color: #ffbd69;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .section h2 .emoji {
+      font-size: 1.8rem;
+    }
+    
+    .command {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      color: #64ffda;
+      display: inline-block;
+      margin: 5px 0;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    .feature-card {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .feature-card h3 {
+      color: #e94560;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+    }
+    
+    .feature-card p {
+      color: #a8b2d1;
+      font-size: 0.95rem;
+    }
+    
+    .class-list {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+    
+    .class-card {
+      flex: 1;
+      min-width: 200px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    
+    .class-card .icon {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    
+    .class-card h4 {
+      color: #fff;
+      margin-bottom: 5px;
+    }
+    
+    .class-card p {
+      color: #8892b0;
+      font-size: 0.9rem;
+    }
+    
+    .tip-box {
+      background: rgba(100, 255, 218, 0.1);
+      border-left: 4px solid #64ffda;
+      padding: 15px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 15px;
+    }
+    
+    .tip-box strong {
+      color: #64ffda;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .stat-card {
+      background: rgba(233, 69, 96, 0.1);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    
+    .stat-card .number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #e94560;
+    }
+    
+    .stat-card .label {
+      color: #8892b0;
+      font-size: 0.85rem;
+      margin-top: 5px;
+    }
+    
+    ul {
+      list-style: none;
+      margin-top: 10px;
+    }
+    
+    ul li {
+      padding: 8px 0;
+      padding-left: 25px;
+      position: relative;
+      color: #a8b2d1;
+    }
+    
+    ul li::before {
+      content: "▸";
+      position: absolute;
+      left: 0;
+      color: #e94560;
+    }
+    
+    .cta-section {
+      text-align: center;
+      padding: 40px;
+      background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(255, 189, 105, 0.2));
+      border-radius: 16px;
+      margin-top: 30px;
+    }
+    
+    .cta-section h2 {
+      color: #fff;
+      justify-content: center;
+    }
+    
+    .cta-section p {
+      color: #a8b2d1;
+      margin: 15px 0 25px;
+    }
+    
+    .btn {
+      display: inline-block;
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      color: white;
+      padding: 15px 40px;
+      border-radius: 30px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1.1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px;
+      color: #8892b0;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 2rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .class-list { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚔️ HOMELAND</h1>
+      <p class="subtitle">Discord RPG 게임 플레이 가이드</p>
+      <span class="badge">🚀 Beta v1.0</span>
+    </header>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="number">50+</div>
+        <div class="label">명령어</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">100</div>
+        <div class="label">최대 레벨</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">6+</div>
+        <div class="label">직업</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">24/7</div>
+        <div class="label">서버 운영</div>
+      </div>
+    </div>
+
+    <section class="section">
+      <h2><span class="emoji">🎮</span> 시작하기</h2>
+      <p>HOMELAND는 Discord에서 즐기는 텍스트 기반 RPG입니다.</p>
+      
+      <div class="tip-box">
+        <strong>💡 첫 시작:</strong> <span class="command">/play</span> 명령어로 시작하세요! 캐릭터가 없으면 자동으로 생성 화면이 나타납니다.
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">직업 선택</h3>
+      <div class="class-list">
+        <div class="class-card">
+          <div class="icon">🛡️</div>
+          <h4>전사</h4>
+          <p>높은 방어력과 HP<br>탱커 역할</p>
+        </div>
+        <div class="class-card">
+          <div class="icon">🏹</div>
+          <h4>궁수</h4>
+          <p>균형잡힌 스탯<br>안정적인 딜러</p>
+        </div>
+        <div class="class-card">
+          <div class="icon">🔮</div>
+          <h4>마법사</h4>
+          <p>높은 공격력<br>유리대포 스타일</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2><span class="emoji">⚔️</span> 전투 시스템</h2>
+      <p>턴제 전투로 몬스터를 처치하고 경험치와 골드를 획득하세요.</p>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>💥 크리티컬 시스템</h3>
+          <p>20% 확률로 크리티컬! 2배 데미지를 입힙니다.</p>
+        </div>
+        <div class="feature-card">
+          <h3>💨 회피 시스템</h3>
+          <p>15% 확률로 적의 공격을 회피합니다.</p>
+        </div>
+        <div class="feature-card">
+          <h3>🔥 연승 보너스</h3>
+          <p>연속 승리 시 추가 보상! 최대 2배까지.</p>
+        </div>
+        <div class="feature-card">
+          <h3>✨ 희귀 몬스터</h3>
+          <p>10% 확률로 등장, 3배 경험치 보상!</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">주요 명령어</h3>
+      <ul>
+        <li><span class="command">/explore</span> - 필드 탐험 및 전투</li>
+        <li><span class="command">/boss</span> - 보스 몬스터 도전</li>
+        <li><span class="command">/fieldboss</span> - 필드 보스 정보 확인</li>
+        <li><span class="command">/arena</span> - PvP 아레나</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2><span class="emoji">🔨</span> 생산 시스템</h2>
+      <p>채집과 제작으로 아이템을 만들고 판매하세요.</p>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>⛏️ 채집</h3>
+          <p>목재, 광석, 허브 등 원자재를 수집합니다.</p>
+        </div>
+        <div class="feature-card">
+          <h3>🔧 제작</h3>
+          <p>원자재로 장비와 포션을 제작합니다.</p>
+        </div>
+        <div class="feature-card">
+          <h3>📈 생산 직업</h3>
+          <p>대장장이, 연금술사, 요리사 등 전문화!</p>
+        </div>
+        <div class="feature-card">
+          <h3>🎯 생산 스킬</h3>
+          <p>숙련도를 올려 더 좋은 아이템 제작!</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">주요 명령어</h3>
+      <ul>
+        <li><span class="command">/gather</span> - 자원 채집 시작</li>
+        <li><span class="command">/craft</span> - 아이템 제작</li>
+        <li><span class="command">/resources</span> - 보유 자원 확인</li>
+        <li><span class="command">/production_skills</span> - 생산 스킬 확인</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2><span class="emoji">💰</span> 경제 시스템</h2>
+      <p>동적 가격 시스템으로 실시간 경제가 움직입니다.</p>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>🏪 상점</h3>
+          <p>장비, 포션, 스킬북 구매</p>
+        </div>
+        <div class="feature-card">
+          <h3>📊 거래소</h3>
+          <p>플레이어 간 자유 거래</p>
+        </div>
+        <div class="feature-card">
+          <h3>🔨 경매장</h3>
+          <p>희귀 아이템 경매 입찰</p>
+        </div>
+        <div class="feature-card">
+          <h3>💎 젬 시스템</h3>
+          <p>프리미엄 재화로 특별 혜택</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">주요 명령어</h3>
+      <ul>
+        <li><span class="command">/shop</span> - 상점 열기</li>
+        <li><span class="command">/market</span> - 거래소 이용</li>
+        <li><span class="command">/auction</span> - 경매장</li>
+        <li><span class="command">/npc_shop</span> - NPC 상점</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2><span class="emoji">🎊</span> 전직 시스템</h2>
+      <p>레벨 5 달성 시 상위 직업으로 전직할 수 있습니다!</p>
+      
+      <div class="tip-box">
+        <strong>⚠️ 주의:</strong> 전직은 되돌릴 수 없습니다. 신중하게 선택하세요!
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">⚔️ 전사 전직</h3>
+      <div class="class-list">
+        <div class="class-card">
+          <div class="icon">⚔️</div>
+          <h4>검성</h4>
+          <p>검술의 극치<br>압도적인 공격력</p>
+          <p style="font-size: 0.8rem; color: #64ffda; margin-top: 10px;">
+            공격+8 | 방어+2<br>HP+30 | MP+10<br>
+            🌪️ 광풍검무 / ⚡ 번개베기
+          </p>
+        </div>
+        <div class="class-card">
+          <div class="icon">🛡️</div>
+          <h4>수호자</h4>
+          <p>불굴의 수호자<br>높은 방어력과 생존력</p>
+          <p style="font-size: 0.8rem; color: #64ffda; margin-top: 10px;">
+            공격+3 | 방어+10<br>HP+80 | MP+5<br>
+            🛡️ 철벽방어 / 💪 불굴의 의지
+          </p>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">🏹 궁수 전직</h3>
+      <div class="class-list">
+        <div class="class-card">
+          <div class="icon">🎯</div>
+          <h4>저격수</h4>
+          <p>정확무비한 명사수<br>치명타 극대화</p>
+          <p style="font-size: 0.8rem; color: #64ffda; margin-top: 10px;">
+            공격+10 | 방어+3<br>HP+40 | MP+15<br>
+            🎯 헤드샷 / 💨 바람의 화살
+          </p>
+        </div>
+        <div class="class-card">
+          <div class="icon">🏹</div>
+          <h4>사냥꾼</h4>
+          <p>야생의 본능<br>빠른 공격과 생존력</p>
+          <p style="font-size: 0.8rem; color: #64ffda; margin-top: 10px;">
+            공격+6 | 방어+5<br>HP+50 | MP+20<br>
+            🏹 연속 사격 / 🦅 독수리의 눈
+          </p>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">🔮 마법사 전직</h3>
+      <div class="class-list">
+        <div class="class-card">
+          <div class="icon">🔮</div>
+          <h4>대마법사</h4>
+          <p>마법의 정점<br>강력한 마법 공격력</p>
+          <p style="font-size: 0.8rem; color: #64ffda; margin-top: 10px;">
+            공격+12 | 방어+1<br>HP+20 | MP+60<br>
+            🔮 메테오 / ⚡ 체인 라이트닝
+          </p>
+        </div>
+        <div class="class-card">
+          <div class="icon">✨</div>
+          <h4>마도학자</h4>
+          <p>마법과 전투의 결합<br>균형잡힌 능력치</p>
+          <p style="font-size: 0.8rem; color: #64ffda; margin-top: 10px;">
+            공격+8 | 방어+6<br>HP+40 | MP+40<br>
+            ✨ 마법검 / 💫 마력 방어막
+          </p>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">전직 방법</h3>
+      <ul>
+        <li>레벨 5 달성 후 <span class="command">/jobchange</span> 명령어 입력</li>
+        <li>원하는 전직을 버튼으로 선택</li>
+        <li>능력치 보너스 즉시 적용 + HP/MP 완전 회복!</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2><span class="emoji">🏰</span> 길드 시스템</h2>
+      <p>길드를 만들고 함께 성장하세요.</p>
+      
+      <ul>
+        <li><span class="command">/guild create</span> - 길드 생성</li>
+        <li><span class="command">/guild info</span> - 길드 정보 확인</li>
+        <li><span class="command">/guildwar</span> - 길드전 참여</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2><span class="emoji">📅</span> 일일 콘텐츠</h2>
+      <p>매일 접속해서 보상을 받으세요!</p>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>📆 출석 체크</h3>
+          <p>연속 출석으로 누적 보상!</p>
+        </div>
+        <div class="feature-card">
+          <h3>🎁 일일 보상</h3>
+          <p>매일 무료 골드와 아이템</p>
+        </div>
+        <div class="feature-card">
+          <h3>🐉 필드 보스</h3>
+          <p>정기적으로 출현하는 강력한 보스</p>
+        </div>
+        <div class="feature-card">
+          <h3>🎲 랜덤 이벤트</h3>
+          <p>전투 중 특별한 이벤트 발생!</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 25px; color: #fff;">주요 명령어</h3>
+      <ul>
+        <li><span class="command">/daily</span> - 일일 보상 수령</li>
+        <li><span class="command">/attendance</span> - 출석 체크</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2><span class="emoji">💡</span> 꿀팁</h2>
+      
+      <div class="tip-box">
+        <strong>🎓 튜토리얼:</strong> <span class="command">/tutorial</span>로 단계별 가이드를 따라가면 보상도 받고 게임을 빠르게 익힐 수 있어요!
+      </div>
+      
+      <div class="tip-box" style="margin-top: 10px;">
+        <strong>🔄 막혔을 때:</strong> <span class="command">/reset</span>으로 전투 상태를 초기화할 수 있어요.
+      </div>
+      
+      <div class="tip-box" style="margin-top: 10px;">
+        <strong>📖 도움말:</strong> <span class="command">/help</span>로 전체 명령어를 확인하세요!
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <h2><span class="emoji">🚀</span> 지금 바로 시작하세요!</h2>
+      <p>Discord 서버에서 <span class="command">/play</span> 명령어를 입력하면 모험이 시작됩니다.</p>
+      <a href="https://discord.gg/fKksCrpq" class="btn">Discord 서버 참가</a>
+    </section>
+
+    <footer>
+      <p>HOMELAND © 2025 | Made with ❤️</p>
+    </footer>
+  </div>
+</body>
+</html>
