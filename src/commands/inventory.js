@@ -351,11 +351,12 @@ function createInventoryEmbed(character, equipmentList) {
         effectLines.length > 0 ? `✨ 특수 효과: ${effectLines.join(', ')}` : '',
         '',
         createDivider(),
-        '📦 보관 중인 장비',
+        '📦 보관 중인 장비 (높은 등급 우선)',
         unequippedLines.length > 0 ? unequippedLines.join('\n') : '없음',
         unequipped.length > 10 ? `... 외 ${unequipped.length - 10}개` : '',
         '',
         `💰 총 ${safeEquipmentList.length}개의 장비 보유`,
+        unequipped.length > 5 ? '💡 장착 버튼은 상위 5개만 표시됩니다. 불필요한 장비는 삭제하세요.' : '',
       ]
         .filter(Boolean)
         .join('\n'),

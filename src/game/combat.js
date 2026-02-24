@@ -586,6 +586,7 @@ function buildVictoryDescription({
   levelUpDetails,
   droppedEquipment,
   droppedResource,
+  droppedSkill,
 }) {
   const playerHpBar = createHPBar(session.playerHp, character.maxHp, 10);
   const currentMana = character.mana ?? 0;
@@ -646,6 +647,15 @@ function buildVictoryDescription({
       lines.push('📦 자원 획득!');
       lines.push(`${resourceData.emoji} **${resourceData.name}** x${droppedResource.quantity}개`);
     }
+  }
+
+  if (droppedSkill) {
+    lines.push('');
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines.push('🎉🎉🎉 **희귀 스킬 드롭!!** 🎉🎉🎉');
+    lines.push(`${droppedSkill.skillEmoji} **${droppedSkill.skillName}** 획득!`);
+    lines.push('💡 /shop에서 스킬 상점 확인 가능');
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
   if (levelUpDetails) {
@@ -783,6 +793,7 @@ function createCombatEmbed({
   levelUpDetails = null,
   droppedEquipment = null,
   droppedResource = null,
+  droppedSkill = null,
 }) {
   const resolvedTitle = title ?? combatResultTitle(status, session.monsterName);
 
@@ -801,6 +812,7 @@ function createCombatEmbed({
       levelUpDetails,
       droppedEquipment,
       droppedResource,
+      droppedSkill,
     });
   }
 
@@ -1337,6 +1349,27 @@ function resolveCombatTurn({
     // 장비 드롭 체크
     let droppedEquipment = null;
 
+    // 보스 스킬 드롭 체크 (전직 후 10% 확률)
+    let droppedSkill = null;
+    if (isBoss && character.advancedClass) {
+      const skillDropRoll = Math.random();
+      if (skillDropRoll < 0.1) { // 10% 확률
+        const { getBossDropSkills } = require('./advanced-skills');
+        const bossSkills = getBossDropSkills(character.advancedClass);
+        const learnedKeys = new Set((character.skills || []).map((s) => s.skillKey));
+        const unlearnedSkills = bossSkills.filter((skill) => !learnedKeys.has(skill.key));
+
+        if (unlearnedSkills.length > 0) {
+          const randomSkill = unlearnedSkills[randomInt(0, unlearnedSkills.length - 1)];
+          droppedSkill = {
+            skillKey: randomSkill.key,
+            skillName: randomSkill.name,
+            skillEmoji: randomSkill.emoji,
+          };
+        }
+      }
+    }
+
     if (isBoss) {
       const forcedRarity = resolveGuaranteedBossRarity(monsterData.guaranteedDrop);
       droppedEquipment = forcedRarity
@@ -1345,6 +1378,14 @@ function resolveCombatTurn({
       battleLog.push('');
       battleLog.push('💀 보스 클리어! 확정 보상!');
       battleLog.push(`✨ ${droppedEquipment.name}을(를) 획득했습니다!`);
+      
+      if (droppedSkill) {
+        battleLog.push('');
+        battleLog.push('━━━━━━━━━━━━━━━━━━━━━━━━');
+        battleLog.push('🎉🎉🎉 **희귀 스킬 드롭!!** 🎉🎉🎉');
+        battleLog.push(`${droppedSkill.skillEmoji} **${droppedSkill.skillName}** 획득!`);
+        battleLog.push('━━━━━━━━━━━━━━━━━━━━━━━━');
+      }
     } else if (shouldDropEquipment()) {
       // 일반 몬스터 랜덤 드롭
       droppedEquipment = generateEquipment(characterUpdate.level);
@@ -1401,6 +1442,7 @@ function resolveCombatTurn({
       },
       droppedEquipment,
       droppedResource,
+      droppedSkill, // 보스 스킬 드롭
       meta: {
         skillUsed,
         consumedConsumableId,
@@ -1782,6 +1824,18 @@ async function handleCombatButton({ interaction, prisma }) {
       }
     }
 
+    // 스킬 드롭이 있으면 스킬 추가
+    if (outcome.droppedSkill) {
+      await tx.skill.create({
+        data: {
+          characterId: session.characterId,
+          skillKey: outcome.droppedSkill.skillKey,
+          skillLevel: 1,
+          equipped: false,
+        },
+      });
+    }
+
     if (outcome.status === 'ongoing') {
       await tx.combatSession.update({
         where: {
@@ -1827,6 +1881,7 @@ async function handleCombatButton({ interaction, prisma }) {
     levelUpDetails,
     droppedEquipment: outcome.droppedEquipment,
     droppedResource: outcome.droppedResource,
+    droppedSkill: outcome.droppedSkill,
   });
 
   const components = ended

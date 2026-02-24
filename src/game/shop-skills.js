@@ -23,7 +23,12 @@ function createSkillShopEmbed(character, learnedSkills = []) {
 
   const skillLines = shopSkills.map((skill, index) => {
     const learned = learnedKeys.has(skill.key);
-    const status = learned ? '✅ 구매 완료' : `${skill.shopPrice}G`;
+    const isBossDrop = skill.type === 'boss_drop';
+    const status = learned 
+      ? '✅ 구매 완료' 
+      : isBossDrop 
+        ? '💀 보스 드랍 전용' 
+        : `${skill.shopPrice}G`;
     return `${index + 1}. ${skill.emoji} **${skill.name}** - ${status}\n   ${skill.description}\n   마나: ${skill.manaCost}`;
   });
 
@@ -35,11 +40,11 @@ function createSkillShopEmbed(character, learnedSkills = []) {
         createDivider(),
         `💰 보유 골드: ${character.gold}G`,
         '',
-        '🔮 구매 가능한 스킬',
+        '🔮 스킬 목록',
         '',
         ...skillLines,
         '',
-        '💡 보스 드랍 스킬 2개는 특정 보스 처치 시 획득',
+        '💡 보스 드랍 스킬은 보스 클리어 시 낮은 확률로 획득',
         '',
         createDivider(),
       ].join('\n'),
@@ -55,14 +60,15 @@ function createSkillShopActionRow(character, learnedSkills = []) {
 
   const buttons = shopSkills.slice(0, 3).map((skill, index) => {
     const learned = learnedKeys.has(skill.key);
-    const canAfford = character.gold >= skill.shopPrice;
+    const isBossDrop = skill.type === 'boss_drop';
+    const canAfford = !isBossDrop && character.gold >= (skill.shopPrice || 0);
 
     return new ButtonBuilder()
       .setCustomId(`shop:buy_skill:${skill.key}`)
-      .setLabel(`${index + 1}. ${learned ? '✅' : `${skill.shopPrice}G`}`)
+      .setLabel(`${index + 1}. ${learned ? '✅' : isBossDrop ? '💀' : `${skill.shopPrice}G`}`)
       .setEmoji(skill.emoji)
-      .setStyle(learned ? ButtonStyle.Success : ButtonStyle.Primary)
-      .setDisabled(learned || !canAfford);
+      .setStyle(learned ? ButtonStyle.Success : isBossDrop ? ButtonStyle.Danger : ButtonStyle.Primary)
+      .setDisabled(learned || isBossDrop || !canAfford);
   });
 
   buttons.push(

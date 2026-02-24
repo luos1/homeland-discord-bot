@@ -274,6 +274,21 @@ function createProfileActionRow(options = {}) {
     createVillageHomeButton({ disabled }),
   ];
 
+  // 프리미엄 미가입자면 프리미엄 버튼 추가
+  if (character) {
+    const premiumBenefits = resolvePremiumBenefits(character.premiumSubscription);
+    if (!premiumBenefits.active) {
+      row2Buttons.push(
+        new ButtonBuilder()
+          .setCustomId('subscribe:info')
+          .setLabel('프리미엄')
+          .setEmoji('👑')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(disabled),
+      );
+    }
+  }
+
   // 전직 가능하면 전직 버튼 추가
   if (character && !character.advancedClass) {
     const jobCheck = canJobChange(character);
