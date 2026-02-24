@@ -7,6 +7,7 @@ const PREMIUM_PLAN = {
   xpMultiplier: 1.2,
   goldMultiplier: 1.15,
   dailyGemBonus: 10,
+  skillSlotBonus: 1, // 스킬 슬롯 +1 (기본 3 → 4)
 };
 
 const PREMIUM_STRIPE_REQUIRED_ENV = [
@@ -40,6 +41,7 @@ function resolvePremiumBenefits(subscription, now = new Date()) {
       xpMultiplier: 1,
       goldMultiplier: 1,
       dailyGemBonus: 0,
+      skillSlotBonus: 0,
     };
   }
 
@@ -48,6 +50,7 @@ function resolvePremiumBenefits(subscription, now = new Date()) {
     xpMultiplier: PREMIUM_PLAN.xpMultiplier,
     goldMultiplier: PREMIUM_PLAN.goldMultiplier,
     dailyGemBonus: PREMIUM_PLAN.dailyGemBonus,
+    skillSlotBonus: PREMIUM_PLAN.skillSlotBonus,
   };
 }
 

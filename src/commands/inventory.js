@@ -1074,7 +1074,11 @@ module.exports = {
 
       const skill = await prisma.skill.findUnique({
         where: { id: skillId },
-        include: { character: true },
+        include: { 
+          character: {
+            include: { premiumSubscription: true }
+          }
+        },
       });
 
       if (!skill || !skill.character || skill.character.userId !== interaction.user.id) {
@@ -1086,6 +1090,11 @@ module.exports = {
         return true;
       }
 
+      // 프리미엄 혜택 확인
+      const { resolvePremiumBenefits } = require('../game/premium');
+      const premiumBenefits = resolvePremiumBenefits(skill.character.premiumSubscription);
+      const maxSkillSlots = 3 + premiumBenefits.skillSlotBonus; // 기본 3, 프리미엄 +1
+
       // 장착된 스킬 개수 확인
       const equippedCount = await prisma.skill.count({
         where: {
@@ -1094,9 +1103,12 @@ module.exports = {
         },
       });
 
-      if (equippedCount >= 3) {
+      if (equippedCount >= maxSkillSlots) {
+        const slotInfo = premiumBenefits.active 
+          ? `최대 ${maxSkillSlots}개 👑` 
+          : `최대 3개 (프리미엄: 4개)`;
         await interaction.reply({
-          content: '❌ 스킬 슬롯이 가득 찼습니다. (최대 3개)\n다른 스킬을 해제하고 다시 시도하세요.',
+          content: `❌ 스킬 슬롯이 가득 찼습니다. (${slotInfo})\n다른 스킬을 해제하고 다시 시도하세요.`,
           ephemeral: true,
         });
 
