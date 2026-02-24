@@ -328,7 +328,7 @@ const ZONE_TYPES = {
     name: '안전지대',
     emoji: '🔵',
     color: 0x3b82f6,
-    rareChanceMultiplier: 1.0, // 기본 5%
+    rareChanceMultiplier: 1.0, // 레어 확률 고정 (샤이니 1%, 보스 5%)
     statMultiplier: 1.0, // 능력치 1배
     goldMultiplier: 1.0,
     xpMultiplier: 1.0,
@@ -338,7 +338,7 @@ const ZONE_TYPES = {
     name: '경계지대',
     emoji: '🟡',
     color: 0xeab308,
-    rareChanceMultiplier: 2.0, // 레어 10%
+    rareChanceMultiplier: 1.0, // 레어 확률 고정
     statMultiplier: 1.5, // 능력치 1.5배
     goldMultiplier: 1.3,
     xpMultiplier: 1.4,
@@ -348,7 +348,7 @@ const ZONE_TYPES = {
     name: '위험지대',
     emoji: '🔴',
     color: 0xef4444,
-    rareChanceMultiplier: 3.0, // 레어 15%
+    rareChanceMultiplier: 1.0, // 레어 확률 고정
     statMultiplier: 2.0, // 능력치 2배
     goldMultiplier: 1.7,
     xpMultiplier: 1.8,
@@ -475,10 +475,11 @@ const RARE_TYPES = {
     chance: 0.01, // 1%
     hpMultiplier: 2.0,
     attackMultiplier: 1.5,
-    defenseMultiplier: 1.3,
+    defenseMultiplier: 1.0,
     xpMultiplier: 5.0,
     goldMultiplier: 10.0,
-    prefix: '빛나는',
+    prefix: '샤이니',
+    legacyPrefixes: ['빛나는'],
   },
   boss: {
     name: '보스',
@@ -486,34 +487,24 @@ const RARE_TYPES = {
     chance: 0.05, // 5%
     hpMultiplier: 3.0,
     attackMultiplier: 2.0,
-    defenseMultiplier: 1.5,
+    defenseMultiplier: 1.0,
     xpMultiplier: 3.0,
     goldMultiplier: 5.0,
-    prefix: '강력한',
+    prefix: '보스',
+    legacyPrefixes: ['강력한'],
   },
 };
 
-// 레어 몹 체크 (존별 확률 조정)
-function rollRareMonster(zoneKey = null) {
-  // 존별 레어 확률 배율
-  let rareMult = 1.0;
-  if (zoneKey) {
-    const zone = getZone(zoneKey);
-    if (zone && zone.zoneType && ZONE_TYPES[zone.zoneType]) {
-      rareMult = ZONE_TYPES[zone.zoneType].rareChanceMultiplier;
-    }
-  }
-
+// 레어 몹 체크 (샤이니 1%, 보스 5%)
+function rollRareMonster(_zoneKey = null) {
   const roll = Math.random();
 
-  // 샤이니 체크 (1% × 존 배율)
-  const shinyChance = RARE_TYPES.shiny.chance * rareMult;
+  const shinyChance = RARE_TYPES.shiny.chance;
   if (roll < shinyChance) {
     return 'shiny';
   }
 
-  // 보스 체크 (5% × 존 배율)
-  const bossChance = RARE_TYPES.boss.chance * rareMult;
+  const bossChance = RARE_TYPES.boss.chance;
   if (roll < shinyChance + bossChance) {
     return 'boss';
   }
@@ -528,14 +519,18 @@ function applyRareModifier(monster, rareType) {
   }
 
   const modifier = RARE_TYPES[rareType];
+  const defenseMultiplier = Number.isFinite(modifier.defenseMultiplier)
+    ? modifier.defenseMultiplier
+    : 1;
+  const prefixedName = `${modifier.prefix} ${monster.name}`;
 
   return {
     ...monster,
-    name: `${modifier.prefix} ${monster.name}`,
-    displayName: `${modifier.emoji} ${modifier.prefix} ${monster.name}`,
+    name: prefixedName,
+    displayName: `${modifier.emoji} ${prefixedName}`,
     hp: Math.floor(monster.hp * modifier.hpMultiplier),
     attack: Math.floor(monster.attack * modifier.attackMultiplier),
-    defense: Math.floor(monster.defense * modifier.defenseMultiplier),
+    defense: Math.max(1, Math.floor(monster.defense * defenseMultiplier)),
     xpReward: Math.floor(monster.xpReward * modifier.xpMultiplier),
     goldMin: Math.floor(monster.goldMin * modifier.goldMultiplier),
     goldMax: Math.floor(monster.goldMax * modifier.goldMultiplier),

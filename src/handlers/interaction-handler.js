@@ -5,6 +5,7 @@ const {
 const { handleButton } = require('./button-router');
 const { handleSelectMenu } = require('./select-router');
 const { handleModal } = require('./modal-router');
+const { logger } = require('../utils/server-logger');
 
 async function handleInteraction(interaction, { prisma, client }) {
   try {
@@ -46,6 +47,15 @@ async function handleInteraction(interaction, { prisma, client }) {
     }
   } catch (error) {
     console.error('인터랙션 처리 중 오류:', error);
+
+    // Discord 로그 채널에 에러 전송
+    const context = interaction.isChatInputCommand() 
+      ? `명령어: /${interaction.commandName}`
+      : interaction.isButton()
+      ? `버튼: ${interaction.customId}`
+      : `기타: ${interaction.type}`;
+    
+    logger.logError(error, `${context} | User: ${interaction.user.tag}`).catch(() => {});
 
     const message = '인터랙션 처리 중 오류가 발생했습니다.';
 

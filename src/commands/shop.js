@@ -10,6 +10,7 @@ const { RARITIES, generateEquipment } = require('../game/equipment');
 const { EMBED_COLORS, createDivider } = require('../utils/ui');
 const { requireCharacter } = require('../utils/response-helpers');
 const { getAdvancedSkillByKey } = require('../game/advanced-skills');
+const { getSkillByKey } = require('../game/skills');
 const {
   createSkillShopEmbed,
   createSkillShopActionRow,
@@ -49,6 +50,12 @@ const PRICES = {
   equipmentEpic: 2000,
   equipmentLegendary: 5000,
   upgradeBase: 200, // 강화 기본 가격
+  // 신규 소비 아이템
+  xpBooster: 100,
+  goldBooster: 100,
+  skillEnhancePotion: 150,
+  escapeScroll: 80,
+  fullRecovery: 200,
 };
 
 // 판매 가격 (구매가의 30%)
@@ -77,6 +84,9 @@ function createShopMainEmbed(character) {
     '',
     '✨ **장비 강화**',
     '장비를 강화하여 능력치를 향상시키세요',
+    '',
+    '🧠 **스킬 강화**',
+    '골드를 사용해 스킬 레벨을 올리고 위력을 강화하세요',
   ];
 
   if (hasAdvancedClass) {
@@ -94,7 +104,7 @@ function createShopMainEmbed(character) {
     .setTitle('🏪 홈랜드 상점')
     .setDescription(description.join('\n'))
     .setFooter({
-      text: hasAdvancedClass ? '원하는 메뉴를 선택하세요' : '전직 후 스킬 상점을 이용할 수 있습니다',
+      text: hasAdvancedClass ? '원하는 메뉴를 선택하세요' : '스킬 상점은 전직 후 이용할 수 있습니다',
     });
 }
 
@@ -124,6 +134,14 @@ function createShopMainActionRow(character) {
 
   const row2Buttons = [];
 
+  row2Buttons.push(
+    new ButtonBuilder()
+      .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.upgradeSkill}`)
+      .setLabel('스킬 강화')
+      .setEmoji('🧠')
+      .setStyle(ButtonStyle.Primary),
+  );
+
   if (character.advancedClass) {
     row2Buttons.push(
       new ButtonBuilder()
@@ -152,47 +170,105 @@ function createShopMainActionRow(character) {
 function createPotionShopEmbed(character) {
   return new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
-    .setTitle('🧪 포션 상점')
+    .setTitle('🧪 포션 & 소비 아이템 상점')
     .setDescription(
       [
         createDivider(),
         `💰 보유 골드: ${character.gold}G`,
         '',
+        '**📦 기본 포션**',
         '💊 **체력 회복 포션** - 50G',
-        '전투 중 체력을 35% 회복합니다',
-        '(최소 20 HP)',
+        '└ 전투 중 체력 35% 회복 (최소 20 HP)',
         '',
         '🔷 **마나 회복 포션** - 40G',
-        '전투 중 마나를 50% 회복합니다',
-        '(최소 30 MP)',
+        '└ 전투 중 마나 50% 회복 (최소 30 MP)',
+        '',
+        '**✨ 신규 프리미엄 아이템**',
+        '⭐ **경험치 부스터** - 100G',
+        '└ 1시간 동안 획득 경험치 1.5배',
+        '',
+        '💰 **골드 부스터** - 100G',
+        '└ 1시간 동안 획득 골드 1.5배',
+        '',
+        '🧠 **스킬 강화 포션** - 150G',
+        '└ 다음 스킬 강화 비용 20% 감소',
+        '',
+        '📜 **귀환 주문서** - 80G',
+        '└ 전투 중 즉시 탈출 (패널티 없음)',
+        '',
+        '💎 **완전 회복 물약** - 200G',
+        '└ HP와 마나를 100% 회복',
         '',
         createDivider(),
       ].join('\n'),
     )
     .setFooter({
-      text: '포션은 즉시 인벤토리에 추가됩니다',
+      text: '아이템은 즉시 인벤토리에 추가됩니다',
     });
 }
 
 function createPotionShopActionRow(character) {
   const canBuyHealth = character.gold >= PRICES.healthPotion;
   const canBuyMana = character.gold >= PRICES.manaPotion;
+  const canBuyXpBoost = character.gold >= PRICES.xpBooster;
+  const canBuyGoldBoost = character.gold >= PRICES.goldBooster;
+  const canBuySkillEnhance = character.gold >= PRICES.skillEnhancePotion;
+  const canBuyEscape = character.gold >= PRICES.escapeScroll;
+  const canBuyFullRecovery = character.gold >= PRICES.fullRecovery;
 
-  return new ActionRowBuilder().addComponents(
+  const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.buyPotion}:health`)
-      .setLabel('체력 포션 구매 (50G)')
+      .setLabel('체력 (50G)')
       .setEmoji('💊')
       .setStyle(ButtonStyle.Success)
       .setDisabled(!canBuyHealth),
     new ButtonBuilder()
       .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.buyPotion}:mana`)
-      .setLabel('마나 포션 구매 (40G)')
+      .setLabel('마나 (40G)')
       .setEmoji('🔷')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(!canBuyMana),
+    new ButtonBuilder()
+      .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.buyPotion}:fullrecovery`)
+      .setLabel('완전회복 (200G)')
+      .setEmoji('💎')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(!canBuyFullRecovery),
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.buyPotion}:xpboost`)
+      .setLabel('경험치부스터 (100G)')
+      .setEmoji('⭐')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(!canBuyXpBoost),
+    new ButtonBuilder()
+      .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.buyPotion}:goldboost`)
+      .setLabel('골드부스터 (100G)')
+      .setEmoji('💰')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(!canBuyGoldBoost),
+  );
+
+  const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.buyPotion}:skillpotion`)
+      .setLabel('스킬강화포션 (150G)')
+      .setEmoji('🧠')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(!canBuySkillEnhance),
+    new ButtonBuilder()
+      .setCustomId(`${SHOP_BUTTON_PREFIX}${SHOP_ACTIONS.buyPotion}:escape`)
+      .setLabel('귀환주문서 (80G)')
+      .setEmoji('📜')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!canBuyEscape),
     createBackButton({ customId: `${SHOP_BUTTON_PREFIX}main` }),
   );
+
+  return [row1, row2, row3];
 }
 
 function createEquipmentShopEmbed(character) {
@@ -424,6 +500,9 @@ module.exports = {
         equipment: {
           orderBy: [{ equipped: 'desc' }, { rarity: 'desc' }],
         },
+        skills: {
+          orderBy: [{ equipped: 'desc' }, { skillLevel: 'desc' }],
+        },
       },
     });
     if (!character) return true;
@@ -440,6 +519,15 @@ module.exports = {
 
     // 스킬 상점
     if (action === SHOP_ACTIONS.skills) {
+      if (!character.advancedClass) {
+        await interaction.reply({
+          content: '⚠️ 전직 후에 스킬 상점을 이용할 수 있습니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
       const learnedSkills = await prisma.skill.findMany({
         where: {
           characterId: character.id,
@@ -514,16 +602,79 @@ module.exports = {
     if (action === SHOP_ACTIONS.buyPotion) {
       const potionType = param;
 
-      if (potionType !== 'health' && potionType !== 'mana') {
+      const itemConfigs = {
+        health: {
+          name: '💊 체력 회복 포션',
+          itemKey: 'health_potion',
+          type: 'potion',
+          effect: 'heal_hp',
+          power: 35,
+          price: PRICES.healthPotion,
+        },
+        mana: {
+          name: '🔷 마나 회복 포션',
+          itemKey: 'mana_potion',
+          type: 'potion',
+          effect: 'heal_mp',
+          power: 50,
+          price: PRICES.manaPotion,
+        },
+        fullrecovery: {
+          name: '💎 완전 회복 물약',
+          itemKey: 'full_recovery_potion',
+          type: 'potion',
+          effect: 'full_recovery',
+          power: 100,
+          price: PRICES.fullRecovery,
+        },
+        xpboost: {
+          name: '⭐ 경험치 부스터',
+          itemKey: 'xp_booster',
+          type: 'booster',
+          effect: 'xp_boost',
+          power: 150,
+          duration: 3600,
+          price: PRICES.xpBooster,
+        },
+        goldboost: {
+          name: '💰 골드 부스터',
+          itemKey: 'gold_booster',
+          type: 'booster',
+          effect: 'gold_boost',
+          power: 150,
+          duration: 3600,
+          price: PRICES.goldBooster,
+        },
+        skillpotion: {
+          name: '🧠 스킬 강화 포션',
+          itemKey: 'skill_enhance_potion',
+          type: 'booster',
+          effect: 'skill_upgrade_discount',
+          power: 20,
+          price: PRICES.skillEnhancePotion,
+        },
+        escape: {
+          name: '📜 귀환 주문서',
+          itemKey: 'escape_scroll',
+          type: 'scroll',
+          effect: 'instant_escape',
+          power: 100,
+          price: PRICES.escapeScroll,
+        },
+      };
+
+      const potionConfig = itemConfigs[potionType];
+
+      if (!potionConfig) {
         await interaction.reply({
-          content: '❌ 유효하지 않은 포션 종류입니다.',
+          content: '❌ 유효하지 않은 아이템입니다.',
           ephemeral: true,
         });
 
         return true;
       }
 
-      const price = potionType === 'health' ? PRICES.healthPotion : PRICES.manaPotion;
+      const price = potionConfig.price;
 
       if (character.gold < price) {
         await interaction.reply({
@@ -533,22 +684,6 @@ module.exports = {
 
         return true;
       }
-
-      const potionConfig = potionType === 'health'
-        ? {
-          name: '💊 체력 회복 포션',
-          itemKey: 'health_potion',
-          type: 'potion',
-          effect: 'heal_hp',
-          power: 35,
-        }
-        : {
-          name: '🔷 마나 회복 포션',
-          itemKey: 'mana_potion',
-          type: 'potion',
-          effect: 'heal_mp',
-          power: 50,
-        };
 
       await prisma.$transaction(async (tx) => {
         await tx.character.update({
@@ -572,6 +707,7 @@ module.exports = {
             quantity: { increment: 1 },
             name: potionConfig.name,
             power: potionConfig.power,
+            duration: potionConfig.duration || null,
           },
           create: {
             characterId: character.id,
@@ -579,7 +715,7 @@ module.exports = {
             type: potionConfig.type,
             effect: potionConfig.effect,
             power: potionConfig.power,
-            duration: null,
+            duration: potionConfig.duration || null,
             quantity: 1,
           },
         });
@@ -1010,33 +1146,78 @@ module.exports = {
 
     // 스킬 강화
     if (action === SHOP_ACTIONS.upgradeSkillAction) {
-      const skillId = parseInt(param, 10);
+      const skillRef = String(param || '').trim();
 
-      if (!Number.isInteger(skillId)) {
+      if (!skillRef) {
         await interaction.reply({
-          content: '❌ 유효하지 않은 스킬 ID입니다.',
+          content: '❌ 유효하지 않은 스킬 정보입니다.',
           ephemeral: true,
         });
 
         return true;
       }
 
-      const skill = await prisma.skill.findUnique({
-        where: {
-          id: skillId,
-        },
-      });
+      let targetSkill = null;
+      let targetSkillKey = skillRef;
 
-      if (!skill || skill.characterId !== character.id) {
+      if (/^\d+$/.test(skillRef)) {
+        const skillId = Number.parseInt(skillRef, 10);
+        targetSkill = await prisma.skill.findUnique({
+          where: {
+            id: skillId,
+          },
+        });
+
+        if (!targetSkill || targetSkill.characterId !== character.id) {
+          await interaction.reply({
+            content: '❌ 스킬을 찾을 수 없습니다.',
+            ephemeral: true,
+          });
+
+          return true;
+        }
+
+        targetSkillKey = targetSkill.skillKey;
+      } else {
+        targetSkill = await prisma.skill.findUnique({
+          where: {
+            characterId_skillKey: {
+              characterId: character.id,
+              skillKey: targetSkillKey,
+            },
+          },
+        });
+      }
+
+      const basicSkillData = getSkillByKey(character, targetSkillKey);
+      const isUnlockedBasicSkill = Boolean(
+        basicSkillData && character.level >= basicSkillData.unlockLevel,
+      );
+      const advancedSkillData = character.advancedClass
+        ? getAdvancedSkillByKey(character.advancedClass, targetSkillKey)
+        : null;
+
+      if (!isUnlockedBasicSkill && !advancedSkillData) {
         await interaction.reply({
-          content: '❌ 스킬을 찾을 수 없습니다.',
+          content: '❌ 강화 가능한 스킬이 아닙니다.',
           ephemeral: true,
         });
 
         return true;
       }
 
-      if (skill.skillLevel >= 5) {
+      if (advancedSkillData && !targetSkill) {
+        await interaction.reply({
+          content: '⚠️ 아직 습득하지 않은 전직 스킬입니다.',
+          ephemeral: true,
+        });
+
+        return true;
+      }
+
+      const currentLevel = Math.max(1, Number.parseInt(targetSkill?.skillLevel, 10) || 1);
+
+      if (currentLevel >= 5) {
         await interaction.reply({
           content: '⚠️ 이미 최대 레벨입니다. (+5)',
           ephemeral: true,
@@ -1045,7 +1226,7 @@ module.exports = {
         return true;
       }
 
-      const upgradeCost = calculateSkillUpgradeCost(skill.skillLevel);
+      const upgradeCost = calculateSkillUpgradeCost(currentLevel);
 
       if (character.gold < upgradeCost) {
         await interaction.reply({
@@ -1056,16 +1237,8 @@ module.exports = {
         return true;
       }
 
-      const skillData = getAdvancedSkillByKey(character.advancedClass, skill.skillKey);
-
-      if (!skillData) {
-        await interaction.reply({
-          content: '❌ 스킬 정보를 불러오지 못했습니다.',
-          ephemeral: true,
-        });
-
-        return true;
-      }
+      const nextLevel = currentLevel + 1;
+      const skillData = advancedSkillData || basicSkillData;
 
       await prisma.$transaction(async (tx) => {
         await tx.character.update({
@@ -1077,21 +1250,32 @@ module.exports = {
           },
         });
 
-        await tx.skill.update({
-          where: {
-            id: skillId,
-          },
-          data: {
-            skillLevel: skill.skillLevel + 1,
-          },
-        });
+        if (targetSkill) {
+          await tx.skill.update({
+            where: {
+              id: targetSkill.id,
+            },
+            data: {
+              skillLevel: nextLevel,
+            },
+          });
+        } else {
+          await tx.skill.create({
+            data: {
+              characterId: character.id,
+              skillKey: targetSkillKey,
+              skillLevel: nextLevel,
+              equipped: true,
+            },
+          });
+        }
       });
 
       await interaction.reply({
         content: [
           `✨ 스킬 강화 성공! (-${upgradeCost}G)`,
           '',
-          `${skillData.emoji} ${skillData.name} +${skill.skillLevel} → +${skill.skillLevel + 1}`,
+          `${skillData.emoji} ${skillData.name} +${currentLevel} → +${nextLevel}`,
           `효과 20% 증가!`,
         ].join('\n'),
         ephemeral: true,

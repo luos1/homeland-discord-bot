@@ -1,4 +1,4 @@
-const LEVEL_CAP = 50;
+const LEVEL_CAP = 100;
 
 function resolveMasteryFieldByClass(className) {
   const classMapping = {
@@ -20,10 +20,15 @@ function xpRequiredForLevel(level) {
     return null;
   }
 
-  // 초반 레벨업 빠르게 조정
-  // Lv1→2: 50, Lv2→3: 75, Lv3→4: 100, Lv4→5: 125...
-  // Lv10→11: 275, Lv20→21: 525
-  return 50 + (level - 1) * 25;
+  // 기본 경험치 공식: 50 + (level - 1) * 25
+  let baseXp = 50 + (level - 1) * 25;
+
+  // Lv10-30 구간: 레벨업 속도 1.3배 (필요 경험치를 1/1.3 = 약 0.77배로 감소)
+  if (level >= 10 && level <= 30) {
+    baseXp = Math.floor(baseXp / 1.3);
+  }
+
+  return baseXp;
 }
 
 function applyExperience(

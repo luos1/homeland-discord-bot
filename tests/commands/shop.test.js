@@ -142,4 +142,40 @@ describe('shop command', () => {
     expect(updatePayload.data.defense).toBeGreaterThan(equipment.defense);
     expect(interaction.reply.mock.calls[0][0].content).toContain('강화 성공');
   });
+
+  test('스킬 강화: 기본 스킬 키로 강화하면 골드 차감 후 스킬 레벨이 오른다', async () => {
+    const interaction = createMockInteraction({
+      customId: 'shop:upgrade_skill:power_strike',
+    });
+    const character = createCharacter({
+      id: 10,
+      userId: interaction.user.id,
+      class: '전사',
+      level: 5,
+      gold: 1000,
+      equipment: [],
+      skills: [],
+    });
+
+    prisma.character.findUnique.mockResolvedValue(character);
+    prisma.skill.findUnique.mockResolvedValue(null);
+
+    const handled = await shopCommand.handleShopButton(interaction, { prisma });
+
+    expect(handled).toBe(true);
+    expect(tx.character.update).toHaveBeenCalledWith({
+      where: { id: character.id },
+      data: { gold: { decrement: 600 } },
+    });
+    expect(tx.skill.create).toHaveBeenCalledWith({
+      data: {
+        characterId: character.id,
+        skillKey: 'power_strike',
+        skillLevel: 2,
+        equipped: true,
+      },
+    });
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(interaction.reply.mock.calls[0][0].content).toContain('스킬 강화 성공');
+  });
 });

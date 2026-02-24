@@ -1,16 +1,23 @@
 require('dotenv').config();
 
+const { logger } = require('./utils/server-logger');
+
 // ═══════════════════════════════════════════════════════════════
-// 전역 에러 핸들러 (봇 크래시 방지)
+// 전역 에러 핸들러 (봇 크래시 방지 + Discord 알림)
 // ═══════════════════════════════════════════════════════════════
 process.on('unhandledRejection', (reason, promise) => {
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.error('[CRITICAL] Unhandled Promise Rejection');
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.error('Reason:', reason);
-  console.error('Promise:', promise);
   console.error('Stack:', reason?.stack);
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  
+  // Discord 알림
+  logger.logCritical('Unhandled Promise Rejection', {
+    reason: reason?.message || String(reason),
+    stack: reason?.stack?.slice(0, 1000) || 'N/A'
+  }).catch(() => {});
 });
 
 process.on('uncaughtException', (error) => {
@@ -20,7 +27,14 @@ process.on('uncaughtException', (error) => {
   console.error('Error:', error);
   console.error('Stack:', error.stack);
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  process.exit(1); // PM2/systemd가 자동 재시작
+  
+  // Discord 알림 (동기적으로 시도)
+  logger.logCritical('Uncaught Exception - Restarting', {
+    error: error.message,
+    stack: error.stack?.slice(0, 1000)
+  }).catch(() => {}).finally(() => {
+    process.exit(1); // PM2/Railway가 자동 재시작
+  });
 });
 
 const {
@@ -60,10 +74,22 @@ const commandData = loadCommands(client);
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`${readyClient.user.tag} 계정으로 로그인되었습니다.`);
 
+  // 로거 초기화
+  logger.init(readyClient);
+  
+  // 시작 알림
+  await logger.logEvent('startup', {
+    bot: readyClient.user.tag,
+    guilds: readyClient.guilds.cache.size,
+    node: process.version,
+    memory: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`
+  });
+
   try {
     await registerCommands(commandData);
   } catch (error) {
     console.error('슬래시 명령어 등록에 실패했습니다:', error);
+    await logger.logError(error, '명령어 등록 실패');
   }
 
   // Initialize Field Boss System
@@ -106,6 +132,12 @@ client.on(Events.InteractionCreate, (interaction) => {
 async function shutdown(signal) {
   console.log(`${signal} 신호를 받아 종료를 시작합니다...`);
 
+  // 종료 알림
+  await logger.logEvent('shutdown', {
+    signal,
+    uptime: `${Math.round(process.uptime())}초`
+  }).catch(() => {});
+
   stopAll();
 
   await prisma.$disconnect();
@@ -119,10 +151,6 @@ process.once('SIGINT', () => {
 
 process.once('SIGTERM', () => {
   void shutdown('SIGTERM');
-});
-
-process.on('unhandledRejection', (error) => {
-  console.error('처리되지 않은 프로미스 거부:', error);
 });
 
 client.login(process.env.DISCORD_TOKEN).catch((error) => {

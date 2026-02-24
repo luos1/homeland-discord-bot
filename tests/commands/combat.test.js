@@ -91,6 +91,8 @@ describe('combat flow', () => {
   });
 
   test('승리: 적 HP를 0으로 만들면 보상을 반환한다', () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+
     const character = createCharacter({
       attack: 30,
       defense: 5,
@@ -112,6 +114,8 @@ describe('combat flow', () => {
     expect(outcome.status).toBe('victory');
     expect(outcome.rewards.xpReward).toBeGreaterThan(0);
     expect(outcome.rewards.goldReward).toBeGreaterThan(0);
+
+    randomSpy.mockRestore();
   });
 
   test('프리미엄 혜택: 활성 구독이면 전투 보상이 증가한다', () => {
@@ -140,7 +144,7 @@ describe('combat flow', () => {
       },
     });
 
-    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
 
     const baseOutcome = resolveCombatTurn({
       character: baseCharacter,
@@ -162,6 +166,8 @@ describe('combat flow', () => {
   });
 
   test('패배: 플레이어 HP가 0 이하가 되면 즉시 전투 종료된다', () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+
     const character = createCharacter({
       attack: 1,
       defense: 0,
@@ -188,6 +194,132 @@ describe('combat flow', () => {
     expect(outcome.status).toBe('defeat');
     expect(outcome.characterUpdate.hp).toBe(character.maxHp);
     expect(outcome.sessionUpdate.turn).toBe(session.turn + 1);
+
+    randomSpy.mockRestore();
+  });
+
+  test('일반 공격: 크리티컬 발생 시 로그에 표시된다', () => {
+    const randomSpy = jest.spyOn(Math, 'random')
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.9)
+      .mockReturnValueOnce(0.1)
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.9)
+      .mockReturnValueOnce(0.9);
+
+    const character = createCharacter({
+      attack: 20,
+      defense: 5,
+      hp: 100,
+      maxHp: 100,
+    });
+    const session = createSession({
+      monsterHp: 80,
+      monsterMaxHp: 80,
+      monsterDefense: 2,
+      monsterAttack: 3,
+      playerHp: 100,
+    });
+
+    const outcome = resolveCombatTurn({
+      character,
+      session,
+      action: COMBAT_ACTIONS.attack,
+    });
+
+    expect(outcome.status).toBe('ongoing');
+    expect(outcome.battleLog.some((line) => line.includes('치명타'))).toBe(true);
+
+    randomSpy.mockRestore();
+  });
+
+  test('일반 공격: 회피 발생 시 데미지가 무효화된다', () => {
+    const randomSpy = jest.spyOn(Math, 'random')
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.1)
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.9)
+      .mockReturnValueOnce(0.9);
+
+    const character = createCharacter({
+      attack: 20,
+      defense: 5,
+      hp: 100,
+      maxHp: 100,
+    });
+    const session = createSession({
+      monsterHp: 80,
+      monsterMaxHp: 80,
+      monsterDefense: 2,
+      monsterAttack: 3,
+      playerHp: 100,
+    });
+
+    const outcome = resolveCombatTurn({
+      character,
+      session,
+      action: COMBAT_ACTIONS.attack,
+    });
+
+    expect(outcome.status).toBe('ongoing');
+    expect(outcome.sessionUpdate.monsterHp).toBe(session.monsterHp);
+    expect(outcome.battleLog.some((line) => line.includes('회피'))).toBe(true);
+
+    randomSpy.mockRestore();
+  });
+
+  test('기본 스킬 강화: 스킬 레벨이 높을수록 데미지가 증가한다', () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.9);
+
+    const baseCharacter = createCharacter({
+      class: '전사',
+      attack: 20,
+      mana: 100,
+      maxMana: 100,
+      skills: [{ skillKey: 'power_strike', skillLevel: 1, equipped: true }],
+    });
+    const leveledCharacter = createCharacter({
+      class: '전사',
+      attack: 20,
+      mana: 100,
+      maxMana: 100,
+      skills: [{ skillKey: 'power_strike', skillLevel: 3, equipped: true }],
+    });
+
+    const baseOutcome = resolveCombatTurn({
+      character: baseCharacter,
+      session: createSession({
+        id: 'session-skill-1',
+        monsterHp: 100,
+        monsterMaxHp: 100,
+        monsterDefense: 0,
+        monsterAttack: 1,
+      }),
+      action: COMBAT_ACTIONS.skill,
+      skillKey: 'power_strike',
+    });
+
+    const leveledOutcome = resolveCombatTurn({
+      character: leveledCharacter,
+      session: createSession({
+        id: 'session-skill-2',
+        monsterHp: 100,
+        monsterMaxHp: 100,
+        monsterDefense: 0,
+        monsterAttack: 1,
+      }),
+      action: COMBAT_ACTIONS.skill,
+      skillKey: 'power_strike',
+    });
+
+    const baseDamage = 100 - baseOutcome.sessionUpdate.monsterHp;
+    const leveledDamage = 100 - leveledOutcome.sessionUpdate.monsterHp;
+
+    expect(baseOutcome.status).toBe('ongoing');
+    expect(leveledOutcome.status).toBe('ongoing');
+    expect(leveledDamage).toBeGreaterThan(baseDamage);
+
+    randomSpy.mockRestore();
   });
 
   test('기본 포션 사용: session.potionsRemaining이 감소한다', () => {

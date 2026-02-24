@@ -6,7 +6,7 @@ const {
 } = require('discord.js');
 
 const { applyExperience, progressToNextLevel } = require('./leveling');
-const { MONSTERS, getZone, getZoneWithTypeData, randomInt, rollRareMonster, applyRareModifier } = require('./monsters');
+const { MONSTERS, RARE_TYPES, getZone, getZoneWithTypeData, randomInt } = require('./monsters');
 const { getCombatSkill, getAvailableSkills, getSkillByKey, canUseSkill } = require('./skills');
 const { shouldDropEquipment, generateEquipment } = require('./equipment');
 const { calculateStreakBonus, updateWinStreak, resetWinStreak } = require('./streak');
@@ -50,8 +50,22 @@ const COMBAT_END_ACTIONS = {
   zones: 'zones',
 };
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-const RARE_MONSTER_PREFIXES = ['빛나는 ', '강력한 '];
+const RARE_MONSTER_PREFIXES = Array.from(
+  new Set(
+    Object.values(RARE_TYPES).flatMap((rareType) => {
+      const prefixes = [rareType.prefix, ...(rareType.legacyPrefixes || [])];
+      return prefixes.map((prefix) => `${prefix} `);
+    }),
+  ),
+);
 const COMBAT_POTION_EFFECTS = new Set(['heal_hp', 'heal_mp']);
+const GLOBAL_CRITICAL_CHANCE = 0.2;
+const GLOBAL_CRITICAL_MULTIPLIER = 2;
+const GLOBAL_EVASION_CHANCE = 0.15;
+const CRITICAL_LOG_MESSAGE = '💥 크리티컬!';
+const DODGE_LOG_MESSAGE = '💨 회피!';
+const COMBAT_RANDOM_EVENT_CHANCE = 0.2;
+const COMBAT_RANDOM_EVENT_TYPES = ['treasure', 'merchant', 'trap'];
 
 function buildCombatCustomId(action, sessionId, skillKey = null) {
   if (skillKey) {
@@ -126,6 +140,19 @@ function stripRareMonsterPrefix(monsterName = '') {
     }
     return name;
   }, monsterName);
+}
+
+function resolveRareMonsterType(monsterName = '') {
+  if (!monsterName) {
+    return null;
+  }
+
+  return (
+    Object.entries(RARE_TYPES).find(([, rareData]) => {
+      const prefixes = [rareData.prefix, ...(rareData.legacyPrefixes || [])];
+      return prefixes.some((prefix) => monsterName.startsWith(`${prefix} `));
+    })?.[0] ?? null
+  );
 }
 
 function getMonsterBySessionName(monsterName) {
@@ -302,7 +329,9 @@ function applyFieldBossSkillPatterns({
 
   return {
     monsterHp: result.monsterHp,
-    enemyDamage: Math.max(1, Math.floor(baseDamage * result.damageMultiplier) + result.bonusDamage),
+    enemyDamage: baseDamage <= 0
+      ? 0
+      : Math.max(1, Math.floor(baseDamage * result.damageMultiplier) + result.bonusDamage),
     logs: result.logs,
   };
 }
@@ -395,8 +424,9 @@ function createCombatActionRows(sessionId, options = {}) {
     if (allSkills.length > 0) {
       const skillButtons = allSkills.map((skill) => {
         const canUse = currentMana >= skill.manaCost;
-        const label = skill.dbSkillLevel 
-          ? `${skill.name} +${skill.dbSkillLevel} (${skill.manaCost} MP)`
+        const skillLevel = skill.dbSkillLevel || skill.skillLevel || 1;
+        const label = skillLevel > 1
+          ? `${skill.name} +${skillLevel} (${skill.manaCost} MP)`
           : `${skill.name} (${skill.manaCost} MP)`;
         
         return new ButtonBuilder()
@@ -512,6 +542,103 @@ function resolveMonsterLevel(monsterName, fallbackLevel = 1) {
   return matched?.level ?? fallbackLevel;
 }
 
+function buildRareMonsterEncounterShowcase(session, monsterLevel) {
+  const rareType = resolveRareMonsterType(session.monsterName);
+  if (!rareType) {
+    return null;
+  }
+
+  const baseMonsterName = stripRareMonsterPrefix(session.monsterName);
+
+  if (rareType === 'shiny') {
+    return [
+      '✨✨✨ 특별한 적 등장! ✨✨✨',
+      '',
+      '━━━━━━━━━━━━━━━━━━',
+      `  🌟 샤이니 ${baseMonsterName} 🌟`,
+      '━━━━━━━━━━━━━━━━━━',
+      '',
+      '💎 이 적은 특별합니다!',
+      '   - HP 2배',
+      '   - 공격력 1.5배',
+      '   - 경험치 5배',
+      '   - 골드 10배',
+      '   - 전설 장비 드롭 확률 50%',
+      '',
+      '⚠️ 강력하지만 보상도 엄청납니다!',
+      '',
+      '[⚔️ 싸운다] [🏃 도망친다]',
+    ];
+  }
+
+  if (rareType === 'boss') {
+    return [
+      '💀 보스 등장!',
+      '',
+      '━━━━━━━━━━━━━━━━━━',
+      `  👑 ${baseMonsterName} 👑`,
+      `  Lv. ${monsterLevel} (보스)`,
+      '━━━━━━━━━━━━━━━━━━',
+      '',
+      `❤️ HP: ${session.monsterHp}/${session.monsterMaxHp}`,
+      `⚔️ 공격력: ${session.monsterAttack}`,
+      `🛡️ 방어력: ${session.monsterDefense}`,
+      '',
+      '🎁 처치 보상:',
+      `   - 경험치 +${session.monsterXpReward}`,
+      `   - 골드 +${session.monsterGoldMin}~${session.monsterGoldMax}G`,
+      '   - 희귀 장비 확정 드롭',
+      '   - 특별 칭호 획득',
+      '',
+      '⚠️ 매우 강력합니다! 준비가 되셨나요?',
+      '',
+      '[⚔️ 도전] [🏃 도망] [💊 포션 먹고 도전]',
+    ];
+  }
+
+  return null;
+}
+
+function buildFiveWinStreakBonusShowcase() {
+  return [
+    '🔥 연승 중! 🔥',
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '🏆 5연승 달성!',
+    '',
+    '🎁 보너스:',
+    '   - 경험치 +25%',
+    '   - 골드 +50%',
+    '   - 다음 전투 공격력 +10%',
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '💪 기세를 이어가세요!',
+    '',
+    '[⚔️ 계속 전투] [🏠 마을로]',
+  ];
+}
+
+function buildTenWinStreakBonusShowcase() {
+  return [
+    '🎊🎊🎊 10연승! 🎊🎊🎊',
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '  👑 무적의 전사! 👑',
+    '━━━━━━━━━━━━━━━━━━',
+    '',
+    '🎁 특별 보상:',
+    '   - 경험치 +1000',
+    '   - 골드 +500',
+    '   - 🎟️ 보물 상자 티켓 x1',
+    '   - 🏅 칭호: "연승왕"',
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '🔥 당신은 전설입니다!',
+    '',
+    '[⚔️ 계속] [🎁 상자 열기] [📊 프로필]',
+  ];
+}
+
 function appendBattleLog(lines, battleLog) {
   if (!battleLog || battleLog.length === 0) {
     return;
@@ -535,6 +662,14 @@ function buildOngoingDescription({ character, session, battleLog }) {
   const lines = [];
 
   appendBattleLog(lines, battleLog);
+
+  if (session.turn === 1) {
+    const rareEncounterShowcase = buildRareMonsterEncounterShowcase(session, monsterLevel);
+    if (rareEncounterShowcase) {
+      lines.push(...rareEncounterShowcase);
+      lines.push(createDivider('short'));
+    }
+  }
 
   lines.push(`👹 ${session.monsterName} Lv.${monsterLevel}`);
   lines.push(`❤️ ${monsterHpBar} ${session.monsterHp}/${session.monsterMaxHp} HP`);
@@ -563,7 +698,7 @@ function buildOngoingDescription({ character, session, battleLog }) {
     const skillsText = availableSkills
       .map(
         (s) =>
-          `${s.emoji} ${s.name} (${s.manaCost} MP)${currentMana < s.manaCost ? ' ❌' : ''}`,
+          `${s.emoji} ${s.name}${s.skillLevel > 1 ? ` +${s.skillLevel}` : ''} (${s.manaCost} MP)${currentMana < s.manaCost ? ' ❌' : ''}`,
       )
       .join(', ');
     lines.push(`✨ 스킬: ${skillsText}`);
@@ -583,6 +718,7 @@ function buildVictoryDescription({
   session,
   battleLog,
   rewards,
+  streakMilestone = null,
   levelUpDetails,
   droppedEquipment,
   droppedResource,
@@ -613,6 +749,16 @@ function buildVictoryDescription({
     lines.push(`🔧 수리비 -${rewards.repairCost}G`);
     const netGoldReward = rewards?.netGoldReward ?? 0;
     lines.push(`💵 실수령 ${netGoldReward >= 0 ? '+' : ''}${netGoldReward}G`);
+  }
+
+  if (streakMilestone === 5) {
+    lines.push('');
+    lines.push(...buildFiveWinStreakBonusShowcase());
+  }
+
+  if (streakMilestone === 10) {
+    lines.push('');
+    lines.push(...buildTenWinStreakBonusShowcase());
   }
 
   if (droppedEquipment) {
@@ -790,6 +936,7 @@ function createCombatEmbed({
   title = null,
   status = 'ongoing',
   rewards = null,
+  streakMilestone = null,
   levelUpDetails = null,
   droppedEquipment = null,
   droppedResource = null,
@@ -809,6 +956,7 @@ function createCombatEmbed({
       session,
       battleLog,
       rewards,
+      streakMilestone,
       levelUpDetails,
       droppedEquipment,
       droppedResource,
@@ -856,22 +1004,138 @@ function createCombatEmbed({
   return embed;
 }
 
-function rollDamage(attackPower, defenseValue, options = {}) {
-  const critChance = options.critChance ?? 0;
-  const critMultiplier = options.critMultiplier ?? 1.6;
+function applyDamageModifiers(rawDamage, options = {}) {
+  const critChance = options.critChance ?? GLOBAL_CRITICAL_CHANCE;
+  const critMultiplier = options.critMultiplier ?? GLOBAL_CRITICAL_MULTIPLIER;
+  const dodgeChance = options.dodgeChance ?? 0;
+  const allowCritical = options.allowCritical ?? true;
 
-  // 전투 밸런스: 고정 피해 루프를 피하되, 결과가 과도하게 흔들리지 않도록 분산을 제한한다.
-  const variance = 0.85 + Math.random() * 0.3;
-  let rawDamage = Math.round(attackPower * variance) - defenseValue;
-  const isCritical = Math.random() < critChance;
+  const isDodged = dodgeChance > 0 && Math.random() < dodgeChance;
+  if (isDodged) {
+    return {
+      damage: 0,
+      isCritical: false,
+      isDodged: true,
+    };
+  }
+
+  const isCritical = allowCritical && Math.random() < critChance;
+  let damage = Math.max(Math.round(rawDamage), 1);
 
   if (isCritical) {
-    rawDamage = Math.round(rawDamage * critMultiplier);
+    damage = Math.max(Math.round(damage * critMultiplier), 1);
   }
 
   return {
-    damage: Math.max(rawDamage, 1),
+    damage,
     isCritical,
+    isDodged: false,
+  };
+}
+
+function rollDamage(attackPower, defenseValue, options = {}) {
+  // 전투 밸런스: 고정 피해 루프를 피하되, 결과가 과도하게 흔들리지 않도록 분산을 제한한다.
+  const variance = 0.85 + Math.random() * 0.3;
+  const rawDamage = Math.round(attackPower * variance) - defenseValue;
+  return applyDamageModifiers(rawDamage, options);
+}
+
+function buildCriticalAttackShowcase({
+  monsterName,
+  monsterHp,
+  monsterMaxHp,
+  damage,
+}) {
+  const monsterHpBar = createHPBar(monsterHp, monsterMaxHp, 10);
+
+  return [
+    '⚔️ 당신의 공격!',
+    '',
+    CRITICAL_LOG_MESSAGE,
+    '━━━━━━━━━━━━━━━━━━',
+    '  ⚡ CRITICAL HIT ⚡',
+    '━━━━━━━━━━━━━━━━━━',
+    '',
+    `👹 ${monsterName}`,
+    `   ❤️ ${monsterHpBar} ${monsterHp}/${monsterMaxHp} HP`,
+    `   💀 -${damage} 데미지! (2배)`,
+    '',
+    '🎊 완벽한 일격이었다!',
+  ].join('\n');
+}
+
+function buildDodgeShowcase({
+  monsterName,
+  playerName,
+  playerHp,
+  playerMaxHp,
+}) {
+  const playerHpBar = createHPBar(playerHp, playerMaxHp, 10);
+
+  return [
+    `👹 ${monsterName}의 공격!`,
+    '',
+    DODGE_LOG_MESSAGE,
+    '━━━━━━━━━━━━━━━━━━',
+    '  💨 MISS! 💨',
+    '━━━━━━━━━━━━━━━━━━',
+    '',
+    `⚔️ ${playerName}`,
+    `   ❤️ ${playerHpBar} ${playerHp}/${playerMaxHp} HP`,
+    '   🌪️ 화려하게 피했다!',
+    '',
+    '💡 반격 기회!',
+  ].join('\n');
+}
+
+function rollCombatRandomEvent() {
+  if (Math.random() >= COMBAT_RANDOM_EVENT_CHANCE) {
+    return null;
+  }
+
+  const randomEventType = COMBAT_RANDOM_EVENT_TYPES[randomInt(0, COMBAT_RANDOM_EVENT_TYPES.length - 1)];
+
+  if (randomEventType === 'treasure') {
+    return {
+      goldDelta: 100,
+      potionDelta: 2,
+      hpDelta: 0,
+      message: [
+        '⚡ 랜덤 이벤트 발생!',
+        '',
+        '🎁 보물 상자 발견!',
+        '> 골드 +100',
+        '> 포션 +2',
+      ].join('\n'),
+    };
+  }
+
+  if (randomEventType === 'merchant') {
+    return {
+      goldDelta: 0,
+      potionDelta: 0,
+      hpDelta: 0,
+      message: [
+        '⚡ 랜덤 이벤트 발생!',
+        '',
+        '💎 숨겨진 상인 등장!',
+        '> "흠... 이 검을 500골드에 팔지?"',
+        '[✅ 구매] [❌ 거절]',
+      ].join('\n'),
+    };
+  }
+
+  return {
+    goldDelta: 0,
+    potionDelta: 0,
+    hpDelta: -20,
+    message: [
+      '⚡ 랜덤 이벤트 발생!',
+      '',
+      '⚠️ 함정 발동!',
+      '> 가시 함정에 걸렸다!',
+      '> HP -20',
+    ].join('\n'),
   };
 }
 
@@ -890,6 +1154,7 @@ function resolveCombatTurn({
   let playerDefending = false;
   let skillUsed = false;
   let consumedConsumableId = null;
+  let randomEventGoldReward = 0;
 
   const battleLog = [];
 
@@ -900,24 +1165,35 @@ function resolveCombatTurn({
     battleLog.push('');
 
     const enemyFirstStrike = rollDamage(session.monsterAttack, character.defense, {
-      critChance: 0.08,
-      critMultiplier: 1.5,
+      critChance: GLOBAL_CRITICAL_CHANCE,
+      critMultiplier: GLOBAL_CRITICAL_MULTIPLIER,
+      dodgeChance: GLOBAL_EVASION_CHANCE,
     });
 
-    playerHp = Math.max(playerHp - enemyFirstStrike.damage, 0);
-    battleLog.push(`👹 ${session.monsterName}의 선제공격!`);
+    if (enemyFirstStrike.isDodged) {
+      battleLog.push(buildDodgeShowcase({
+        monsterName: session.monsterName,
+        playerName: character.name,
+        playerHp,
+        playerMaxHp: character.maxHp,
+      }));
+    } else {
+      battleLog.push(`👹 ${session.monsterName}의 선제공격!`);
+      playerHp = Math.max(playerHp - enemyFirstStrike.damage, 0);
 
-    if (enemyFirstStrike.isCritical) {
-      battleLog.push('');
-      battleLog.push('━━━━━━━━━━━━━━━━');
-      battleLog.push('💀💀 **몬스터 치명타!!** 💀💀');
-      battleLog.push('━━━━━━━━━━━━━━━━');
-      battleLog.push('');
+      if (enemyFirstStrike.isCritical) {
+        battleLog.push(CRITICAL_LOG_MESSAGE);
+        battleLog.push('');
+        battleLog.push('━━━━━━━━━━━━━━━━');
+        battleLog.push('💀💀 **몬스터 치명타!!** 💀💀');
+        battleLog.push('━━━━━━━━━━━━━━━━');
+        battleLog.push('');
+      }
+
+      battleLog.push(`💔 **${enemyFirstStrike.damage}** 데미지를 받았습니다!`);
     }
 
-    battleLog.push(`💔 **${enemyFirstStrike.damage}** 데미지를 받았습니다!`);
-
-    if (playerHp <= 0) {
+    if (!enemyFirstStrike.isDodged && playerHp <= 0) {
       battleLog.push('');
       battleLog.push('☠️ 선제공격에 쓰러졌습니다...');
 
@@ -948,37 +1224,46 @@ function resolveCombatTurn({
 
   if (action === COMBAT_ACTIONS.attack) {
     const playerStrike = rollDamage(character.attack, session.monsterDefense, {
-      critChance: 0.15,
-      critMultiplier: 1.65,
+      critChance: GLOBAL_CRITICAL_CHANCE,
+      critMultiplier: GLOBAL_CRITICAL_MULTIPLIER,
+      dodgeChance: GLOBAL_EVASION_CHANCE,
     });
 
-    monsterHp = Math.max(monsterHp - playerStrike.damage, 0);
-    battleLog.push('⚔️ 당신의 공격!');
+    if (playerStrike.isDodged) {
+      battleLog.push('⚔️ 당신의 공격!');
+      battleLog.push(DODGE_LOG_MESSAGE);
+      battleLog.push(`🌀 ${session.monsterName}이(가) 공격을 회피했습니다!`);
+    } else {
+      monsterHp = Math.max(monsterHp - playerStrike.damage, 0);
 
-    if (playerStrike.isCritical) {
-      battleLog.push('');
-      battleLog.push('💥💥💥 치명타!! 💥💥💥');
-      battleLog.push('⚡ CRITICAL HIT ⚡');
-      battleLog.push('');
-    }
+      if (playerStrike.isCritical) {
+        battleLog.push(buildCriticalAttackShowcase({
+          monsterName: session.monsterName,
+          monsterHp,
+          monsterMaxHp: session.monsterMaxHp,
+          damage: playerStrike.damage,
+        }));
+      } else {
+        battleLog.push('⚔️ 당신의 공격!');
+        battleLog.push(`💔 ${session.monsterName}에게 ${playerStrike.damage} 데미지!`);
+      }
 
-    battleLog.push(`💔 ${session.monsterName}에게 ${playerStrike.damage} 데미지!`);
-    
-    if (monsterHp <= 0) {
-      battleLog.push('🎯 완벽한 일격이었습니다!');
-    } else if (monsterHp <= session.monsterMaxHp * 0.2) {
-      battleLog.push(`⚠️ ${session.monsterName}이(가) 위태롭습니다!`);
+      if (!playerStrike.isCritical && monsterHp <= 0) {
+        battleLog.push('🎯 완벽한 일격이었습니다!');
+      } else if (monsterHp <= session.monsterMaxHp * 0.2) {
+        battleLog.push(`⚠️ ${session.monsterName}이(가) 위태롭습니다!`);
+      }
     }
   }
 
   if (action === COMBAT_ACTIONS.skill) {
     // 기본 스킬 찾기
     let skill = skillKey ? getSkillByKey(character, skillKey) : getCombatSkill(character);
-    let skillLevel = 1;
+    let skillLevel = skill?.skillLevel || 1;
 
     // 기본 스킬 없으면 전직 스킬 확인
     if (!skill && skillKey && character.advancedClass) {
-      const dbSkill = (character.skills || []).find(s => s.skillKey === skillKey);
+      const dbSkill = (character.skills || []).find((entry) => entry.skillKey === skillKey);
       if (dbSkill) {
         const advancedSkill = getAdvancedSkillByKey(character.advancedClass, skillKey);
         if (advancedSkill) {
@@ -1016,31 +1301,44 @@ function resolveCombatTurn({
           finalDamage = calculateComboDamage(skillEffect.damage, combo);
         }
 
-        monsterHp = Math.max(monsterHp - finalDamage, 0);
+        const skillDamageResult = applyDamageModifiers(finalDamage, {
+          critChance: GLOBAL_CRITICAL_CHANCE,
+          critMultiplier: GLOBAL_CRITICAL_MULTIPLIER,
+          dodgeChance: GLOBAL_EVASION_CHANCE,
+          allowCritical: !skillEffect.critical,
+        });
+
+        finalDamage = skillDamageResult.damage;
+        const isCritical = Boolean(skillEffect.critical || skillDamageResult.isCritical);
+
+        if (!skillDamageResult.isDodged) {
+          monsterHp = Math.max(monsterHp - finalDamage, 0);
+        }
         battleLog.push(skillEffect.message);
 
-        // 💥 크리티컬 시각 효과 (강화)
-        if (skillEffect.critical) {
-          battleLog.push('');
-          battleLog.push('━━━━━━━━━━━━━━━━━━━━');
-          battleLog.push('💥💥💥 **CRITICAL HIT!!** 💥💥💥');
-          battleLog.push('━━━━━━━━━━━━━━━━━━━━');
-          battleLog.push('');
-        }
-
-        // 🎯 콤보 시각 효과
-        if (combo) {
-          battleLog.push('');
-          battleLog.push(getComboVisual(combo));
-          if (skillEffect.critical) {
-            battleLog.push(`💥💥 **크리티컬 콤보 ${finalDamage}** 💥💥`);
-          } else {
-            battleLog.push(`💥 **${finalDamage}** 콤보 데미지!`);
-          }
+        if (skillDamageResult.isDodged) {
+          battleLog.push(DODGE_LOG_MESSAGE);
+          battleLog.push(`🌀 ${session.monsterName}이(가) 스킬을 회피했습니다!`);
         } else {
-          if (skillEffect.critical) {
-            battleLog.push(`💥💥 **${finalDamage}** 크리티컬 데미지! 💥💥`);
-          } else {
+          if (isCritical) {
+            battleLog.push(buildCriticalAttackShowcase({
+              monsterName: session.monsterName,
+              monsterHp,
+              monsterMaxHp: session.monsterMaxHp,
+              damage: finalDamage,
+            }));
+          }
+
+          // 🎯 콤보 시각 효과
+          if (combo) {
+            battleLog.push('');
+            battleLog.push(getComboVisual(combo));
+            if (isCritical) {
+              battleLog.push(`💥💥 **크리티컬 콤보 ${finalDamage}** 💥💥`);
+            } else {
+              battleLog.push(`💥 **${finalDamage}** 콤보 데미지!`);
+            }
+          } else if (!isCritical) {
             battleLog.push(`💔 ${session.monsterName}에게 ${finalDamage} 데미지!`);
           }
         }
@@ -1202,6 +1500,17 @@ function resolveCombatTurn({
     battleLog.push('❌ 도망에 실패했습니다. 몬스터의 반격이 이어집니다!');
   }
 
+  if (monsterHp > 0) {
+    const randomEvent = rollCombatRandomEvent();
+    if (randomEvent) {
+      battleLog.push('');
+      battleLog.push(randomEvent.message);
+      randomEventGoldReward += randomEvent.goldDelta;
+      potionsRemaining += randomEvent.potionDelta;
+      playerHp = Math.max(playerHp + randomEvent.hpDelta, 1);
+    }
+  }
+
   if (monsterHp <= 0) {
     // 연승 업데이트
     const streakResult = updateWinStreak(character);
@@ -1252,7 +1561,7 @@ function resolveCombatTurn({
       ...leveling.characterUpdate,
       ...streakResult.updates,
       mana: recoveredMana,
-      gold: economyAdjustment.nextGold,
+      gold: economyAdjustment.nextGold + randomEventGoldReward,
       battleWins: (character.battleWins || 0) + 1,
     };
 
@@ -1267,36 +1576,12 @@ function resolveCombatTurn({
       );
     }
 
-    // 🔥 연승 메시지 (강화된 시각 효과)
-    if (streakResult.newStreak >= 5) {
-      battleLog.push('');
-      battleLog.push('━━━━━━━━━━━━━━━━━━━━━━━━');
-      
-      if (streakResult.newStreak >= 20) {
-        battleLog.push('💫💫💫 **20연승!!** 💫💫💫');
-        battleLog.push('🎯 COMBO x20! LEGENDARY!');
-      } else if (streakResult.newStreak >= 10) {
-        battleLog.push('🌟🌟 **10연승!!** 🌟🌟');
-        battleLog.push('🎯 COMBO x10! AMAZING!');
-      } else if (streakResult.newStreak >= 5) {
-        battleLog.push('🔥🔥 **5연승!!** 🔥🔥');
-        battleLog.push('🎯 COMBO x5! GREAT!');
-      }
-      
-      if (streakBonus.goldBonus >= 1.0) {
-        battleLog.push(`💰 골드 **${Math.round((streakBonus.goldBonus + 1) * 100)}%** 획득!`);
-      }
-      
-      if (streakBonus.xpBonus >= 1.0) {
-        battleLog.push(`⭐ 경험치 **${Math.round((streakBonus.xpBonus + 1) * 100)}%** 획득!`);
-      }
-      
-      battleLog.push('━━━━━━━━━━━━━━━━━━━━━━━━');
-      battleLog.push('');
-    }
-    
-    // 특별 보상 메시지
-    if (streakResult.messages.length > 0) {
+    const streakMilestone = [5, 10].includes(streakResult.newStreak)
+      ? streakResult.newStreak
+      : null;
+
+    // 5/10연승은 승리 임베드 전용 섹션에서 문구를 고정 출력한다.
+    if (!streakMilestone && streakResult.messages.length > 0) {
       streakResult.messages.forEach((msg) => battleLog.push(msg));
     }
 
@@ -1445,6 +1730,7 @@ function resolveCombatTurn({
       droppedSkill, // 보스 스킬 드롭
       meta: {
         skillUsed,
+        streakMilestone,
         consumedConsumableId,
         hiddenDungeonDiscovered, // 숨겨진 던전 발견 여부
       },
@@ -1452,8 +1738,9 @@ function resolveCombatTurn({
   }
 
   const enemyStrike = rollDamage(session.monsterAttack, character.defense, {
-    critChance: 0.08,
-    critMultiplier: 1.5,
+    critChance: GLOBAL_CRITICAL_CHANCE,
+    critMultiplier: GLOBAL_CRITICAL_MULTIPLIER,
+    dodgeChance: GLOBAL_EVASION_CHANCE,
   });
   const monsterData = getMonsterBySessionName(session.monsterName);
   const skillPatternResult = applyFieldBossSkillPatterns({
@@ -1470,33 +1757,49 @@ function resolveCombatTurn({
   monsterHp = skillPatternResult.monsterHp;
   let enemyDamage = skillPatternResult.enemyDamage;
 
-  if (playerDefending) {
+  if (enemyStrike.isDodged) {
+    enemyDamage = 0;
+  }
+
+  if (playerDefending && enemyDamage > 0) {
     enemyDamage = Math.max(1, Math.floor(enemyDamage * 0.45));
   }
 
-  playerHp = Math.max(playerHp - enemyDamage, 0);
+  if (enemyDamage > 0) {
+    playerHp = Math.max(playerHp - enemyDamage, 0);
+  }
 
   battleLog.push('');
   if (skillPatternResult.logs.length > 0) {
     battleLog.push(...skillPatternResult.logs);
     battleLog.push('');
   }
-  battleLog.push(`👹 ${session.monsterName}의 반격!`);
-  
-  if (enemyStrike.isCritical) {
-    battleLog.push('');
-    battleLog.push('━━━━━━━━━━━━━━━━');
-    battleLog.push('💀💀 **적의 치명타!!** 💀💀');
-    battleLog.push('⚠️ CRITICAL DAMAGE ⚠️');
-    battleLog.push('━━━━━━━━━━━━━━━━');
-    battleLog.push('');
-  }
 
-  if (playerDefending) {
-    battleLog.push('🛡️ 방어로 피해 감소!');
-  }
+  if (enemyStrike.isDodged) {
+    battleLog.push(buildDodgeShowcase({
+      monsterName: session.monsterName,
+      playerName: character.name,
+      playerHp,
+      playerMaxHp: character.maxHp,
+    }));
+  } else {
+    battleLog.push(`👹 ${session.monsterName}의 반격!`);
+    if (enemyStrike.isCritical) {
+      battleLog.push(CRITICAL_LOG_MESSAGE);
+      battleLog.push('');
+      battleLog.push('━━━━━━━━━━━━━━━━');
+      battleLog.push('💀💀 **적의 치명타!!** 💀💀');
+      battleLog.push('⚠️ CRITICAL DAMAGE ⚠️');
+      battleLog.push('━━━━━━━━━━━━━━━━');
+      battleLog.push('');
+    }
 
-  battleLog.push(`💔 **${enemyDamage}** 데미지를 받았습니다.`);
+    if (playerDefending && enemyDamage > 0) {
+      battleLog.push('🛡️ 방어로 피해 감소!');
+    }
+
+    battleLog.push(`💔 **${enemyDamage}** 데미지를 받았습니다.`);
+  }
   
   if (playerHp > 0 && playerHp <= character.maxHp * 0.3) {
     battleLog.push('⚠️ 위험! 체력이 낮습니다!');
@@ -1543,7 +1846,7 @@ function resolveCombatTurn({
       },
       characterUpdate: {
         ...streakReset,
-        gold: defeatEconomy.nextGold,
+        gold: defeatEconomy.nextGold + randomEventGoldReward,
         hp: character.maxHp,
         mana: maxMana,
       },
@@ -1567,6 +1870,7 @@ function resolveCombatTurn({
     characterUpdate: {
       hp: playerHp,
       mana: playerMana,
+      gold: character.gold + randomEventGoldReward,
     },
     meta: {
       skillUsed,
@@ -1878,6 +2182,7 @@ async function handleCombatButton({ interaction, prisma }) {
     title: combatResultTitle(outcome.status, session.monsterName),
     status: outcome.status,
     rewards: outcome.rewards,
+    streakMilestone: outcome.meta?.streakMilestone ?? null,
     levelUpDetails,
     droppedEquipment: outcome.droppedEquipment,
     droppedResource: outcome.droppedResource,
