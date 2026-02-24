@@ -62,6 +62,7 @@ model Character {
   advancedClass            String?
   productionClass          String?
   advancedProductionClass  String?
+  specialProductionClass   String?  // druid, guard
   level                    Int                @default(1)
   xp               Int                @default(0)
   hp               Int                @default(100)
@@ -113,6 +114,8 @@ model Character {
   npcShopSales     NpcShopSale[]
   jobRespecHistories JobRespecHistory[]
   npcContributions NPCContribution[]
+  ownedFields      FarmField[]
+  fieldRaids       FieldRaid[]        @relation("FieldRaider")
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -1064,4 +1067,54 @@ model ServerEvent {
   createdAt  DateTime @default(now())
 
   @@index([active, endTime])
+}
+
+// ==========================================
+// 🌾 Farm Field System
+// ==========================================
+
+model FarmField {
+  id          Int       @id @default(autoincrement())
+  
+  zone        String    // zone3, zone4, zone5
+  fieldType   String    // wheat, carrot, herb, grape, mine, magic
+  fieldIndex  Int       // 1-10 (필드 번호)
+  
+  ownerId     Int?      // 점유자 Character ID
+  owner       Character? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  
+  claimedAt   DateTime?
+  lastPaid    DateTime? // 마지막 유지비 지불
+  
+  // 작물 상태
+  cropType    String?   // 심은 작물
+  plantedAt   DateTime?
+  harvestAt   DateTime?
+  waterCount  Int       @default(0) // 물 준 횟수
+  
+  createdAt   DateTime  @default(now())
+  
+  raids       FieldRaid[]
+  
+  @@unique([zone, fieldType, fieldIndex])
+  @@index([ownerId])
+  @@index([zone])
+}
+
+model FieldRaid {
+  id          Int       @id @default(autoincrement())
+  
+  fieldId     Int
+  field       FarmField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  
+  raiderId    Int?      // null이면 NPC 도적
+  raider      Character? @relation("FieldRaider", fields: [raiderId], references: [id], onDelete: SetNull)
+  
+  success     Boolean   // 성공 여부
+  stolenAmount Int      @default(0)
+  
+  raidedAt    DateTime  @default(now())
+  
+  @@index([fieldId])
+  @@index([raiderId])
 }

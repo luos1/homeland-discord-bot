@@ -134,6 +134,12 @@ async function handleButton(interaction, { prisma, client }) {
     }
   }
 
+  // 농장 버튼
+  if (interaction.customId.startsWith('farm_')) {
+    const { handleFarmButton } = require('../game/farm-buttons');
+    return await handleFarmButton(interaction, { prisma });
+  }
+
   if (isTradeButton(interaction.customId)) {
     return await handleTradeButton(interaction);
   }
