@@ -140,6 +140,35 @@ async function handleButton(interaction, { prisma, client }) {
     return await handleFarmButton(interaction, { prisma });
   }
 
+  // 특수 역할 버튼
+  if (interaction.customId.startsWith('specialrole_')) {
+    const specialroleCommand = client.commands.get('specialrole');
+    if (specialroleCommand) {
+      if (interaction.customId.startsWith('specialrole_choose:')) {
+        const role = interaction.customId.split(':')[1];
+        const fakeInteraction = {
+          ...interaction,
+          options: {
+            getSubcommand: () => 'choose',
+            getString: (name) => (name === 'role' ? role : null),
+          },
+          reply: interaction.update.bind(interaction),
+        };
+        return await specialroleCommand.execute(fakeInteraction, { prisma });
+      }
+      if (interaction.customId === 'specialrole_reset') {
+        const fakeInteraction = {
+          ...interaction,
+          options: {
+            getSubcommand: () => 'reset',
+          },
+          reply: interaction.update.bind(interaction),
+        };
+        return await specialroleCommand.execute(fakeInteraction, { prisma });
+      }
+    }
+  }
+
   if (isTradeButton(interaction.customId)) {
     return await handleTradeButton(interaction);
   }

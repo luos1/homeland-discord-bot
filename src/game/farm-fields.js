@@ -265,7 +265,7 @@ async function claimField(characterId, fieldId) {
   }
   
   const fieldConfig = FIELD_TYPES[field.fieldType];
-  const maxFields = character.specialProductionClass === 'druid' ? 4 : 2;
+  const maxFields = character.specialRole === 'druid' ? 4 : 2;
   
   if (character.ownedFields.length >= maxFields) {
     return { success: false, error: `최대 ${maxFields}개의 필드만 점유할 수 있습니다.` };
@@ -334,7 +334,7 @@ async function plantCrop(fieldId, cropType) {
   let growthHours = crop.growthHours;
   
   // 드루이드 보너스: 성장 속도 +50%
-  if (field.owner.specialProductionClass === 'druid') {
+  if (field.owner.specialRole === 'druid') {
     growthHours = Math.ceil(growthHours * 0.5);
   }
   
@@ -391,7 +391,7 @@ async function harvestCrop(fieldId) {
   let amount = crop.harvestAmount;
   
   // 드루이드 보너스: 수확량 +30%
-  if (field.owner.specialProductionClass === 'druid') {
+  if (field.owner.specialRole === 'druid') {
     amount = Math.ceil(amount * 1.3);
   }
   

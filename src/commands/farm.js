@@ -67,7 +67,18 @@ async function handleStatus(interaction, { prisma }) {
 
   if (fields.length === 0) {
     return interaction.reply({
-      content: '❌ 소유한 필드가 없습니다.\n💡 `/farm discover`로 필드를 탐색하세요!',
+      content: [
+        '❌ 소유한 필드가 없습니다.',
+        '',
+        '💡 **농장 시작 가이드:**',
+        '1️⃣ `/farm discover` - Zone 3+ 필드 탐색',
+        '2️⃣ [점유] 버튼 클릭 - 필드 구매 (5,000G~)',
+        '3️⃣ [씨앗 심기] - 작물 선택 후 재배',
+        '4️⃣ 성장 대기 (4~96시간)',
+        '5️⃣ [수확] - 자원 획득!',
+        '',
+        '🌾 드루이드 역할 선택 시 보너스: 성장 +50%, 수확 +30%',
+      ].join('\n'),
       ephemeral: true,
     });
   }
@@ -96,7 +107,7 @@ async function handleStatus(interaction, { prisma }) {
     ].join('\n');
   });
 
-  const maxFields = character.specialProductionClass === 'druid' ? 4 : 2;
+  const maxFields = character.specialRole === 'druid' ? 4 : 2;
 
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLORS.levelUp)
@@ -104,11 +115,13 @@ async function handleStatus(interaction, { prisma }) {
     .setDescription(
       [
         createDivider(),
+        '💡 **씨앗을 심고 기다리면 자동으로 자랍니다!**',
+        '',
         ...fieldLines,
         '',
         createDivider(),
         `📊 필드: ${fields.length}/${maxFields}개`,
-        character.specialProductionClass === 'druid' ? '✨ 드루이드 보너스: 성장 속도 +50%, 수확량 +30%' : '',
+        character.specialRole === 'druid' ? '✨ 드루이드 보너스: 성장 +50%, 수확 +30%' : '💡 드루이드 역할: 필드 4개, 성장 +50%, 수확 +30%',
       ]
         .filter(Boolean)
         .join('\n')
@@ -176,7 +189,7 @@ async function handleDiscover(interaction, { prisma }) {
     return `${config.emoji} **${config.name} #${field.fieldIndex}** - 점유비: ${config.claimCost.toLocaleString()}G (유지비: ${config.dailyFee.toLocaleString()}G/일)`;
   });
 
-  const maxFields = character.specialProductionClass === 'druid' ? 4 : 2;
+  const maxFields = character.specialRole === 'druid' ? 4 : 2;
 
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLORS.levelUp)
@@ -184,11 +197,17 @@ async function handleDiscover(interaction, { prisma }) {
     .setDescription(
       [
         createDivider(),
+        '💡 **필드를 점유하면 작물을 키울 수 있습니다!**',
+        '   • 점유비를 지불하고 필드 소유',
+        '   • 씨앗 구매 → 성장 대기 → 수확',
+        '   • 수확물은 생산 시스템에서 사용 가능',
+        '',
         ...fieldLines,
         available.length > 10 ? `... 외 ${available.length - 10}개` : '',
         '',
         createDivider(),
-        `💡 현재 필드: ${character.ownedFields.length}/${maxFields}개`,
+        `📊 현재 필드: ${character.ownedFields.length}/${maxFields}개`,
+        character.specialRole === 'druid' ? '✨ 드루이드: 필드 4개, 성장 +50%, 수확 +30%' : '💡 드루이드 역할 선택 시 필드 4개 운영 가능',
       ]
         .filter(Boolean)
         .join('\n')

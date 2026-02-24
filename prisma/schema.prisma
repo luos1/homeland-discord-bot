@@ -62,7 +62,7 @@ model Character {
   advancedClass            String?
   productionClass          String?
   advancedProductionClass  String?
-  specialProductionClass   String?  // druid, guard
+  specialRole              String?  // druid, guard (전투/생산과 별개의 추가 역할)
   level                    Int                @default(1)
   xp               Int                @default(0)
   hp               Int                @default(100)

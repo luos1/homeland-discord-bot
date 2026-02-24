@@ -135,7 +135,7 @@ async function handlePlantMenu(interaction) {
     .setDescription(
       [
         createDivider(),
-        '필드를 선택하세요:',
+        '💡 **비어있는 필드를 선택하세요:**',
         '',
         ...fieldLines,
         '',
@@ -191,7 +191,9 @@ async function handlePlant(interaction) {
     .setDescription(
       [
         createDivider(),
-        '작물을 선택하세요:',
+        '💡 **작물을 선택하세요:**',
+        '   • 씨앗 구매 → 성장 대기 → 수확',
+        '   • 시간이 지나면 자동으로 자랍니다!',
         '',
         ...cropLines,
         '',
@@ -280,8 +282,9 @@ async function handleAbandonMenu(interaction) {
     .setDescription(
       [
         createDivider(),
-        '⚠️ 포기할 필드를 선택하세요',
-        '심어진 작물은 모두 사라집니다!',
+        '⚠️ **포기할 필드를 선택하세요**',
+        '   • 점유 해제 (점유비는 환불되지 않습니다)',
+        '   • 심어진 작물은 모두 사라집니다!',
         '',
         ...fieldLines,
         '',
