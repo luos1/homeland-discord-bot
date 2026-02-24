@@ -26,6 +26,7 @@ let economyMonitoringJob = null;
 let auctionSettlementJob = null;
 let priceAlertJob = null;
 let randomNpcInterval = null;
+let farmMaintenanceInterval = null;
 
 function resolveCleanupIntervalMs() {
   const rawMinutes = process.env.SESSION_CLEANUP_INTERVAL_MINUTES;
@@ -157,6 +158,32 @@ function startAll(prisma, readyClient) {
   } catch (error) {
     console.error('랜덤 NPC 스폰 스케줄러 시작 실패:', error);
   }
+
+  // 농장 유지비 + 도적 습격 스케줄러
+  try {
+    const { runDailyMaintenance } = require('../game/farm-maintenance');
+
+    // 24시간마다 실행 (하루 1회)
+    const maintenanceIntervalMs = 24 * 60 * 60 * 1000; // 24시간
+
+    // 시작 시 즉시 1회 실행
+    runDailyMaintenance()
+      .then(() => console.log('🌾 농장 유지비 첫 실행 완료'))
+      .catch(error => console.error('농장 유지비 첫 실행 실패:', error));
+
+    farmMaintenanceInterval = setInterval(async () => {
+      try {
+        await runDailyMaintenance();
+        console.log('🌾 농장 일일 유지비 완료');
+      } catch (error) {
+        console.error('농장 유지비 실행 실패:', error);
+      }
+    }, maintenanceIntervalMs);
+
+    console.log(`🌾 농장 유지비 스케줄러 시작 (24시간 주기)`);
+  } catch (error) {
+    console.error('농장 유지비 스케줄러 시작 실패:', error);
+  }
 }
 
 function stopAll() {
@@ -185,6 +212,11 @@ function stopAll() {
   if (randomNpcInterval) {
     clearInterval(randomNpcInterval);
     randomNpcInterval = null;
+  }
+
+  if (farmMaintenanceInterval) {
+    clearInterval(farmMaintenanceInterval);
+    farmMaintenanceInterval = null;
   }
 }
 

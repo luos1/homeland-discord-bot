@@ -169,6 +169,21 @@ async function handleButton(interaction, { prisma, client }) {
     }
   }
 
+  // 경비 순찰 버튼
+  if (interaction.customId === 'guard_patrol') {
+    const guardCommand = client.commands.get('guard');
+    if (guardCommand) {
+      const fakeInteraction = {
+        ...interaction,
+        options: {
+          getSubcommand: () => 'patrol',
+        },
+        reply: interaction.update.bind(interaction),
+      };
+      return await guardCommand.execute(fakeInteraction, { prisma });
+    }
+  }
+
   if (isTradeButton(interaction.customId)) {
     return await handleTradeButton(interaction);
   }
