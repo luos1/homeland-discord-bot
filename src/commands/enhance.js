@@ -6,7 +6,6 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('enhance')
-    .setNameLocalizations({ ko: '강화' })
     .setDescription('장비 강화')
     .setDescriptionLocalizations({ ko: '장비 강화' }),
 

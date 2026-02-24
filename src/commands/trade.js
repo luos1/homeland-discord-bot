@@ -6,17 +6,14 @@ const { EMBED_COLORS } = require('../utils/ui');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('trade')
-    .setNameLocalizations({ ko: '거래' })
     .setDescription('플레이어 간 거래')
     .setDescriptionLocalizations({ ko: '플레이어 간 거래' })
     .addSubcommand(sub =>
       sub.setName('start')
-        .setNameLocalizations({ ko: '시작' })
         .setDescription('거래 시작')
         .setDescriptionLocalizations({ ko: '거래 시작' })
         .addUserOption(opt =>
           opt.setName('user')
-            .setNameLocalizations({ ko: '유저' })
             .setDescription('거래할 유저')
             .setDescriptionLocalizations({ ko: '거래할 유저' })
             .setRequired(true)
@@ -24,13 +21,11 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('view')
-        .setNameLocalizations({ ko: '확인' })
         .setDescription('현재 거래 확인')
         .setDescriptionLocalizations({ ko: '현재 거래 확인' })
     )
     .addSubcommand(sub =>
       sub.setName('cancel')
-        .setNameLocalizations({ ko: '취소' })
         .setDescription('거래 취소')
         .setDescriptionLocalizations({ ko: '거래 취소' })
     ),

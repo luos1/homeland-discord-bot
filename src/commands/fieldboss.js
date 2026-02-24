@@ -5,25 +5,21 @@ const prisma = new PrismaClient();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('fieldboss')
-    .setNameLocalizations({ ko: '필드보스' })
     .setDescription('필드보스 입찰 시스템')
     .setDescriptionLocalizations({ ko: '필드보스 입찰 시스템' })
     .addSubcommand(subcommand =>
       subcommand
         .setName('info')
-        .setNameLocalizations({ ko: '정보' })
         .setDescription('현재 필드보스 이벤트 확인')
         .setDescriptionLocalizations({ ko: '현재 필드보스 이벤트 확인' }))
     .addSubcommand(subcommand =>
       subcommand
         .setName('bid')
-        .setNameLocalizations({ ko: '입찰' })
         .setDescription('필드보스에 입찰하기')
         .setDescriptionLocalizations({ ko: '필드보스에 입찰하기' })
         .addIntegerOption(option =>
           option
             .setName('amount')
-            .setNameLocalizations({ ko: '금액' })
             .setDescription('입찰 금액 (골드)')
             .setDescriptionLocalizations({ ko: '입찰 금액 (골드)' })
             .setRequired(true)
@@ -31,7 +27,6 @@ module.exports = {
     .addSubcommand(subcommand =>
       subcommand
         .setName('challenge')
-        .setNameLocalizations({ ko: '도전' })
         .setDescription('필드보스에 도전 (낙찰자 전용)')
         .setDescriptionLocalizations({ ko: '필드보스에 도전 (낙찰자 전용)' })),
 

@@ -37,23 +37,19 @@ const SPECIAL_ROLES = {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('specialrole')
-    .setNameLocalizations({ ko: '특수역할' })
     .setDescription('특수 역할 선택 (드루이드, 경비)')
     .setDescriptionLocalizations({ ko: '특수 역할 선택 (드루이드, 경비)' })
     .addSubcommand(sub =>
       sub.setName('info')
-        .setNameLocalizations({ ko: '정보' })
         .setDescription('특수 역할 정보')
         .setDescriptionLocalizations({ ko: '특수 역할 정보' })
     )
     .addSubcommand(sub =>
       sub.setName('choose')
-        .setNameLocalizations({ ko: '선택' })
         .setDescription('특수 역할 선택')
         .setDescriptionLocalizations({ ko: '특수 역할 선택' })
         .addStringOption(opt =>
           opt.setName('role')
-            .setNameLocalizations({ ko: '역할' })
             .setDescription('선택할 역할')
             .setDescriptionLocalizations({ ko: '선택할 역할' })
             .setRequired(true)
@@ -65,7 +61,6 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('reset')
-        .setNameLocalizations({ ko: '초기화' })
         .setDescription('특수 역할 해제')
         .setDescriptionLocalizations({ ko: '특수 역할 해제' })
     ),

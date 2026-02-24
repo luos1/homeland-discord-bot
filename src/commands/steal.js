@@ -12,12 +12,10 @@ const lastSteal = new Map();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('steal')
-    .setNameLocalizations({ ko: '훔치기' })
     .setDescription('다른 플레이어의 골드 훔치기')
     .setDescriptionLocalizations({ ko: '다른 플레이어의 골드 훔치기' })
     .addUserOption(opt =>
       opt.setName('target')
-        .setNameLocalizations({ ko: '대상' })
         .setDescription('훔칠 대상')
         .setDescriptionLocalizations({ ko: '훔칠 대상' })
         .setRequired(true)

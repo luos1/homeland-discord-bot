@@ -10,18 +10,15 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('guard')
-    .setNameLocalizations({ ko: '경비' })
     .setDescription('경비 순찰 시스템')
     .setDescriptionLocalizations({ ko: '경비 순찰 시스템' })
     .addSubcommand(sub =>
       sub.setName('status')
-        .setNameLocalizations({ ko: '상태' })
         .setDescription('경비 활동 확인')
         .setDescriptionLocalizations({ ko: '경비 활동 확인' })
     )
     .addSubcommand(sub =>
       sub.setName('patrol')
-        .setNameLocalizations({ ko: '순찰' })
         .setDescription('순찰 시작 (1시간)')
         .setDescriptionLocalizations({ ko: '순찰 시작 (1시간)' })
     ),

@@ -5,25 +5,21 @@ const prisma = new PrismaClient();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('guildwar')
-    .setNameLocalizations({ ko: '길드전' })
     .setDescription('길드전 명령어')
     .setDescriptionLocalizations({ ko: '길드전 명령어' })
     .addSubcommand(subcommand =>
       subcommand
         .setName('status')
-        .setNameLocalizations({ ko: '상태' })
         .setDescription('현재 길드전 상태 확인')
         .setDescriptionLocalizations({ ko: '현재 길드전 상태 확인' }))
     .addSubcommand(subcommand =>
       subcommand
         .setName('leaderboard')
-        .setNameLocalizations({ ko: '순위' })
         .setDescription('길드전 순위 확인')
         .setDescriptionLocalizations({ ko: '길드전 순위 확인' }))
     .addSubcommand(subcommand =>
       subcommand
         .setName('contributions')
-        .setNameLocalizations({ ko: '기여도' })
         .setDescription('길드 기여도 순위 확인')
         .setDescriptionLocalizations({ ko: '길드 기여도 순위 확인' })),
 

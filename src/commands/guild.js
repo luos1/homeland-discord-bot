@@ -6,24 +6,20 @@ const { EMBED_COLORS } = require('../utils/ui');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('guild')
-    .setNameLocalizations({ ko: '길드' })
     .setDescription('길드 관리')
     .setDescriptionLocalizations({ ko: '길드 관리' })
     .addSubcommand(sub =>
       sub.setName('create')
-        .setNameLocalizations({ ko: '생성' })
         .setDescription('길드 생성')
         .setDescriptionLocalizations({ ko: '길드 생성' })
         .addStringOption(opt =>
           opt.setName('name')
-            .setNameLocalizations({ ko: '이름' })
             .setDescription('길드 이름')
             .setDescriptionLocalizations({ ko: '길드 이름' })
             .setRequired(true)
         )
         .addStringOption(opt =>
           opt.setName('tag')
-            .setNameLocalizations({ ko: '태그' })
             .setDescription('길드 태그 (예: CLAN)')
             .setDescriptionLocalizations({ ko: '길드 태그 (예: CLAN)' })
             .setRequired(false)
@@ -31,24 +27,20 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('info')
-        .setNameLocalizations({ ko: '정보' })
         .setDescription('길드 정보')
         .setDescriptionLocalizations({ ko: '길드 정보' })
     )
     .addSubcommand(sub =>
       sub.setName('list')
-        .setNameLocalizations({ ko: '목록' })
         .setDescription('모집 중인 길드 목록')
         .setDescriptionLocalizations({ ko: '모집 중인 길드 목록' })
     )
     .addSubcommand(sub =>
       sub.setName('invite')
-        .setNameLocalizations({ ko: '초대' })
         .setDescription('멤버 초대')
         .setDescriptionLocalizations({ ko: '멤버 초대' })
         .addUserOption(opt =>
           opt.setName('user')
-            .setNameLocalizations({ ko: '유저' })
             .setDescription('초대할 유저')
             .setDescriptionLocalizations({ ko: '초대할 유저' })
             .setRequired(true)
@@ -56,18 +48,15 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('leave')
-        .setNameLocalizations({ ko: '탈퇴' })
         .setDescription('길드 탈퇴')
         .setDescriptionLocalizations({ ko: '길드 탈퇴' })
     )
     .addSubcommand(sub =>
       sub.setName('kick')
-        .setNameLocalizations({ ko: '추방' })
         .setDescription('멤버 추방')
         .setDescriptionLocalizations({ ko: '멤버 추방' })
         .addUserOption(opt =>
           opt.setName('user')
-            .setNameLocalizations({ ko: '유저' })
             .setDescription('추방할 유저')
             .setDescriptionLocalizations({ ko: '추방할 유저' })
             .setRequired(true)
@@ -75,12 +64,10 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('promote')
-        .setNameLocalizations({ ko: '승진' })
         .setDescription('멤버 승진 (Officer)')
         .setDescriptionLocalizations({ ko: '멤버 승진 (Officer)' })
         .addUserOption(opt =>
           opt.setName('user')
-            .setNameLocalizations({ ko: '유저' })
             .setDescription('승진시킬 유저')
             .setDescriptionLocalizations({ ko: '승진시킬 유저' })
             .setRequired(true)
@@ -88,12 +75,10 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('demote')
-        .setNameLocalizations({ ko: '강등' })
         .setDescription('멤버 강등 (Member)')
         .setDescriptionLocalizations({ ko: '멤버 강등 (Member)' })
         .addUserOption(opt =>
           opt.setName('user')
-            .setNameLocalizations({ ko: '유저' })
             .setDescription('강등시킬 유저')
             .setDescriptionLocalizations({ ko: '강등시킬 유저' })
             .setRequired(true)
@@ -101,12 +86,10 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('transfer')
-        .setNameLocalizations({ ko: '위임' })
         .setDescription('마스터 위임')
         .setDescriptionLocalizations({ ko: '마스터 위임' })
         .addUserOption(opt =>
           opt.setName('user')
-            .setNameLocalizations({ ko: '유저' })
             .setDescription('새 마스터')
             .setDescriptionLocalizations({ ko: '새 마스터' })
             .setRequired(true)
@@ -114,12 +97,10 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('donate')
-        .setNameLocalizations({ ko: '기부' })
         .setDescription('길드에 골드 기부')
         .setDescriptionLocalizations({ ko: '길드에 골드 기부' })
         .addIntegerOption(opt =>
           opt.setName('gold')
-            .setNameLocalizations({ ko: '골드' })
             .setDescription('기부할 골드')
             .setDescriptionLocalizations({ ko: '기부할 골드' })
             .setRequired(true)
@@ -128,7 +109,6 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub.setName('disband')
-        .setNameLocalizations({ ko: '해체' })
         .setDescription('길드 해체 (마스터만)')
         .setDescriptionLocalizations({ ko: '길드 해체 (마스터만)' })
     ),

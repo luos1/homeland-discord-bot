@@ -6,12 +6,10 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('achievements')
-    .setNameLocalizations({ ko: '업적' })
     .setDescription('업적 목록과 진행도를 확인합니다')
     .setDescriptionLocalizations({ ko: '업적 목록과 진행도를 확인합니다' })
     .addStringOption(opt =>
       opt.setName('category')
-        .setNameLocalizations({ ko: '카테고리' })
         .setDescription('특정 카테고리만 보기')
         .setDescriptionLocalizations({ ko: '특정 카테고리만 보기' })
         .setRequired(false)

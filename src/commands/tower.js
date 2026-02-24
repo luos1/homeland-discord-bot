@@ -18,30 +18,25 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('tower')
-    .setNameLocalizations({ ko: '탑' })
     .setDescription('도전자의 탑')
     .setDescriptionLocalizations({ ko: '도전자의 탑' })
     .addSubcommand(sub =>
       sub.setName('info')
-        .setNameLocalizations({ ko: '정보' })
         .setDescription('탑 정보')
         .setDescriptionLocalizations({ ko: '탑 정보' })
     )
     .addSubcommand(sub =>
       sub.setName('start')
-        .setNameLocalizations({ ko: '도전' })
         .setDescription('도전 시작')
         .setDescriptionLocalizations({ ko: '도전 시작' })
     )
     .addSubcommand(sub =>
       sub.setName('record')
-        .setNameLocalizations({ ko: '기록' })
         .setDescription('내 기록')
         .setDescriptionLocalizations({ ko: '내 기록' })
     )
     .addSubcommand(sub =>
       sub.setName('ranking')
-        .setNameLocalizations({ ko: '랭킹' })
         .setDescription('전체 랭킹')
         .setDescriptionLocalizations({ ko: '전체 랭킹' })
     ),

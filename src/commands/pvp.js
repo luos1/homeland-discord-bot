@@ -5,24 +5,20 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('pvp')
-    .setNameLocalizations({ ko: 'pvp' })
     .setDescription('PvP 전투')
     .setDescriptionLocalizations({ ko: 'PvP 전투' })
     .addSubcommand(sub =>
       sub.setName('queue')
-        .setNameLocalizations({ ko: '매칭' })
         .setDescription('PvP 매칭 대기')
         .setDescriptionLocalizations({ ko: 'PvP 매칭 대기' })
     )
     .addSubcommand(sub =>
       sub.setName('cancel')
-        .setNameLocalizations({ ko: '취소' })
         .setDescription('매칭 취소')
         .setDescriptionLocalizations({ ko: '매칭 취소' })
     )
     .addSubcommand(sub =>
       sub.setName('ranking')
-        .setNameLocalizations({ ko: '랭킹' })
         .setDescription('PvP 랭킹 확인')
         .setDescriptionLocalizations({ ko: 'PvP 랭킹 확인' })
     ),

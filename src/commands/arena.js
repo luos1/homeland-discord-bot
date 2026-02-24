@@ -11,24 +11,20 @@ const matchmakingQueue = new Map();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('arena')
-    .setNameLocalizations({ ko: '투기장' })
     .setDescription('PvP Arena')
     .setDescriptionLocalizations({ ko: 'PvP 투기장' })
     .addSubcommand(sub =>
       sub.setName('queue')
-        .setNameLocalizations({ ko: '대기' })
         .setDescription('매칭 대기열 참가')
         .setDescriptionLocalizations({ ko: '매칭 대기열 참가' })
     )
     .addSubcommand(sub =>
       sub.setName('stats')
-        .setNameLocalizations({ ko: '전적' })
         .setDescription('내 Arena 전적')
         .setDescriptionLocalizations({ ko: '내 Arena 전적' })
     )
     .addSubcommand(sub =>
       sub.setName('ranking')
-        .setNameLocalizations({ ko: '랭킹' })
         .setDescription('Arena 랭킹')
         .setDescriptionLocalizations({ ko: 'Arena 랭킹' })
     ),

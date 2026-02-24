@@ -443,12 +443,10 @@ async function playDice(interaction, bet, isButton = false) {
 const slotCommand = {
   data: new SlashCommandBuilder()
     .setName('slot')
-    .setNameLocalizations({ ko: '슬롯' })
     .setDescription('슬롯머신을 돌려 골드를 걸어보세요!')
     .setDescriptionLocalizations({ ko: '슬롯머신을 돌려 골드를 걸어보세요!' })
     .addIntegerOption(opt =>
       opt.setName('bet')
-        .setNameLocalizations({ ko: '배팅' })
         .setDescription('배팅할 골드 (100~10000)')
         .setDescriptionLocalizations({ ko: '배팅할 골드 (100~10000)' })
         .setRequired(true)
@@ -487,7 +485,6 @@ const slotCommand = {
 const freespinCommand = {
   data: new SlashCommandBuilder()
     .setName('freespin')
-    .setNameLocalizations({ ko: '무료스핀' })
     .setDescription('하루 1회 무료 슬롯! (당첨금 500G 고정)')
     .setDescriptionLocalizations({ ko: '하루 1회 무료 슬롯! (당첨금 500G 고정)' }),
 
@@ -546,12 +543,10 @@ const freespinCommand = {
 const vipslotCommand = {
   data: new SlashCommandBuilder()
     .setName('vipslot')
-    .setNameLocalizations({ ko: 'VIP슬롯' })
     .setDescription('💎 VIP 전용 고배율 슬롯! (프리미엄 전용)')
     .setDescriptionLocalizations({ ko: '💎 VIP 전용 고배율 슬롯! (프리미엄 전용)' })
     .addIntegerOption(opt =>
       opt.setName('bet')
-        .setNameLocalizations({ ko: '배팅' })
         .setDescription('배팅할 골드 (1000~100000)')
         .setDescriptionLocalizations({ ko: '배팅할 골드 (1000~100000)' })
         .setRequired(true)
@@ -582,12 +577,10 @@ const vipslotCommand = {
 const coinCommand = {
   data: new SlashCommandBuilder()
     .setName('coin')
-    .setNameLocalizations({ ko: '코인' })
     .setDescription('동전 던지기! 맞추면 2배!')
     .setDescriptionLocalizations({ ko: '동전 던지기! 맞추면 2배!' })
     .addIntegerOption(opt =>
       opt.setName('bet')
-        .setNameLocalizations({ ko: '배팅' })
         .setDescription('배팅할 골드 (100~10000)')
         .setDescriptionLocalizations({ ko: '배팅할 골드 (100~10000)' })
         .setRequired(true)
@@ -596,7 +589,6 @@ const coinCommand = {
     )
     .addStringOption(opt =>
       opt.setName('choice')
-        .setNameLocalizations({ ko: '선택' })
         .setDescription('앞면 또는 뒷면')
         .setDescriptionLocalizations({ ko: '앞면 또는 뒷면' })
         .setRequired(true)
@@ -630,12 +622,10 @@ const coinCommand = {
 const diceCommand = {
   data: new SlashCommandBuilder()
     .setName('dice')
-    .setNameLocalizations({ ko: '주사위' })
     .setDescription('딜러와 주사위 대결! 이기면 2배!')
     .setDescriptionLocalizations({ ko: '딜러와 주사위 대결! 이기면 2배!' })
     .addIntegerOption(opt =>
       opt.setName('bet')
-        .setNameLocalizations({ ko: '배팅' })
         .setDescription('배팅할 골드 (100~10000)')
         .setDescriptionLocalizations({ ko: '배팅할 골드 (100~10000)' })
         .setRequired(true)

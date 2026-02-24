@@ -5,24 +5,20 @@ const { createCheckoutSession, getSubscription, cancelSubscription } = require('
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('subscribe')
-    .setNameLocalizations({ ko: '구독' })
     .setDescription('프리미엄 구독')
     .setDescriptionLocalizations({ ko: '프리미엄 구독' })
     .addSubcommand(sub =>
       sub.setName('info')
-        .setNameLocalizations({ ko: '정보' })
         .setDescription('구독 정보 확인')
         .setDescriptionLocalizations({ ko: '구독 정보 확인' })
     )
     .addSubcommand(sub =>
       sub.setName('status')
-        .setNameLocalizations({ ko: '상태' })
         .setDescription('내 구독 상태')
         .setDescriptionLocalizations({ ko: '내 구독 상태' })
     )
     .addSubcommand(sub =>
       sub.setName('cancel')
-        .setNameLocalizations({ ko: '취소' })
         .setDescription('구독 취소')
         .setDescriptionLocalizations({ ko: '구독 취소' })
     ),

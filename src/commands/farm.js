@@ -16,23 +16,19 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('farm')
-    .setNameLocalizations({ ko: '농장' })
     .setDescription('농장 필드 관리')
     .setDescriptionLocalizations({ ko: '농장 필드 관리' })
     .addSubcommand(sub =>
       sub.setName('status')
-        .setNameLocalizations({ ko: '상태' })
         .setDescription('내 농장 필드 확인')
         .setDescriptionLocalizations({ ko: '내 농장 필드 확인' })
     )
     .addSubcommand(sub =>
       sub.setName('discover')
-        .setNameLocalizations({ ko: '탐색' })
         .setDescription('새 필드 탐색')
         .setDescriptionLocalizations({ ko: '새 필드 탐색' })
         .addStringOption(opt =>
           opt.setName('zone')
-            .setNameLocalizations({ ko: '지역' })
             .setDescription('탐색할 지역')
             .setDescriptionLocalizations({ ko: '탐색할 지역' })
             .setRequired(true)
