@@ -56,6 +56,52 @@ function createAdminRouter(prisma, client) {
     }
   });
 
+  // User List
+  router.get('/users', async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const sort = req.query.sort || 'level';
+      const order = req.query.order || 'desc';
+
+      const skip = (page - 1) * limit;
+
+      const orderBy = {};
+      orderBy[sort] = order;
+
+      const [users, total] = await Promise.all([
+        prisma.character.findMany({
+          skip,
+          take: limit,
+          orderBy,
+          select: {
+            id: true,
+            odUserId: true,
+            name: true,
+            level: true,
+            class: true,
+            advancedClass: true,
+            gold: true,
+            gems: true,
+            createdAt: true,
+            updatedAt: true,
+          }
+        }),
+        prisma.character.count()
+      ]);
+
+      res.json({
+        users,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      });
+    } catch (error) {
+      console.error('[Admin] Users list error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Search User
   router.get('/user', async (req, res) => {
     try {

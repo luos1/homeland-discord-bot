@@ -410,6 +410,50 @@
         <h3>📋 검색 결과</h3>
         <div id="userInfo"></div>
       </div>
+
+      <div class="panel">
+        <h3>📋 전체 유저 리스트</h3>
+        <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+          <select class="form-input" id="userSort" style="width: auto;" onchange="loadUsers()">
+            <option value="level">레벨순</option>
+            <option value="gold">골드순</option>
+            <option value="createdAt">가입순</option>
+            <option value="updatedAt">활동순</option>
+          </select>
+          <select class="form-input" id="userOrder" style="width: auto;" onchange="loadUsers()">
+            <option value="desc">내림차순</option>
+            <option value="asc">오름차순</option>
+          </select>
+          <button class="btn btn-secondary" onclick="loadUsers()">새로고침</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>캐릭터</th>
+                <th>레벨</th>
+                <th>직업</th>
+                <th>골드</th>
+                <th>젬</th>
+                <th>최근 접속</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="usersTable">
+              <tr>
+                <td colspan="7" style="text-align: center; color: #8892b0;">로딩 중...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+          <span id="userPagination" style="color: #8892b0;"></span>
+          <div>
+            <button class="btn btn-secondary" id="prevPage" onclick="changePage(-1)">← 이전</button>
+            <button class="btn btn-secondary" id="nextPage" onclick="changePage(1)">다음 →</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Give Section -->
@@ -730,9 +774,80 @@
       return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
+    // User List
+    let currentPage = 1;
+    let totalPages = 1;
+
+    async function loadUsers() {
+      const sort = document.getElementById('userSort').value;
+      const order = document.getElementById('userOrder').value;
+      
+      const result = await apiCall(`/api/admin/users?page=${currentPage}&limit=15&sort=${sort}&order=${order}`);
+      const tbody = document.getElementById('usersTable');
+      
+      if (result && result.users) {
+        totalPages = result.totalPages;
+        document.getElementById('userPagination').textContent = 
+          `${result.total}명 중 ${(currentPage-1)*15+1}-${Math.min(currentPage*15, result.total)}명 (페이지 ${currentPage}/${totalPages})`;
+        
+        document.getElementById('prevPage').disabled = currentPage <= 1;
+        document.getElementById('nextPage').disabled = currentPage >= totalPages;
+        
+        if (result.users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #8892b0;">유저가 없습니다</td></tr>';
+          return;
+        }
+        
+        tbody.innerHTML = result.users.map(u => `
+          <tr>
+            <td>
+              <strong>${u.name}</strong><br>
+              <small style="color: #8892b0;">${u.odUserId}</small>
+            </td>
+            <td>Lv.${u.level}</td>
+            <td>${u.advancedClass || u.class}</td>
+            <td>${formatNumber(u.gold)}G</td>
+            <td>💎${formatNumber(u.gems || 0)}</td>
+            <td>${timeAgo(u.updatedAt)}</td>
+            <td>
+              <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8rem;" 
+                onclick="quickGive('${u.odUserId}')">지급</button>
+            </td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e94560;">로드 실패</td></tr>';
+      }
+    }
+
+    function changePage(delta) {
+      currentPage += delta;
+      if (currentPage < 1) currentPage = 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+      loadUsers();
+    }
+
+    function quickGive(discordId) {
+      document.getElementById('giveDiscordId').value = discordId;
+      showSection('give');
+    }
+
+    function timeAgo(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = Math.floor((now - date) / 1000);
+      
+      if (diff < 60) return '방금 전';
+      if (diff < 3600) return `${Math.floor(diff/60)}분 전`;
+      if (diff < 86400) return `${Math.floor(diff/3600)}시간 전`;
+      if (diff < 604800) return `${Math.floor(diff/86400)}일 전`;
+      return date.toLocaleDateString();
+    }
+
     // Init
     loadStats();
     renderLogs();
+    loadUsers();
   </script>
 </body>
 </html>
