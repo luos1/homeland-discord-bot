@@ -21,6 +21,10 @@ const { requireCharacter } = require('../utils/response-helpers');
 function createRewardLines({ rewardPlan, grantedEquipment, premiumDailyGems = 0 }) {
   const lines = [`💰 골드 +${formatNumber(rewardPlan.gold)}G`];
 
+  if (rewardPlan.gems > 0) {
+    lines.push(`💎 젬 +${formatNumber(rewardPlan.gems)}`);
+  }
+
   if (premiumDailyGems > 0) {
     lines.push(`💠 프리미엄 일일 젬 +${formatNumber(premiumDailyGems)}`);
   }
@@ -33,6 +37,10 @@ function createRewardLines({ rewardPlan, grantedEquipment, premiumDailyGems = 0 
     const rarity = RARITIES[grantedEquipment.rarity];
     const rarityLabel = rarity ? `${rarity.emoji} ${rarity.name}` : grantedEquipment.rarity;
     lines.push(`${rarityLabel} 장비: **${grantedEquipment.name}**`);
+  }
+
+  if (rewardPlan.title) {
+    lines.push(`🏅 칭호 획득: **${rewardPlan.title}**`);
   }
 
   return lines;
@@ -173,22 +181,28 @@ module.exports = {
             },
           });
 
+          const totalGems = rewardPlan.gems + premiumBenefits.dailyGemBonus;
+          const updateData = {
+            gold: {
+              increment: rewardPlan.gold,
+            },
+          };
+
+          if (totalGems > 0) {
+            updateData.gems = {
+              increment: totalGems,
+            };
+          }
+
+          if (rewardPlan.title) {
+            updateData.title = rewardPlan.title;
+          }
+
           await tx.character.update({
             where: {
               id: character.id,
             },
-            data: {
-              gold: {
-                increment: rewardPlan.gold,
-              },
-              ...(premiumBenefits.dailyGemBonus > 0
-                ? {
-                    gems: {
-                      increment: premiumBenefits.dailyGemBonus,
-                    },
-                  }
-                : {}),
-            },
+            data: updateData,
           });
 
           for (const consumable of rewardPlan.consumables) {

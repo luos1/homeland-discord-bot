@@ -238,6 +238,176 @@ const ACHIEVEMENTS = {
   },
 
   // ═══════════════════════════════════════════════════════════════
+  // 경제 업적 (추가)
+  // ═══════════════════════════════════════════════════════════════
+  trader_10: {
+    id: 'trader_10',
+    name: '상인 견습생',
+    description: '거래 10회 완료',
+    category: 'wealth',
+    requirement: { type: 'trades_total', value: 10 },
+    rewards: { gold: 1000, xp: 300 },
+    title: '상인 견습생',
+    emoji: '🛒',
+    hidden: false,
+  },
+  trader_100: {
+    id: 'trader_100',
+    name: '대상인',
+    description: '거래 100회 완료',
+    category: 'wealth',
+    requirement: { type: 'trades_total', value: 100 },
+    rewards: { gold: 10000, xp: 2000, gems: 100 },
+    title: '대상인',
+    emoji: '📈',
+    hidden: false,
+  },
+  spender_10k: {
+    id: 'spender_10k',
+    name: '소비왕',
+    description: '골드 10,000G 소비',
+    category: 'wealth',
+    requirement: { type: 'gold_spent', value: 10000 },
+    rewards: { xp: 500, gems: 20 },
+    title: null,
+    emoji: '💸',
+    hidden: false,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 생산 업적
+  // ═══════════════════════════════════════════════════════════════
+  gatherer_50: {
+    id: 'gatherer_50',
+    name: '초보 채집가',
+    description: '자원 50개 채집',
+    category: 'production',
+    requirement: { type: 'resources_gathered', value: 50 },
+    rewards: { gold: 500, xp: 200 },
+    title: null,
+    emoji: '🌾',
+    hidden: false,
+  },
+  gatherer_500: {
+    id: 'gatherer_500',
+    name: '숙련 채집가',
+    description: '자원 500개 채집',
+    category: 'production',
+    requirement: { type: 'resources_gathered', value: 500 },
+    rewards: { gold: 3000, xp: 1000, gems: 50 },
+    title: '채집의 달인',
+    emoji: '⛏️',
+    hidden: false,
+  },
+  crafter_10: {
+    id: 'crafter_10',
+    name: '초보 제작자',
+    description: '아이템 10개 제작',
+    category: 'production',
+    requirement: { type: 'items_crafted', value: 10 },
+    rewards: { gold: 1000, xp: 300 },
+    title: null,
+    emoji: '🔨',
+    hidden: false,
+  },
+  crafter_100: {
+    id: 'crafter_100',
+    name: '장인',
+    description: '아이템 100개 제작',
+    category: 'production',
+    requirement: { type: 'items_crafted', value: 100 },
+    rewards: { gold: 5000, xp: 2000, gems: 80 },
+    title: '장인',
+    emoji: '🛠️',
+    hidden: false,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 소셜 업적
+  // ═══════════════════════════════════════════════════════════════
+  guild_member: {
+    id: 'guild_member',
+    name: '길드 가입',
+    description: '첫 길드 가입',
+    category: 'social',
+    requirement: { type: 'guild_joined', value: 1 },
+    rewards: { gold: 500, xp: 200 },
+    title: null,
+    emoji: '🏰',
+    hidden: false,
+  },
+  guild_contributor: {
+    id: 'guild_contributor',
+    name: '길드 공헌자',
+    description: '길드에 10,000G 기부',
+    category: 'social',
+    requirement: { type: 'guild_contribution', value: 10000 },
+    rewards: { gold: 2000, gems: 50 },
+    title: '길드 공헌자',
+    emoji: '🎖️',
+    hidden: false,
+  },
+  arena_warrior: {
+    id: 'arena_warrior',
+    name: '아레나 전사',
+    description: '아레나 10승 달성',
+    category: 'social',
+    requirement: { type: 'arena_wins', value: 10 },
+    rewards: { gold: 2000, xp: 1000, gems: 30 },
+    title: '검투사',
+    emoji: '⚔️',
+    hidden: false,
+  },
+  arena_champion: {
+    id: 'arena_champion',
+    name: '아레나 챔피언',
+    description: '아레나 50승 달성',
+    category: 'social',
+    requirement: { type: 'arena_wins', value: 50 },
+    rewards: { gold: 10000, xp: 5000, gems: 150 },
+    title: '아레나 챔피언',
+    emoji: '👑',
+    hidden: false,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 강화 업적
+  // ═══════════════════════════════════════════════════════════════
+  enhancer_5: {
+    id: 'enhancer_5',
+    name: '강화 입문',
+    description: '장비 강화 5회 성공',
+    category: 'enhancement',
+    requirement: { type: 'enhancements_success', value: 5 },
+    rewards: { gold: 1000, xp: 300 },
+    title: null,
+    emoji: '✨',
+    hidden: false,
+  },
+  enhancer_50: {
+    id: 'enhancer_50',
+    name: '강화의 달인',
+    description: '장비 강화 50회 성공',
+    category: 'enhancement',
+    requirement: { type: 'enhancements_success', value: 50 },
+    rewards: { gold: 10000, xp: 3000, gems: 100 },
+    title: '강화의 달인',
+    emoji: '⚡',
+    hidden: false,
+  },
+  enhancement_10: {
+    id: 'enhancement_10',
+    name: '+10 달성',
+    description: '장비를 +10까지 강화',
+    category: 'enhancement',
+    requirement: { type: 'max_enhancement', value: 10 },
+    rewards: { gold: 5000, gems: 50 },
+    title: '강화왕',
+    emoji: '💫',
+    hidden: false,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
   // 숨겨진 업적
   // ═══════════════════════════════════════════════════════════════
   night_owl: {
@@ -262,6 +432,39 @@ const ACHIEVEMENTS = {
     emoji: '🔥',
     hidden: true,
   },
+  lucky_spinner: {
+    id: 'lucky_spinner',
+    name: '행운의 손',
+    description: '룰렛에서 레전더리 상자 획득',
+    category: 'hidden',
+    requirement: { type: 'spin_legendary', value: 1 },
+    rewards: { gold: 5000, gems: 100 },
+    title: '행운의 손',
+    emoji: '🍀',
+    hidden: true,
+  },
+  perfect_attendance: {
+    id: 'perfect_attendance',
+    name: '완벽한 출석',
+    description: '출석 100일 달성',
+    category: 'hidden',
+    requirement: { type: 'total_attendance', value: 100 },
+    rewards: { gold: 20000, gems: 200 },
+    title: '완벽한 출석',
+    emoji: '📅',
+    hidden: true,
+  },
+  rich_millionaire: {
+    id: 'rich_millionaire',
+    name: '백만장자의 꿈',
+    description: '한 번에 골드 1,000,000G 보유',
+    category: 'hidden',
+    requirement: { type: 'gold_total', value: 1000000 },
+    rewards: { gems: 500 },
+    title: '백만장자',
+    emoji: '💰',
+    hidden: true,
+  },
 };
 
 const CATEGORY_NAMES = {
@@ -271,6 +474,9 @@ const CATEGORY_NAMES = {
   wealth: '💰 재화',
   attendance: '📅 출석',
   gambling: '🎰 도박',
+  production: '🛠️ 생산',
+  social: '👥 소셜',
+  enhancement: '✨ 강화',
   hidden: '❓ 숨겨진 업적',
 };
 
@@ -318,10 +524,16 @@ async function checkAchievement(prisma, characterId, achievementId) {
       achieved = character.level >= value;
       break;
     case 'gold_total':
-      achieved = (stats.goldEarned || 0) >= value;
+      achieved = (stats.goldEarned || 0) >= value || character.gold >= value;
+      break;
+    case 'gold_spent':
+      achieved = (stats.goldSpent || 0) >= value;
       break;
     case 'attendance_streak':
       achieved = (stats.maxAttendanceStreak || 0) >= value;
+      break;
+    case 'total_attendance':
+      achieved = (stats.totalAttendance || 0) >= value;
       break;
     case 'gambles_played':
       achieved = (stats.gamblesPlayed || 0) >= value;
@@ -331,6 +543,33 @@ async function checkAchievement(prisma, characterId, achievementId) {
       break;
     case 'win_streak':
       achieved = (stats.maxWinStreak || 0) >= value;
+      break;
+    case 'trades_total':
+      achieved = (stats.tradesTotal || 0) >= value;
+      break;
+    case 'resources_gathered':
+      achieved = (stats.resourcesGathered || 0) >= value;
+      break;
+    case 'items_crafted':
+      achieved = (stats.itemsCrafted || 0) >= value;
+      break;
+    case 'guild_joined':
+      achieved = (stats.guildJoined || 0) >= value;
+      break;
+    case 'guild_contribution':
+      achieved = (stats.guildContribution || 0) >= value;
+      break;
+    case 'arena_wins':
+      achieved = (stats.arenaWins || 0) >= value;
+      break;
+    case 'enhancements_success':
+      achieved = (stats.enhancementsSuccess || 0) >= value;
+      break;
+    case 'max_enhancement':
+      achieved = (stats.maxEnhancement || 0) >= value;
+      break;
+    case 'spin_legendary':
+      achieved = (stats.spinLegendary || 0) >= value;
       break;
     case 'play_time':
       // 특수 케이스: 서버에서 별도 체크

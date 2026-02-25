@@ -24,6 +24,7 @@ const ATTENDANCE_REWARDS = {
   },
   7: {
     gold: 1000,
+    gems: 30,
     consumables: [
       {
         name: '장비 가챠 티켓',
@@ -35,17 +36,22 @@ const ATTENDANCE_REWARDS = {
         displayName: '🎟️ 장비 가챠 티켓 x1',
       },
     ],
-    equipmentRarity: null,
+    equipmentRarity: 'rare',
+    title: null,
   },
   14: {
     gold: 3000,
+    gems: 50,
     consumables: [],
-    equipmentRarity: 'rare',
+    equipmentRarity: 'epic',
+    title: null,
   },
   30: {
     gold: 10000,
+    gems: 100,
     consumables: [],
     equipmentRarity: 'legendary',
+    title: '개근상',
   },
 };
 
@@ -152,8 +158,10 @@ function getAttendanceReward(streak) {
       streak,
       isMilestone: true,
       gold: milestoneReward.gold,
+      gems: milestoneReward.gems || 0,
       consumables: milestoneReward.consumables,
       equipmentRarity: milestoneReward.equipmentRarity,
+      title: milestoneReward.title || null,
     };
   }
 
@@ -161,8 +169,10 @@ function getAttendanceReward(streak) {
     streak,
     isMilestone: false,
     gold: DEFAULT_DAILY_GOLD,
+    gems: 0,
     consumables: [],
     equipmentRarity: null,
+    title: null,
   };
 }
 

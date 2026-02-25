@@ -26,6 +26,10 @@ const MONSTERS = {
     goldMax: 20,
     isBoss: false,
     imageUrl: MONSTER_IMAGES.skeletonGrunt,
+    patterns: [
+      { phase: 0, name: '뼈 검 공격', attackMultiplier: 1.0, description: '녹슨 검을 휘두릅니다' },
+      { phase: 1, name: '광란의 연타', attackMultiplier: 1.3, warn: '⚔️ 연속 공격 준비!', description: '공격력 1.3배' },
+    ],
   },
   direWolf: {
     name: '다이어울프',
@@ -37,6 +41,11 @@ const MONSTERS = {
     goldMin: 14,
     goldMax: 26,
     imageUrl: MONSTER_IMAGES.direWolf,
+    patterns: [
+      { phase: 0, name: '견제 공격', attackMultiplier: 0.7, description: '가볍게 견제합니다' },
+      { phase: 1, name: '울부짖음', attackMultiplier: 0, warn: '⚠️ 다음 턴 강공격 예고!', description: '강공격 준비 중' },
+      { phase: 2, name: '맹렬한 돌진', attackMultiplier: 2.0, description: '강력한 돌진 공격!' },
+    ],
   },
   undeadKnight: {
     name: '언데드 기사',
@@ -48,6 +57,11 @@ const MONSTERS = {
     goldMin: 24,
     goldMax: 38,
     imageUrl: MONSTER_IMAGES.undeadKnight,
+    patterns: [
+      { phase: 0, name: '검 공격', attackMultiplier: 1.0, description: '검을 휘두릅니다' },
+      { phase: 1, name: '방어 태세', attackMultiplier: 0.5, defenseBoost: 1.5, warn: '🛡️ 방어 태세 전환!', description: '데미지 50% 감소' },
+      { phase: 2, name: '광폭화', attackMultiplier: 1.5, defenseBoost: 0, warn: '💢 광폭화! 방어력 0!', description: '공격력 1.5배, 방어력 0' },
+    ],
   },
   goblinShaman: {
     name: '고블린 주술사',
@@ -59,6 +73,12 @@ const MONSTERS = {
     goldMin: 26,
     goldMax: 40,
     imageUrl: MONSTER_IMAGES.goblinShaman,
+    patterns: [
+      { phase: 0, name: '마법 공격', attackMultiplier: 1.0, description: '마법 에너지를 발사합니다' },
+      { phase: 1, name: '방어막 소환', attackMultiplier: 0.5, defenseBoost: 2.0, warn: '🛡️ 방어막 전개!', description: '방어력 2배 증가' },
+      { phase: 2, name: '자폭 준비', attackMultiplier: 0, warn: '💀 다음 턴 자폭 예고!', description: '자폭 카운트다운' },
+      { phase: 3, name: '마법 폭발', attackMultiplier: 2.5, selfDamage: 0.5, description: '자폭 공격!' },
+    ],
   },
   ancientDragon: {
     name: '고대 드래곤',
@@ -70,6 +90,11 @@ const MONSTERS = {
     goldMin: 60,
     goldMax: 90,
     imageUrl: MONSTER_IMAGES.ancientDragon,
+    patterns: [
+      { phase: 0, name: '발톱 공격', attackMultiplier: 1.0, description: '날카로운 발톱으로 공격' },
+      { phase: 1, name: '화염 충전', attackMultiplier: 0.3, warn: '🔥 화염 준비 중!', description: '화염 브레스 준비' },
+      { phase: 2, name: '화염 브레스', attackMultiplier: 2.2, description: '뜨거운 화염을 내뿜습니다!' },
+    ],
   },
   lich: {
     name: '리치 군주',
@@ -81,6 +106,11 @@ const MONSTERS = {
     goldMin: 52,
     goldMax: 82,
     imageUrl: MONSTER_IMAGES.lich,
+    patterns: [
+      { phase: 0, name: '암흑 마법', attackMultiplier: 1.0, description: '어둠의 에너지를 발사' },
+      { phase: 1, name: '생명력 흡수', attackMultiplier: 0.8, heal: 0.3, warn: '💀 생명력 흡수!', description: '공격력 0.8배, 데미지의 30% 회복' },
+      { phase: 2, name: '사령 소환', attackMultiplier: 1.5, warn: '👻 사령 소환!', description: '사령과 함께 공격' },
+    ],
   },
   voidStalker: {
     name: '공허 추적자',
@@ -93,6 +123,11 @@ const MONSTERS = {
     goldMax: 138,
     trait: '은신 상태에서 기습적인 일격을 가합니다.',
     imageUrl: MONSTER_IMAGES.voidStalker,
+    patterns: [
+      { phase: 0, name: '은신', attackMultiplier: 0, warn: '🌫️ 은신! 위치 파악 불가!', description: '은신 상태' },
+      { phase: 1, name: '기습 공격', attackMultiplier: 2.5, description: '은신에서 기습!' },
+      { phase: 2, name: '일반 공격', attackMultiplier: 1.0, description: '일반 공격' },
+    ],
   },
   abyssSentinel: {
     name: '심연 감시자',
@@ -105,6 +140,11 @@ const MONSTERS = {
     goldMax: 162,
     trait: '높은 방어력으로 정면 교전을 선호합니다.',
     imageUrl: MONSTER_IMAGES.abyssSentinel,
+    patterns: [
+      { phase: 0, name: '방패 타격', attackMultiplier: 1.0, description: '무거운 방패로 타격' },
+      { phase: 1, name: '철벽 방어', attackMultiplier: 0.3, defenseBoost: 2.5, warn: '🛡️ 철벽 방어!', description: '방어력 2.5배' },
+      { phase: 2, name: '방패 돌진', attackMultiplier: 1.8, description: '방패를 들고 돌진!' },
+    ],
   },
   cursedTemplar: {
     name: '저주받은 성기사',
@@ -117,6 +157,11 @@ const MONSTERS = {
     goldMax: 188,
     trait: '광역 충격파로 전열을 무너뜨립니다.',
     imageUrl: MONSTER_IMAGES.cursedTemplar,
+    patterns: [
+      { phase: 0, name: '성검 공격', attackMultiplier: 1.0, description: '성스러운 검 공격' },
+      { phase: 1, name: '저주의 힘', attackMultiplier: 1.3, warn: '💀 저주 충전!', description: '어둠의 힘 충전' },
+      { phase: 2, name: '충격파', attackMultiplier: 2.0, description: '강력한 충격파 발동!' },
+    ],
   },
   stormHarpy: {
     name: '폭풍 하피',
@@ -129,6 +174,11 @@ const MONSTERS = {
     goldMax: 208,
     trait: '급강하 후 연속 공격으로 압박합니다.',
     imageUrl: MONSTER_IMAGES.stormHarpy,
+    patterns: [
+      { phase: 0, name: '바람 공격', attackMultiplier: 1.0, description: '바람 날개로 공격' },
+      { phase: 1, name: '상승', attackMultiplier: 0, warn: '🌪️ 급강하 준비!', description: '하늘로 상승' },
+      { phase: 2, name: '급강하 연타', attackMultiplier: 2.3, description: '급강하 연속 공격!' },
+    ],
   },
   twilightBehemoth: {
     name: '황혼의 베히모스',
