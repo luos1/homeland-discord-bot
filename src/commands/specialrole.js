@@ -37,7 +37,9 @@ const SPECIAL_ROLES = {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('specialrole')
+		.setNameLocalizations({ "en-US": "specialrole" })
     .setDescription('특수 역할 선택 (드루이드, 경비)')
+		.setDescriptionLocalizations({ "en-US": "특수 역할 선택 (드루이드, 경비)" })
     .setDescriptionLocalizations({ ko: '특수 역할 선택 (드루이드, 경비)' })
     .addSubcommand(sub =>
       sub.setName('info')

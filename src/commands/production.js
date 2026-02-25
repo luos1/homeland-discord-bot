@@ -138,7 +138,9 @@ function createClassSelectActionRow(category) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('production')
-    .setDescription('생산 직업을 선택하거나 확인합니다'),
+		.setNameLocalizations({ "en-US": "production" })
+    .setDescription('생산 직업을 선택하거나 확인합니다')
+		.setDescriptionLocalizations({ "en-US": "View 생산 직업을 선택하거나 확인합니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction);

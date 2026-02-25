@@ -11,7 +11,9 @@ const matchmakingQueue = new Map();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('arena')
+		.setNameLocalizations({ "en-US": "arena" })
     .setDescription('PvP Arena')
+		.setDescriptionLocalizations({ "en-US": "PvP Arena" })
     .setDescriptionLocalizations({ ko: 'PvP 투기장' })
     .addSubcommand(sub =>
       sub.setName('queue')

@@ -14,7 +14,9 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('boss')
+		.setNameLocalizations({ "en-US": "boss" })
     .setDescription('필드 보스에 도전합니다')
+		.setDescriptionLocalizations({ "en-US": "필드 보스에 도전합니다" })
     .addSubcommand((sub) =>
       sub.setName('list').setDescription('사용 가능한 보스 목록을 확인합니다'),
     )

@@ -50,7 +50,9 @@ function buildGroupLines(clientCommands, names) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('help')
-    .setDescription('전체 명령어와 사용 방법을 확인합니다'),
+		.setNameLocalizations({ "en-US": "help" })
+    .setDescription('전체 명령어와 사용 방법을 확인합니다')
+		.setDescriptionLocalizations({ "en-US": "View 전체 명령어와 사용 방법" }),
 
   async execute(interaction, { client }) {
     const fields = COMMAND_GROUPS.map((group) => {

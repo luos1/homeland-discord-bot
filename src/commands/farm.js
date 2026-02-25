@@ -16,7 +16,9 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('farm')
+		.setNameLocalizations({ "en-US": "farm" })
     .setDescription('농장 필드 관리')
+		.setDescriptionLocalizations({ "en-US": "Manage 농장 필드 관리" })
     .setDescriptionLocalizations({ ko: '농장 필드 관리' })
     .addSubcommand(sub =>
       sub.setName('status')

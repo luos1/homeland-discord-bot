@@ -75,7 +75,9 @@ function createProductionJobChangeResultEmbed(character, classData) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('production_jobchange')
-    .setDescription('생산 레벨 5 달성 시 고급 생산 직업으로 전직합니다'),
+		.setNameLocalizations({ "en-US": "production-jobchange" })
+    .setDescription('생산 레벨 5 달성 시 고급 생산 직업으로 전직합니다')
+		.setDescriptionLocalizations({ "en-US": "생산 레벨 5 달성 시 고급 생산 직업으로 전직합니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction);

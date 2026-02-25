@@ -193,7 +193,9 @@ async function createCheckoutSession(userId, tierId) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('premium-subscribe')
-    .setDescription('Premium 구독 플랜을 선택합니다'),
+		.setNameLocalizations({ "en-US": "premium-subscribe" })
+    .setDescription('Premium 구독 플랜을 선택합니다')
+		.setDescriptionLocalizations({ "en-US": "Premium 구독 플랜을 선택합니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction);

@@ -110,7 +110,9 @@ function createAlertListEmbed(alerts) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('alert')
+		.setNameLocalizations({ "en-US": "alert" })
     .setDescription('거래소 가격 알림을 설정합니다')
+		.setDescriptionLocalizations({ "en-US": "거래소 가격 알림을 설정합니다" })
     .addSubcommand((sub) => sub
       .setName('set')
       .setDescription('가격 알림을 생성합니다')

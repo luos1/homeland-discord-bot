@@ -167,7 +167,9 @@ async function buildStatsPayload(prisma, itemType) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('stats')
+		.setNameLocalizations({ "en-US": "stats" })
     .setDescription('최근 거래 통계를 확인합니다')
+		.setDescriptionLocalizations({ "en-US": "View 최근 거래 통계" })
     .addStringOption((option) => option
       .setName('item_type')
       .setDescription('조회 범주')

@@ -473,7 +473,9 @@ function calculateUpgradeCost(equipment) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('shop')
-    .setDescription('상점에서 포션과 장비를 구매하거나 판매합니다'),
+		.setNameLocalizations({ "en-US": "shop" })
+    .setDescription('상점에서 포션과 장비를 구매하거나 판매합니다')
+		.setDescriptionLocalizations({ "en-US": "상점에서 포션과 장비를 구매하거나 판매합니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction, { include: { equipment: true } });

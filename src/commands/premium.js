@@ -153,7 +153,9 @@ function buildPremiumPayload({ character, subscription, now = new Date() }) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('premium')
-    .setDescription('Premium Pass 상태와 자동 전투 설정을 확인합니다'),
+		.setNameLocalizations({ "en-US": "premium" })
+    .setDescription('Premium Pass 상태와 자동 전투 설정을 확인합니다')
+		.setDescriptionLocalizations({ "en-US": "View Premium Pass 상태와 자동 전투 설정" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction);

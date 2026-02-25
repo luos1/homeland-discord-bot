@@ -513,7 +513,9 @@ function parseRankingCustomId(customId) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ranking')
-    .setDescription('다중 카테고리 랭킹을 확인합니다'),
+		.setNameLocalizations({ "en-US": "ranking" })
+    .setDescription('다중 카테고리 랭킹을 확인합니다')
+		.setDescriptionLocalizations({ "en-US": "View 다중 카테고리 랭킹" }),
 
   async execute(interaction, { prisma }) {
     await sendRanking(interaction, {

@@ -18,7 +18,9 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('tower')
+		.setNameLocalizations({ "en-US": "tower" })
     .setDescription('도전자의 탑')
+		.setDescriptionLocalizations({ "en-US": "도전자의 탑" })
     .setDescriptionLocalizations({ ko: '도전자의 탑' })
     .addSubcommand(sub =>
       sub.setName('info')

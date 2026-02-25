@@ -69,7 +69,9 @@ function createRouletteAnimation() {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('spin')
+		.setNameLocalizations({ "en-US": "spin" })
     .setDescription('하루 1회 무료 행운의 룰렛을 돌립니다 (프리미엄: 3회)')
+		.setDescriptionLocalizations({ "en-US": "하루 1회 무료 행운의 룰렛을 돌립니다 (프리미엄: 3회)" })
     .setDescriptionLocalizations({ ko: '하루 1회 무료 행운의 룰렛을 돌립니다 (프리미엄: 3회)' }),
 
   async execute(interaction, { prisma }) {

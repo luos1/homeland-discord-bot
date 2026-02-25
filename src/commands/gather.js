@@ -69,7 +69,9 @@ function createGatherSelectActionRow(resources) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('gather')
-    .setDescription('자원을 채집합니다'),
+		.setNameLocalizations({ "en-US": "gather" })
+    .setDescription('자원을 채집합니다')
+		.setDescriptionLocalizations({ "en-US": "자원을 채집합니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction, { include: { gatherSessions: true } });

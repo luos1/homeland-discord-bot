@@ -11,7 +11,9 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('delete_character')
-    .setDescription('⚠️ 캐릭터를 완전히 삭제합니다 (되돌릴 수 없습니다!)'),
+		.setNameLocalizations({ "en-US": "delete-character" })
+    .setDescription('⚠️ 캐릭터를 완전히 삭제합니다 (되돌릴 수 없습니다!)')
+		.setDescriptionLocalizations({ "en-US": "⚠️ 캐릭터를 완전히 삭제합니다 (되돌릴 수 없습니다!)" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction);

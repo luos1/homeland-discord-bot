@@ -81,7 +81,9 @@ function createProductionSkillsActionRow(character, skills) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('production_skills')
-    .setDescription('생산 스킬을 확인하고 구매합니다'),
+		.setNameLocalizations({ "en-US": "production-skills" })
+    .setDescription('생산 스킬을 확인하고 구매합니다')
+		.setDescriptionLocalizations({ "en-US": "View 생산 스킬을 확인하고 구매합니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction, { include: { skills: true } });

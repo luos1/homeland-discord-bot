@@ -5,7 +5,9 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('pvp')
+		.setNameLocalizations({ "en-US": "pvp" })
     .setDescription('PvP 전투')
+		.setDescriptionLocalizations({ "en-US": "PvP 전투" })
     .setDescriptionLocalizations({ ko: 'PvP 전투' })
     .addSubcommand(sub =>
       sub.setName('queue')

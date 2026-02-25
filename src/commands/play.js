@@ -92,7 +92,9 @@ function getPlayCreateClassChoice(customId) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
-    .setDescription('캐릭터가 없으면 생성하고, 있으면 플레이 화면을 엽니다'),
+		.setNameLocalizations({ "en-US": "play" })
+    .setDescription('캐릭터가 없으면 생성하고, 있으면 플레이 화면을 엽니다')
+		.setDescriptionLocalizations({ "en-US": "Create 캐릭터가 없으면 생성하고, 있으면 플레이 화면을 엽니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await getProfileCharacter(prisma, interaction.user.id);

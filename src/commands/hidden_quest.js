@@ -5,7 +5,9 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('quest')
-    .setDescription('숨겨진 퀘스트 확인 및 보상 수령'),
+		.setNameLocalizations({ "en-US": "quest" })
+    .setDescription('숨겨진 퀘스트 확인 및 보상 수령')
+		.setDescriptionLocalizations({ "en-US": "View 숨겨진 퀘스트 확인 및 보상 수령" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction, { include: { hiddenQuests: true } });

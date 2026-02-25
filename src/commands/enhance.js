@@ -6,7 +6,9 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('enhance')
+		.setNameLocalizations({ "en-US": "enhance" })
     .setDescription('장비 강화')
+		.setDescriptionLocalizations({ "en-US": "장비 강화" })
     .setDescriptionLocalizations({ ko: '장비 강화' }),
 
   async execute(interaction, { prisma }) {

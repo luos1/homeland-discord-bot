@@ -10,7 +10,9 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('guard')
+		.setNameLocalizations({ "en-US": "guard" })
     .setDescription('경비 순찰 시스템')
+		.setDescriptionLocalizations({ "en-US": "경비 순찰 시스템" })
     .setDescriptionLocalizations({ ko: '경비 순찰 시스템' })
     .addSubcommand(sub =>
       sub.setName('status')

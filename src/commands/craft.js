@@ -95,7 +95,9 @@ function createCraftSelectActionRow(recipes, resources) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('craft')
-    .setDescription('아이템을 제작합니다'),
+		.setNameLocalizations({ "en-US": "craft" })
+    .setDescription('아이템을 제작합니다')
+		.setDescriptionLocalizations({ "en-US": "Craft an item" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction, {

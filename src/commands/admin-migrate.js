@@ -8,7 +8,9 @@ const prisma = new PrismaClient();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('admin-migrate')
+		.setNameLocalizations({ "en-US": "admin-migrate" })
     .setDescription('[ADMIN ONLY] Run database migrations')
+		.setDescriptionLocalizations({ "en-US": "[ADMIN ONLY] Run database migrations" })
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {

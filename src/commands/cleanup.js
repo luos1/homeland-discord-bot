@@ -5,7 +5,9 @@ const { EMBED_COLORS } = require('../utils/ui');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('cleanup')
+		.setNameLocalizations({ "en-US": "cleanup" })
     .setDescription('[관리자] 오래된 전투 세션 정리')
+		.setDescriptionLocalizations({ "en-US": "Manage [관리자] 오래된 전투 세션 정리" })
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction, { prisma }) {

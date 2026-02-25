@@ -670,7 +670,9 @@ const resourceChoices = getSortedResources()
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('npc_shop')
+		.setNameLocalizations({ "en-US": "npc-shop" })
     .setDescription('NPC 상점의 동적 가격을 확인합니다')
+		.setDescriptionLocalizations({ "en-US": "View NPC 상점의 동적 가격" })
     .addStringOption((option) =>
       option
         .setName('resource')

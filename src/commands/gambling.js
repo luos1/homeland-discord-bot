@@ -443,7 +443,9 @@ async function playDice(interaction, bet, isButton = false) {
 const slotCommand = {
   data: new SlashCommandBuilder()
     .setName('slot')
+		.setNameLocalizations({ "en-US": "slot" })
     .setDescription('슬롯머신을 돌려 골드를 걸어보세요!')
+		.setDescriptionLocalizations({ "en-US": "슬롯머신을 돌려 골드를 걸어보세요!" })
     .setDescriptionLocalizations({ ko: '슬롯머신을 돌려 골드를 걸어보세요!' })
     .addIntegerOption(opt =>
       opt.setName('bet')

@@ -850,7 +850,9 @@ async function executeVillageHub(interaction, { prisma }) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('village')
-    .setDescription('마을 허브 UI를 열고 버튼으로 메뉴를 이동합니다'),
+		.setNameLocalizations({ "en-US": "village" })
+    .setDescription('마을 허브 UI를 열고 버튼으로 메뉴를 이동합니다')
+		.setDescriptionLocalizations({ "en-US": "마을 허브 UI를 열고 버튼으로 메뉴를 이동합니다" }),
 
   async execute(interaction, context) {
     await executeVillageHub(interaction, context);

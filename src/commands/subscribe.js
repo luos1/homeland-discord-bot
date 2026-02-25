@@ -5,7 +5,9 @@ const { createCheckoutSession, getSubscription, cancelSubscription } = require('
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('subscribe')
+		.setNameLocalizations({ "en-US": "subscribe" })
     .setDescription('프리미엄 구독')
+		.setDescriptionLocalizations({ "en-US": "프리미엄 구독" })
     .setDescriptionLocalizations({ ko: '프리미엄 구독' })
     .addSubcommand(sub =>
       sub.setName('info')

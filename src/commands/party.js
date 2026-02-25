@@ -3,7 +3,9 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('party')
+		.setNameLocalizations({ "en-US": "party" })
     .setDescription('파티 시스템')
+		.setDescriptionLocalizations({ "en-US": "파티 시스템" })
     .addSubcommand(sub =>
       sub
         .setName('create')

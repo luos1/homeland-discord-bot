@@ -140,7 +140,9 @@ async function getAttendanceDashboard(prisma, characterId, todayDateKey) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('attendance')
-    .setDescription('하루 1회 출석 체크를 진행하고 보상을 받습니다'),
+		.setNameLocalizations({ "en-US": "attendance" })
+    .setDescription('하루 1회 출석 체크를 진행하고 보상을 받습니다')
+		.setDescriptionLocalizations({ "en-US": "하루 1회 출석 체크를 진행하고 보상을 받습니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction);

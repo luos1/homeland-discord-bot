@@ -57,7 +57,9 @@ function createGemStatusEmbed({ character, marketSnapshot, feeRate }) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('gem')
+		.setNameLocalizations({ "en-US": "gem" })
     .setDescription('젬 구매/교환 거래소를 이용합니다')
+		.setDescriptionLocalizations({ "en-US": "젬 구매/교환 거래소를 이용합니다" })
     .addSubcommand((sub) =>
       sub
         .setName('status')

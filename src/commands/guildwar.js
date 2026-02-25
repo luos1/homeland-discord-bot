@@ -5,7 +5,9 @@ const prisma = new PrismaClient();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('guildwar')
+		.setNameLocalizations({ "en-US": "guildwar" })
     .setDescription('길드전 명령어')
+		.setDescriptionLocalizations({ "en-US": "길드전 명령어" })
     .setDescriptionLocalizations({ ko: '길드전 명령어' })
     .addSubcommand(subcommand =>
       subcommand

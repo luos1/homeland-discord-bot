@@ -308,7 +308,9 @@ function resolveQuickSellQuantity(mode, quantity) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('sell_resources')
-    .setDescription('보유한 자원을 NPC에게 빠르게 판매합니다'),
+		.setNameLocalizations({ "en-US": "sell-resources" })
+    .setDescription('보유한 자원을 NPC에게 빠르게 판매합니다')
+		.setDescriptionLocalizations({ "en-US": "보유한 자원을 NPC에게 빠르게 판매합니다" }),
 
   async execute(interaction, { prisma }) {
     await renderSellResourcesMenu(interaction, {

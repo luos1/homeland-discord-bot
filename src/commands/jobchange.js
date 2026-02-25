@@ -123,7 +123,9 @@ function createJobChangeResultEmbed(character, classData, bonuses) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('jobchange')
-    .setDescription('레벨 10 달성 시 상위 직업으로 전직합니다'),
+		.setNameLocalizations({ "en-US": "jobchange" })
+    .setDescription('레벨 10 달성 시 상위 직업으로 전직합니다')
+		.setDescriptionLocalizations({ "en-US": "레벨 10 달성 시 상위 직업으로 전직합니다" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction);

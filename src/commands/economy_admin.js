@@ -493,7 +493,9 @@ async function buildFeePayload(prisma, snapshotType = SNAPSHOT_TYPES.hourly) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('economy_admin')
+		.setNameLocalizations({ "en-US": "economy-admin" })
     .setDescription('[관리자] 경제 모니터링/수수료 관리 대시보드')
+		.setDescriptionLocalizations({ "en-US": "Manage [관리자] 경제 모니터링/수수료 관리 대시보드" })
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption((option) => option
       .setName('mode')

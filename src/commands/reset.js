@@ -5,7 +5,9 @@ const { EMBED_COLORS } = require('../utils/ui');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('reset')
-    .setDescription('진행 중인 전투를 강제로 종료합니다 (응급 상황용)'),
+		.setNameLocalizations({ "en-US": "reset" })
+    .setDescription('진행 중인 전투를 강제로 종료합니다 (응급 상황용)')
+		.setDescriptionLocalizations({ "en-US": "진행 중인 전투를 강제로 종료합니다 (응급 상황용)" }),
 
   async execute(interaction, { prisma }) {
     const character = await prisma.character.findUnique({

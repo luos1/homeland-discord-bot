@@ -598,7 +598,9 @@ function mapAuctionErrorToMessage(error) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('auction')
-    .setDescription('실시간 입찰 경매장을 이용합니다'),
+		.setNameLocalizations({ "en-US": "auction" })
+    .setDescription('실시간 입찰 경매장을 이용합니다')
+		.setDescriptionLocalizations({ "en-US": "실시간 입찰 경매장을 이용합니다" }),
 
   async execute(interaction, { prisma }) {
     await renderAuctionMain(interaction, { prisma, mode: 'reply' });

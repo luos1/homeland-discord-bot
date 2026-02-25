@@ -7,7 +7,9 @@ const { requireCharacter } = require('../utils/response-helpers');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('resources')
-    .setDescription('보유한 자원을 확인합니다'),
+		.setNameLocalizations({ "en-US": "resources" })
+    .setDescription('보유한 자원을 확인합니다')
+		.setDescriptionLocalizations({ "en-US": "View 보유한 자원" }),
 
   async execute(interaction, { prisma }) {
     const character = await requireCharacter(prisma, interaction, { include: { resources: { orderBy: { type: 'asc' } } } });

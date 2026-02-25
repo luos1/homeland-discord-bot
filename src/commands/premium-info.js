@@ -186,7 +186,9 @@ function createBenefitsEmbed() {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('premium-info')
-    .setDescription('Premium 플랜 비교 및 혜택을 확인합니다'),
+		.setNameLocalizations({ "en-US": "premium-info" })
+    .setDescription('Premium 플랜 비교 및 혜택을 확인합니다')
+		.setDescriptionLocalizations({ "en-US": "View Premium 플랜 비교 및 혜택" }),
 
   async execute(interaction, { prisma }) {
     await interaction.reply({

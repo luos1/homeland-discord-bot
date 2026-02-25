@@ -6,7 +6,9 @@ const { EMBED_COLORS } = require('../utils/ui');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('guild')
+		.setNameLocalizations({ "en-US": "guild" })
     .setDescription('길드 관리')
+		.setDescriptionLocalizations({ "en-US": "Manage 길드 관리" })
     .setDescriptionLocalizations({ ko: '길드 관리' })
     .addSubcommand(sub =>
       sub.setName('create')

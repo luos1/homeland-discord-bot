@@ -77,7 +77,9 @@ function createTutorialEmbed(snapshot) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('tutorial')
+		.setNameLocalizations({ "en-US": "tutorial" })
     .setDescription('인터랙티브 튜토리얼 진행 상태를 확인하고 관리합니다')
+		.setDescriptionLocalizations({ "en-US": "View 인터랙티브 튜토리얼 진행 상태를 확인하고 관리합니다" })
     .addStringOption((option) =>
       option
         .setName('action')
