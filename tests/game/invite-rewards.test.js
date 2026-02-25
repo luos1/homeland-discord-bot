@@ -73,8 +73,8 @@ describe('invite rewards', () => {
     );
 
     expect(result.rewards).toEqual({
-      inviterGems: 30,
-      inviteeGold: 500,
+      inviterGems: 100,  // Updated: 30 → 100
+      inviteeGold: 2000,  // Updated: 500 → 2000
     });
   });
 
@@ -95,14 +95,14 @@ describe('invite rewards', () => {
     const result = await checkInviteLevelRewards(prisma, 3, 10);
 
     expect(result.hasInvite).toBe(true);
-    expect(result.inviterGemReward).toBe(50);
-    expect(result.inviteeGemReward).toBe(20);
+    expect(result.inviterGemReward).toBe(200);  // Updated: 50 → 200
+    expect(result.inviteeGemReward).toBe(100);  // Updated: 20 → 100
 
     expect(prisma.character.update).toHaveBeenCalledWith({
       where: { id: 2 },
       data: {
         gems: {
-          increment: 50,
+          increment: 200,  // Updated: 50 → 200
         },
       },
     });
@@ -111,7 +111,7 @@ describe('invite rewards', () => {
       where: { id: 3 },
       data: {
         gems: {
-          increment: 20,
+          increment: 100,  // Updated: 20 → 100
         },
       },
     });
@@ -148,14 +148,14 @@ describe('invite rewards', () => {
 
     const result = await checkInviteLevelRewards(prisma, 15, 31);
 
-    expect(result.inviterGemReward).toBe(100);
+    expect(result.inviterGemReward).toBe(500);  // Updated: 100 → 500
     expect(result.inviteeGemReward).toBe(0);
     expect(prisma.character.update).toHaveBeenCalledTimes(1);
     expect(prisma.character.update).toHaveBeenCalledWith({
       where: { id: 12 },
       data: {
         gems: {
-          increment: 100,
+          increment: 500,  // Updated: 100 → 500
         },
       },
     });

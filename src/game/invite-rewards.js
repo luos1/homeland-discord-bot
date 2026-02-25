@@ -1,11 +1,11 @@
 const INVITE_CODE_PREFIX = 'HM-';
 
 const INVITE_REWARD_AMOUNTS = Object.freeze({
-  inviterOnJoinGems: 30,
-  inviterOnLevel10Gems: 50,
-  inviterOnLevel30Gems: 100,
-  inviteeOnJoinGold: 500,
-  inviteeOnLevel10Gems: 20,
+  inviterOnJoinGems: 100,        // 30 → 100 (3배 증가!)
+  inviterOnLevel10Gems: 200,     // 50 → 200 (4배 증가!)
+  inviterOnLevel30Gems: 500,     // 100 → 500 (5배 증가!)
+  inviteeOnJoinGold: 2000,       // 500 → 2000 (4배 증가!)
+  inviteeOnLevel10Gems: 100,     // 20 → 100 (5배 증가!)
 });
 
 const REWARD_FLAGS = Object.freeze({

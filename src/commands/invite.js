@@ -108,19 +108,31 @@ async function handleInviteCode(interaction, prisma) {
 
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLORS.profile)
-    .setTitle('🎟️ 내 친구 초대 코드')
+    .setTitle('🎁 친구 초대하고 엄청난 보상 받기!')
     .setDescription(
       [
         createDivider(),
-        `초대 코드: \`${inviteCode}\``,
+        `**내 초대 코드: \`${inviteCode}\`**`,
         '',
-        '사용 방법',
-        '• 친구가 `/invite use 코드:<내 코드>` 입력',
-        `• 친구는 캐릭터 생성 직후 또는 Lv.${INVITE_LEVEL_LIMIT} 이하일 때만 등록 가능`,
+        '🎉 **친구 1명당 최대 800 젬!**',
+        '• 친구 가입 시: **100 젬** 즉시 지급!',
+        '• 친구가 Lv.10 달성: **200 젬** 추가!',
+        '• 친구가 Lv.30 달성: **500 젬** 추가!',
         '',
-        `📊 지금까지 초대한 친구: ${formatNumber(inviteCount)}명`,
+        '💰 **친구도 혜택!**',
+        '• 가입 즉시: **2,000 골드**',
+        '• Lv.10 달성: **100 젬**',
+        '',
+        '📋 **사용 방법**',
+        `1. 친구가 \`/invite use code:${inviteCode}\` 입력`,
+        `2. 캐릭터 생성 직후 또는 Lv.${INVITE_LEVEL_LIMIT} 이하만 가능`,
+        '3. 친구가 레벨업하면 자동으로 보상!',
+        '',
+        `📊 **지금까지 초대한 친구: ${formatNumber(inviteCount)}명**`,
+        inviteCount > 0 ? `💎 **예상 총 보상: 최대 ${formatNumber(inviteCount * 800)} 젬!**` : '',
         createDivider(),
-      ].join('\n'),
+        '💡 **Tip:** 친구를 많이 초대할수록 더 빨리 성장!',
+      ].filter(Boolean).join('\n'),
     );
 
   await interaction.reply({

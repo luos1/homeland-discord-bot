@@ -222,7 +222,9 @@ function createProfileEmbed(character) {
       ].filter((v) => v !== null && v !== undefined).join('\n'),
     )
     .setFooter({
-      text: jobCheck.allowed ? '전직 가능! /jobchange 명령어를 사용하세요' : '버튼으로 탐험/새로고침을 진행하세요',
+      text: jobCheck.allowed 
+        ? '⚡ 전직 가능! /jobchange 명령어 사용 | 💎 /invite로 친구 초대 시 800 젬!' 
+        : '💎 /invite로 친구 초대 시 최대 800 젬! 지금 바로 시작하세요!',
     });
 }
 
