@@ -624,6 +624,7 @@ model CombatSession {
   monsterImageUrl    String?
   monsterPatternPhase Int      @default(0) // 현재 패턴 단계
   playerCounterChance Boolean  @default(false) // 반격 찬스 버프
+  combatEventEffect  String?  // 랜덤 이벤트 효과 (monster_stun, guaranteed_crit, monster_rage, double_drop)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 }

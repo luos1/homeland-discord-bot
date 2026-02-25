@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
+const path = require('path');
 
 const prisma = new PrismaClient();
 
 const migrations = [
-  'migrations/add_spin_system.sql',
-  'prisma/migrations/combat_phase1_enhancements/migration.sql',
-  'prisma/migrations/add_funnel_tracking.sql'
+  path.join(__dirname, 'migrations/add_spin_system.sql'),
+  path.join(__dirname, 'prisma/migrations/combat_phase1_enhancements/migration.sql'),
+  path.join(__dirname, 'prisma/migrations/add_funnel_tracking.sql')
 ];
 
 async function runMigrations() {
