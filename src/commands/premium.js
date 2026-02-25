@@ -1,225 +1,291 @@
-const {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
-  SlashCommandBuilder,
-} = require('discord.js');
+/**
+ * 프리미엄 관련 명령어
+ * 
+ * - 프리미엄 구독 안내
+ * - Ko-fi 링크 제공
+ * - 수동 프리미엄 활성화 (관리자)
+ */
 
-const { EMBED_COLORS, createDivider, formatNumber } = require('../utils/ui');
-const { requireCharacter } = require('../utils/response-helpers');
-const { buildVillageHomeCustomId } = require('../utils/village');
-const {
-  PREMIUM_PLAN,
-  formatPremiumPrice,
-  resolvePremiumBenefits,
-} = require('../game/premium');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { EMBED_COLORS } = require('../utils/ui');
+const { createDivider } = require('../utils/ui');
 
-const PREMIUM_BUTTON_PREFIX = 'premium:';
-const PREMIUM_TOGGLE_PREFIX = `${PREMIUM_BUTTON_PREFIX}toggle:`;
-const PREMIUM_TOGGLE_FIELDS = new Set(['autoFight', 'autoPotion', 'autoConsumable']);
+// Ko-fi 링크 (환경 변수 또는 기본값)
+const KOFI_LINK = process.env.KOFI_LINK || 'https://ko-fi.com/homeland';
+const PATREON_LINK = process.env.PATREON_LINK || null;
 
-function formatDate(date) {
-  return new Date(date).toLocaleString('ko-KR', {
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatToggleStatus(enabled) {
-  return enabled ? 'ON' : 'OFF';
-}
-
-function getToggleState(subscription, key) {
-  return Boolean(subscription?.[key]);
-}
-
-function parsePremiumToggleField(customId) {
-  if (!customId || !customId.startsWith(PREMIUM_TOGGLE_PREFIX)) {
-    return null;
-  }
-
-  const key = customId.slice(PREMIUM_TOGGLE_PREFIX.length);
-  if (!PREMIUM_TOGGLE_FIELDS.has(key)) {
-    return null;
-  }
-
-  return key;
-}
-
-function createStatusEmbed({ character, subscription, now = new Date() }) {
-  const benefits = resolvePremiumBenefits(subscription, now);
-  const autoFight = getToggleState(subscription, 'autoFight');
-  const autoPotion = getToggleState(subscription, 'autoPotion');
-  const autoConsumable = getToggleState(subscription, 'autoConsumable');
-
-  const descriptionLines = [
-    createDivider(),
-    `🧑 캐릭터: ${character.name}`,
-    `💰 보유 골드: ${formatNumber(character.gold)}G`,
-    `💎 보유 젬: ${formatNumber(character.gems || 0)}`,
-    '',
-    `💳 플랜: ${PREMIUM_PLAN.label} (${formatPremiumPrice()}/월)`,
-    `📌 상태: ${benefits.active ? '활성' : '비활성'}`,
-  ];
-
-  if (benefits.active && subscription?.endDate) {
-    descriptionLines.push(`🗓️ 구독 종료일: ${formatDate(subscription.endDate)}`);
-  }
-
-  descriptionLines.push(
-    '',
-    '⚙️ 자동 전투 설정',
-    `⚔️ 자동전투: ${formatToggleStatus(autoFight)}`,
-    `💊 자동 물약: ${formatToggleStatus(autoPotion)}`,
-    `✨ 자동 소비템: ${formatToggleStatus(autoConsumable)}`,
-    '',
-    benefits.active
-      ? '아래 버튼으로 자동 전투 설정을 변경할 수 있습니다.'
-      : 'Premium 활성화 후 자동 전투 기능을 사용할 수 있습니다.',
-    '',
-    createDivider(),
-    `🎁 전투 경험치 +${Math.round((PREMIUM_PLAN.xpMultiplier - 1) * 100)}%`,
-    `🎁 전투 골드 +${Math.round((PREMIUM_PLAN.goldMultiplier - 1) * 100)}%`,
-    `🎁 일일 젬 +${PREMIUM_PLAN.dailyGemBonus}`,
-  );
-
-  return new EmbedBuilder()
-    .setColor(benefits.active ? EMBED_COLORS.victory : EMBED_COLORS.profile)
-    .setTitle('💎 Premium Pass')
-    .setDescription(descriptionLines.join('\n'));
-}
-
-function createToggleButton({
-  key,
-  label,
-  emoji,
-  enabled,
-  active,
-}) {
-  return new ButtonBuilder()
-    .setCustomId(`${PREMIUM_TOGGLE_PREFIX}${key}`)
-    .setLabel(`${label}: ${formatToggleStatus(enabled)}`)
-    .setEmoji(emoji)
-    .setStyle(enabled ? ButtonStyle.Success : ButtonStyle.Secondary)
-    .setDisabled(!active);
-}
-
-function createPremiumActionRow({ subscription, now = new Date() }) {
-  const benefits = resolvePremiumBenefits(subscription, now);
-  const active = benefits.active;
-
-  return new ActionRowBuilder().addComponents(
-    createToggleButton({
-      key: 'autoFight',
-      label: '자동전투',
-      emoji: '⚔️',
-      enabled: getToggleState(subscription, 'autoFight'),
-      active,
-    }),
-    createToggleButton({
-      key: 'autoPotion',
-      label: '자동 물약',
-      emoji: '💊',
-      enabled: getToggleState(subscription, 'autoPotion'),
-      active,
-    }),
-    createToggleButton({
-      key: 'autoConsumable',
-      label: '자동 소비템',
-      emoji: '✨',
-      enabled: getToggleState(subscription, 'autoConsumable'),
-      active,
-    }),
-    new ButtonBuilder()
-      .setCustomId(buildVillageHomeCustomId())
-      .setLabel('마을로')
-      .setEmoji('🏘️')
-      .setStyle(ButtonStyle.Primary),
-  );
-}
-
-function buildPremiumPayload({ character, subscription, now = new Date() }) {
-  return {
-    embeds: [createStatusEmbed({ character, subscription, now })],
-    components: [createPremiumActionRow({ subscription, now })],
-  };
-}
+// 프리미엄 혜택
+const PREMIUM_BENEFITS = [
+  '🎁 일일 보상 3배 (젬, 골드, 경험치)',
+  '⚡ 자동 전투 모드 (AFK 성장)',
+  '🎨 전용 코스메틱 아이템',
+  '🏆 우선 지원',
+  '✨ 광고 없음',
+  '💾 프리미엄 전용 저장 슬롯',
+];
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('premium')
-		.setNameLocalizations({ "en-US": "premium" })
-    .setDescription('Premium Pass 상태와 자동 전투 설정을 확인합니다')
-		.setDescriptionLocalizations({ "en-US": "View Premium Pass 상태와 자동 전투 설정" }),
+    .setDescription('프리미엄 구독 안내')
+    .setNameLocalizations({ 'en-US': 'premium' })
+    .setDescriptionLocalizations({ 'en-US': 'Premium subscription information' })
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('info')
+        .setDescription('프리미엄 혜택 안내')
+        .setNameLocalizations({ 'en-US': 'info' })
+        .setDescriptionLocalizations({ 'en-US': 'View premium benefits' }),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('status')
+        .setDescription('내 프리미엄 상태 확인')
+        .setNameLocalizations({ 'en-US': 'status' })
+        .setDescriptionLocalizations({ 'en-US': 'Check your premium status' }),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('activate')
+        .setDescription('[관리자] 프리미엄 수동 활성화')
+        .setNameLocalizations({ 'en-US': 'activate' })
+        .setDescriptionLocalizations({ 'en-US': '[Admin] Manually activate premium' })
+        .addUserOption((option) =>
+          option
+            .setName('user')
+            .setDescription('프리미엄을 활성화할 사용자')
+            .setNameLocalizations({ 'en-US': 'user' })
+            .setDescriptionLocalizations({ 'en-US': 'User to activate premium for' })
+            .setRequired(true),
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName('days')
+            .setDescription('프리미엄 기간 (일)')
+            .setNameLocalizations({ 'en-US': 'days' })
+            .setDescriptionLocalizations({ 'en-US': 'Premium duration (days)' })
+            .setRequired(true)
+            .setMinValue(1)
+            .setMaxValue(365),
+        ),
+    ),
 
-  async execute(interaction, { prisma }) {
-    const character = await requireCharacter(prisma, interaction);
-    if (!character) return;
+  async execute(interaction) {
+    const subcommand = interaction.options.getSubcommand();
 
-    const now = new Date();
-    const subscription = await prisma.premiumSubscription.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
+    if (subcommand === 'info') {
+      return handlePremiumInfo(interaction);
+    }
+
+    if (subcommand === 'status') {
+      return handlePremiumStatus(interaction);
+    }
+
+    if (subcommand === 'activate') {
+      return handlePremiumActivate(interaction);
+    }
+  },
+};
+
+/**
+ * 프리미엄 혜택 안내
+ */
+async function handlePremiumInfo(interaction) {
+  const embed = new EmbedBuilder()
+    .setColor(EMBED_COLORS.premium || '#FFD700')
+    .setTitle('💎 프리미엄 구독')
+    .setDescription(
+      [
+        '홈랜드 개발을 지원하고 프리미엄 혜택을 받으세요!',
+        '',
+        createDivider(),
+        '',
+        '✨ **프리미엄 혜택:**',
+        ...PREMIUM_BENEFITS.map((benefit) => `• ${benefit}`),
+        '',
+        createDivider(),
+        '',
+        '💰 **가격: $5/월** (언제든 취소 가능)',
+        '',
+        '🎁 **첫 달 50% 할인!** 지금만 $2.50',
+        '',
+        createDivider(),
+        '',
+        '📋 **구독 방법:**',
+        `1. [Ko-fi 링크 클릭](${KOFI_LINK}) ← 여기!`,
+        '2. "Support" 또는 "Membership" 버튼 클릭',
+        '3. 결제 완료 후 이 Discord에 DM 전송:',
+        '   • Ko-fi 이메일 또는 영수증 스크린샷',
+        '   • Discord ID (자동 입력됨)',
+        '4. ✅ **즉시 프리미엄 활성화!**',
+        '',
+        createDivider(),
+        '',
+        '❓ **참고:**',
+        '• 프리미엄은 편의 기능만 제공합니다',
+        '• 모든 콘텐츠는 무료로 즐기실 수 있습니다',
+        '• 언제든지 취소 가능합니다',
+      ].join('\n'),
+    )
+    .setFooter({
+      text: '지원해주셔서 감사합니다! ❤️',
     });
 
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
+}
+
+/**
+ * 프리미엄 상태 확인
+ */
+async function handlePremiumStatus(interaction) {
+  const prisma = interaction.client.prisma;
+  const userId = interaction.user.id;
+
+  const character = await prisma.character.findUnique({
+    where: { userId },
+    select: {
+      premiumUntil: true,
+    },
+  });
+
+  if (!character) {
     await interaction.reply({
-      ...buildPremiumPayload({
-        character,
-        subscription,
-        now,
-      }),
+      content: '캐릭터를 먼저 생성해주세요. (`/create`)',
       ephemeral: true,
     });
-  },
+    return;
+  }
 
-  async handlePremiumButton(interaction, { prisma }) {
-    const toggleField = parsePremiumToggleField(interaction.customId);
-    if (!toggleField) {
-      return false;
-    }
+  const isPremium = character.premiumUntil && new Date(character.premiumUntil) > new Date();
 
-    const character = await requireCharacter(prisma, interaction);
-    if (!character) return true;
+  if (!isPremium) {
+    const embed = new EmbedBuilder()
+      .setColor(EMBED_COLORS.error || '#FF0000')
+      .setTitle('💎 프리미엄 상태')
+      .setDescription(
+        [
+          '현재 프리미엄 구독이 없습니다.',
+          '',
+          `프리미엄 혜택을 받으시려면 \`/premium info\` 명령어를 확인하세요!`,
+        ].join('\n'),
+      );
 
-    const now = new Date();
-    const subscription = await prisma.premiumSubscription.findUnique({
-      where: {
-        userId: interaction.user.id,
-      },
+    await interaction.reply({
+      embeds: [embed],
+      ephemeral: true,
     });
-    const benefits = resolvePremiumBenefits(subscription, now);
+    return;
+  }
 
-    if (!subscription || !benefits.active) {
-      await interaction.reply({
-        content: '활성 Premium Pass가 없습니다.',
-        ephemeral: true,
+  const daysLeft = Math.ceil((new Date(character.premiumUntil) - new Date()) / (1000 * 60 * 60 * 24));
+
+  const embed = new EmbedBuilder()
+    .setColor(EMBED_COLORS.premium || '#FFD700')
+    .setTitle('💎 프리미엄 활성화됨!')
+    .setDescription(
+      [
+        '✅ **프리미엄 구독 중**',
+        '',
+        `⏰ **남은 기간:** ${daysLeft}일`,
+        `📅 **만료일:** ${new Date(character.premiumUntil).toLocaleDateString('ko-KR')}`,
+        '',
+        '✨ **활성 혜택:**',
+        ...PREMIUM_BENEFITS.map((benefit) => `• ${benefit}`),
+      ].join('\n'),
+    )
+    .setFooter({
+      text: '지원해주셔서 감사합니다! ❤️',
+    });
+
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
+}
+
+/**
+ * 프리미엄 수동 활성화 (관리자만)
+ */
+async function handlePremiumActivate(interaction) {
+  // 관리자 권한 체크
+  if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+    await interaction.reply({
+      content: '❌ 이 명령어는 관리자만 사용할 수 있습니다.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const targetUser = interaction.options.getUser('user');
+  const days = interaction.options.getInteger('days');
+  const prisma = interaction.client.prisma;
+
+  const character = await prisma.character.findUnique({
+    where: { userId: targetUser.id },
+  });
+
+  if (!character) {
+    await interaction.reply({
+      content: `❌ ${targetUser.username}님은 캐릭터가 없습니다.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // 프리미엄 기간 설정
+  const now = new Date();
+  const premiumUntil = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+  await prisma.character.update({
+    where: { id: character.id },
+    data: {
+      premiumUntil,
+    },
+  });
+
+  const embed = new EmbedBuilder()
+    .setColor(EMBED_COLORS.success || '#00FF00')
+    .setTitle('✅ 프리미엄 활성화 완료')
+    .setDescription(
+      [
+        `**사용자:** ${targetUser.username}`,
+        `**기간:** ${days}일`,
+        `**만료일:** ${premiumUntil.toLocaleDateString('ko-KR')}`,
+        '',
+        '프리미엄이 정상적으로 활성화되었습니다!',
+      ].join('\n'),
+    );
+
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
+
+  // 사용자에게 DM 전송 시도
+  try {
+    const userEmbed = new EmbedBuilder()
+      .setColor(EMBED_COLORS.premium || '#FFD700')
+      .setTitle('🎉 프리미엄 활성화!')
+      .setDescription(
+        [
+          `축하합니다! ${days}일간 프리미엄이 활성화되었습니다!`,
+          '',
+          '✨ **혜택:**',
+          ...PREMIUM_BENEFITS.map((benefit) => `• ${benefit}`),
+          '',
+          `만료일: ${premiumUntil.toLocaleDateString('ko-KR')}`,
+        ].join('\n'),
+      )
+      .setFooter({
+        text: '지원해주셔서 감사합니다! ❤️',
       });
-      return true;
-    }
 
-    const updatedSubscription = await prisma.premiumSubscription.update({
-      where: {
-        userId: interaction.user.id,
-      },
-      data: {
-        [toggleField]: !Boolean(subscription[toggleField]),
-      },
-    });
-
-    await interaction.update(buildPremiumPayload({
-      character,
-      subscription: updatedSubscription,
-      now,
-    }));
-
-    return true;
-  },
-
-  PREMIUM_BUTTON_PREFIX,
-};
+    await targetUser.send({ embeds: [userEmbed] });
+  } catch (error) {
+    // DM 실패 시 무시 (DM 비활성화 등)
+    console.log(`Could not send DM to ${targetUser.username}`);
+  }
+}
