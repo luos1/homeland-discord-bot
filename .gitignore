@@ -23,5 +23,5 @@ Thumbs.db
 .idea/
 
 # Prisma
-prisma/migrations/
+# prisma/migrations/ - Phase 1에서 필요함
 coverage/
