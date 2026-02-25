@@ -340,7 +340,9 @@ function createProfileActionRow(options = {}) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('profile')
-    .setDescription('캐릭터 프로필과 전투 상태를 확인합니다'),
+		.setNameLocalizations({ "en-US": 'profile' })
+    .setDescription('캐릭터 프로필과 전투 상태를 확인합니다')
+		.setDescriptionLocalizations({ "en-US": 'View character profile and stats' }),
 
   async execute(interaction, { prisma }) {
     const character = await getProfileCharacter(prisma, interaction.user.id);

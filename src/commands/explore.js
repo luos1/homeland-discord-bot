@@ -37,7 +37,8 @@ function createZoneInfoEmbed(zoneKey) {
     return new EmbedBuilder()
       .setColor(EMBED_COLORS.combat)
       .setTitle('❌ 존을 찾을 수 없습니다')
-      .setDescription('유효하지 않은 존입니다.');
+      .setDescription('유효하지 않은 존입니다.')
+		.setDescriptionLocalizations({ "en-US": 'Start exploring to find monsters and resources' });
   }
 
   const monsterNames = zone.monsterKeys.map((key) => MONSTERS[key].name).join(', ');
@@ -286,6 +287,7 @@ function createMonsterSelectionActionRows(zoneKey, zone) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('explore')
+		.setNameLocalizations({ "en-US": 'explore' })
     .setDescription('탐험지를 선택해 전투를 시작합니다')
     .addStringOption((option) =>
       option

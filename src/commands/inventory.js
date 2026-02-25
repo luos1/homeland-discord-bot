@@ -646,7 +646,8 @@ function createEquipmentDetailEmbed(equipment) {
     return new EmbedBuilder()
       .setColor(EMBED_COLORS.neutral)
       .setTitle('📦 장비 정보')
-      .setDescription('장비 정보를 불러올 수 없습니다.');
+      .setDescription('장비 정보를 불러올 수 없습니다.')
+		.setDescriptionLocalizations({ "en-US": 'View your inventory and equipped items' });
   }
 
   const typeData = EQUIPMENT_TYPES[equipment.type] || FALLBACK_EQUIPMENT_TYPE;
@@ -769,6 +770,7 @@ function createEquipmentActionRow(equipment) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('inventory')
+		.setNameLocalizations({ "en-US": 'inventory' })
     .setDescription('보유한 장비를 확인하고 관리합니다'),
 
   async execute(interaction, { prisma }) {

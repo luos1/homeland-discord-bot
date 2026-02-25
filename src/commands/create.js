@@ -62,7 +62,9 @@ function createCharacterActionRow() {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('create')
+		.setNameLocalizations({ "en-US": 'create' })
     .setDescription('홈랜드 캐릭터를 생성합니다')
+		.setDescriptionLocalizations({ "en-US": 'Create a new character' })
     .addStringOption((option) =>
       option
         .setName('class')

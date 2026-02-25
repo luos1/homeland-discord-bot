@@ -4,6 +4,7 @@ const { getTodayQuests, claimQuestReward } = require('../game/daily-quest-system
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('daily')
+		.setNameLocalizations({ "en-US": 'daily' })
     .setDescription('일일 퀘스트 확인')
     .setDescriptionLocalizations({ ko: '일일 퀘스트 확인' }),
 

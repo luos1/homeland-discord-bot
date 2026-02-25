@@ -1149,7 +1149,9 @@ async function getCharacterForMarket(prisma, userId, includeOptions = false) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('market')
-    .setDescription('플레이어 주문장 거래소를 이용합니다'),
+		.setNameLocalizations({ "en-US": 'market' })
+    .setDescription('플레이어 주문장 거래소를 이용합니다')
+		.setDescriptionLocalizations({ "en-US": 'Open the market to buy and sell items' }),
 
   async execute(interaction, { prisma }) {
     const character = await getCharacterForMarket(prisma, interaction.user.id);
