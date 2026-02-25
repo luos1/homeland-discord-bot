@@ -1,0 +1,37 @@
+# SEO Keywords for Homeland Discord Bot
+
+## Primary Keywords
+- Discord RPG bot
+- Free Discord bot
+- Discord game bot
+- Discord RPG
+- Discord bot free
+- Best Discord RPG bot
+- Discord economy bot
+- Discord leveling bot
+
+## Secondary Keywords
+- Discord bot with guilds
+- Discord PvP bot
+- Discord marketplace bot
+- Discord.js bot
+- Free Discord game
+- Discord adventure bot
+- Discord combat bot
+- Multiplayer Discord bot
+
+## Long-tail Keywords
+- How to add RPG bot to Discord
+- Best free Discord RPG bot 2026
+- Discord bot with player economy
+- Discord bot guild system
+- Discord bot party system
+- Free Discord game with levels
+- Discord bot like RPG
+- Open source Discord bot
+
+## Topics for GitHub
+discord, discord-bot, rpg, game, discord-js, free, open-source, nodejs, gaming, bot, rpg-game, discord-rpg, economy, multiplayer, guilds, pvp, marketplace, leveling
+
+## Meta Description
+Homeland - Free Discord RPG bot with 100 levels, dynamic economy, guilds, PvP arena. Battle-tested with 500+ users. Open source, fully featured, no paywalls.
