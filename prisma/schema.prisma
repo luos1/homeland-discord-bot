@@ -360,20 +360,71 @@ model TradeHistory {
   @@index([createdAt, buyerId])
 }
 
+enum PremiumTier {
+  bronze
+  silver
+  gold
+  diamond
+  elite
+  founder
+  starter
+}
+
 model PremiumSubscription {
-  userId         String    @id
-  character      Character @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId         String       @id
+  character      Character    @relation(fields: [userId], references: [userId], onDelete: Cascade)
   planId         String
+  tier           PremiumTier?
   startDate      DateTime
   endDate        DateTime
-  autoFight      Boolean   @default(false)
-  autoPotion     Boolean   @default(false)
-  autoConsumable Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  autoFight      Boolean      @default(false)
+  autoPotion     Boolean      @default(false)
+  autoConsumable Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([planId])
+  @@index([tier])
   @@index([endDate])
+}
+
+model PremiumHistory {
+  id          Int          @id @default(autoincrement())
+  userId      String
+  tier        PremiumTier
+  amount      Float        // USD
+  type        String       // subscription, one_time
+  purchasedAt DateTime     @default(now())
+  expiresAt   DateTime?
+  
+  stripeInvoiceId      String?
+  stripeSubscriptionId String?
+  stripePriceId        String?
+  
+  createdAt   DateTime     @default(now())
+
+  @@index([userId, purchasedAt])
+  @@index([tier, purchasedAt])
+  @@index([type, purchasedAt])
+}
+
+model Coupon {
+  id              Int       @id @default(autoincrement())
+  code            String    @unique
+  discountPercent Int       // 10, 30, 50 etc
+  discountAmount  Float?    // 고정 할인 금액 (USD)
+  maxUses         Int?      // null = 무제한
+  usageCount      Int       @default(0)
+  expiresAt       DateTime?
+  active          Boolean   @default(true)
+  
+  applicableTiers String    @default("all") // all, bronze,silver,gold
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([code, active])
+  @@index([expiresAt])
 }
 
 model GemTransaction {
