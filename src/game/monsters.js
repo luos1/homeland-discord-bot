@@ -551,6 +551,40 @@ function getZoneWithTypeData(zoneKey) {
   };
 }
 
+// 레어 prefix 제거
+function stripRareMonsterPrefix(monsterName = '') {
+  if (!monsterName) return monsterName;
+  
+  for (const rareType of Object.values(RARE_TYPES)) {
+    const prefixes = [rareType.prefix, ...(rareType.legacyPrefixes || [])];
+    for (const prefix of prefixes) {
+      const prefixWithSpace = `${prefix} `;
+      if (monsterName.startsWith(prefixWithSpace)) {
+        return monsterName.slice(prefixWithSpace.length);
+      }
+    }
+  }
+  
+  return monsterName;
+}
+
+// 세션 이름으로 몬스터 찾기
+function getMonsterBySessionName(monsterName) {
+  if (!monsterName) return null;
+
+  // 정확히 일치
+  const exactMatch = Object.values(MONSTERS).find(m => m.name === monsterName);
+  if (exactMatch) return exactMatch;
+
+  // 레어 prefix 제거 후 찾기
+  const normalized = stripRareMonsterPrefix(monsterName);
+  const normalizedMatch = Object.values(MONSTERS).find(m => m.name === normalized);
+  if (normalizedMatch) return normalizedMatch;
+
+  // endsWith로 찾기
+  return Object.values(MONSTERS).find(m => monsterName.endsWith(m.name)) ?? null;
+}
+
 module.exports = {
   MONSTERS,
   ZONES,
@@ -564,4 +598,6 @@ module.exports = {
   spawnMonster,
   rollRareMonster,
   applyRareModifier,
+  getMonsterBySessionName,
+  stripRareMonsterPrefix,
 };
