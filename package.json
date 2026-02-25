@@ -5,7 +5,7 @@
   "main": "src/bot.js",
   "scripts": {
     "build": "prisma generate",
-    "start": "prisma db push --accept-data-loss --skip-generate && node src/bot.js",
+    "start": "prisma db push --accept-data-loss --skip-generate && node migrate-now.js && node src/bot.js",
     "dev": "node --watch src/bot.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
