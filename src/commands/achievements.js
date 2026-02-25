@@ -19,7 +19,10 @@ module.exports = {
           { name: '📈 성장', value: 'level' },
           { name: '💰 재화', value: 'wealth' },
           { name: '📅 출석', value: 'attendance' },
-          { name: '🎰 도박', value: 'gambling' }
+          { name: '🎰 도박', value: 'gambling' },
+          { name: '🛠️ 생산', value: 'production' },
+          { name: '👥 소셜', value: 'social' },
+          { name: '✨ 강화', value: 'enhancement' }
         )
     ),
 
@@ -104,6 +107,9 @@ module.exports = {
         { label: '재화', value: 'wealth', emoji: '💰' },
         { label: '출석', value: 'attendance', emoji: '📅' },
         { label: '도박', value: 'gambling', emoji: '🎰' },
+        { label: '생산', value: 'production', emoji: '🛠️' },
+        { label: '소셜', value: 'social', emoji: '👥' },
+        { label: '강화', value: 'enhancement', emoji: '✨' },
       ]);
 
     const row = new ActionRowBuilder().addComponents(selectMenu);

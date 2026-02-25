@@ -675,6 +675,27 @@ function buildOngoingDescription({ character, session, battleLog }) {
   lines.push(`👹 ${session.monsterName} Lv.${monsterLevel}`);
   lines.push(`❤️ ${monsterHpBar} ${session.monsterHp}/${session.monsterMaxHp} HP`);
   lines.push(`⚔️ 공격력: ${session.monsterAttack} | 🛡️ 방어력: ${session.monsterDefense}`);
+  
+  // 🎮 Phase 1: 몬스터 현재 패턴 표시
+  const { getCurrentPattern } = require('./combat-patterns');
+  const currentPattern = getCurrentPattern(session.monsterName, session.monsterPatternPhase || 0);
+  if (currentPattern) {
+    lines.push(`📋 현재 패턴: ${currentPattern.name} - ${currentPattern.description}`);
+  }
+  
+  // 🎮 Phase 1: 활성 전투 이벤트 표시
+  if (session.combatEventEffect) {
+    if (session.combatEventEffect === 'monster_stun') {
+      lines.push(`⚡ **몬스터 기절! (이번 턴 공격 없음)**`);
+    } else if (session.combatEventEffect === 'guaranteed_crit') {
+      lines.push(`🌟 **결정적 순간! (다음 공격 크리티컬 확정)**`);
+    } else if (session.combatEventEffect === 'monster_rage') {
+      lines.push(`💀 **몬스터 광폭화! (다음 공격 2배)**`);
+    } else if (session.combatEventEffect === 'double_drop') {
+      lines.push(`🍀 **행운의 순간! (드롭 확률 2배)**`);
+    }
+  }
+  
   lines.push('');
   lines.push(createDivider());
   lines.push(`⚔️ ${character.name} (${localizeClassName(character.class)}) Lv.${character.level}`);
@@ -692,6 +713,11 @@ function buildOngoingDescription({ character, session, battleLog }) {
   }
   
   lines.push(`⚔️ 공격력: ${character.attack} | 🛡️ 방어력: ${character.defense}`);
+  
+  // 🎮 Phase 1: 플레이어 버프 표시
+  if (session.playerCounterChance) {
+    lines.push(`💥 버프: **반격 찬스!** (다음 공격 +20%)`);
+  }
   
   // 사용 가능한 스킬 목록
   const availableSkills = getAvailableSkills(character);
@@ -1224,8 +1250,19 @@ function resolveCombatTurn({
   }
 
   if (action === COMBAT_ACTIONS.attack) {
-    const playerStrike = rollDamage(character.attack, session.monsterDefense, {
-      critChance: GLOBAL_CRITICAL_CHANCE,
+    // 🎮 Phase 1: 반격 찬스 버프 적용 (공격력 +20%)
+    let attackPower = character.attack;
+    let hadCounterBonus = false;
+    if (session.playerCounterChance) {
+      attackPower = Math.floor(character.attack * 1.2);
+      hadCounterBonus = true;
+    }
+
+    // 🎮 Phase 1: 랜덤 이벤트 - 결정적 순간 (크리티컬 확정)
+    const hasGuaranteedCrit = session.combatEventEffect === 'guaranteed_crit';
+
+    const playerStrike = rollDamage(attackPower, session.monsterDefense, {
+      critChance: hasGuaranteedCrit ? 1.0 : GLOBAL_CRITICAL_CHANCE,
       critMultiplier: GLOBAL_CRITICAL_MULTIPLIER,
       dodgeChance: GLOBAL_EVASION_CHANCE,
     });
@@ -1238,14 +1275,17 @@ function resolveCombatTurn({
       monsterHp = Math.max(monsterHp - playerStrike.damage, 0);
 
       if (playerStrike.isCritical) {
-        battleLog.push(buildCriticalAttackShowcase({
-          monsterName: session.monsterName,
-          monsterHp,
-          monsterMaxHp: session.monsterMaxHp,
-          damage: playerStrike.damage,
-        }));
+        const { buildCriticalLog } = require('./combat-patterns');
+        battleLog.push(...buildCriticalLog(character.name, session.monsterName, playerStrike.damage));
+        
+        if (hasGuaranteedCrit) {
+          battleLog.push('🌟 **결정적 순간 효과!**');
+        }
       } else {
         battleLog.push('⚔️ 당신의 공격!');
+        if (hadCounterBonus) {
+          battleLog.push('💥 **반격 찬스!** (+20% 공격력)');
+        }
         battleLog.push(`💔 ${session.monsterName}에게 ${playerStrike.damage} 데미지!`);
       }
 
@@ -1443,6 +1483,9 @@ function resolveCombatTurn({
         potionsRemaining,
         playerDefending: false,
         turn: session.turn + 1,
+        monsterPatternPhase: 0,
+        playerCounterChance: false,
+        combatEventEffect: null,
       },
       characterUpdate: {
         hp: playerHp,
@@ -1486,6 +1529,9 @@ function resolveCombatTurn({
           potionsRemaining,
           playerDefending: false,
           turn: session.turn + 1,
+          monsterPatternPhase: 0,
+          playerCounterChance: false,
+          combatEventEffect: null,
         },
         characterUpdate: {
           hp: playerHp,
@@ -1717,6 +1763,9 @@ function resolveCombatTurn({
         potionsRemaining,
         playerDefending: false,
         turn: session.turn + 1,
+        monsterPatternPhase: 0,
+        playerCounterChance: false,
+        combatEventEffect: null,
       },
       characterUpdate,
       rewards: {
@@ -1738,11 +1787,29 @@ function resolveCombatTurn({
     };
   }
 
-  const enemyStrike = rollDamage(session.monsterAttack, character.defense, {
-    critChance: GLOBAL_CRITICAL_CHANCE,
-    critMultiplier: GLOBAL_CRITICAL_MULTIPLIER,
-    dodgeChance: GLOBAL_EVASION_CHANCE,
-  });
+  // 🎮 Phase 1: 몬스터 기절 체크
+  const isMonsterStunned = session.combatEventEffect === 'monster_stun';
+  const isMonsterEnraged = session.combatEventEffect === 'monster_rage';
+
+  let enemyStrike;
+  if (isMonsterStunned) {
+    enemyStrike = { damage: 0, isCritical: false, isDodged: false };
+    battleLog.push('');
+    battleLog.push('⚡ **몬스터가 기절 상태입니다!**');
+    battleLog.push('📍 이번 턴 공격하지 못합니다!');
+  } else {
+    let monsterAttackPower = session.monsterAttack;
+    if (isMonsterEnraged) {
+      monsterAttackPower = Math.floor(session.monsterAttack * 2.0);
+    }
+
+    enemyStrike = rollDamage(monsterAttackPower, character.defense, {
+      critChance: GLOBAL_CRITICAL_CHANCE,
+      critMultiplier: GLOBAL_CRITICAL_MULTIPLIER,
+      dodgeChance: GLOBAL_EVASION_CHANCE,
+    });
+  }
+
   const monsterData = getMonsterBySessionName(session.monsterName);
   const skillPatternResult = applyFieldBossSkillPatterns({
     monsterData,
@@ -1756,14 +1823,23 @@ function resolveCombatTurn({
   });
 
   monsterHp = skillPatternResult.monsterHp;
-  let enemyDamage = skillPatternResult.enemyDamage;
+  let enemyDamage = isMonsterStunned ? 0 : skillPatternResult.enemyDamage;
 
   if (enemyStrike.isDodged) {
     enemyDamage = 0;
   }
 
+  // 🎮 Phase 1: 방어 효과 개선 (30% → 50%)
+  let playerGotCounterChance = false;
   if (playerDefending && enemyDamage > 0) {
-    enemyDamage = Math.max(1, Math.floor(enemyDamage * 0.45));
+    enemyDamage = Math.max(1, Math.floor(enemyDamage * 0.5)); // 50% 감소
+    
+    // 🎯 패턴 읽고 방어 → 반격 찬스 (다음 턴 공격력 20% 증가)
+    const { getCurrentPattern } = require('./combat-patterns');
+    const currentPattern = getCurrentPattern(session.monsterName, session.monsterPatternPhase || 0);
+    if (currentPattern && currentPattern.attackMultiplier >= 1.5) {
+      playerGotCounterChance = true;
+    }
   }
 
   if (enemyDamage > 0) {
@@ -1777,33 +1853,71 @@ function resolveCombatTurn({
   }
 
   if (enemyStrike.isDodged) {
-    battleLog.push(buildDodgeShowcase({
-      monsterName: session.monsterName,
-      playerName: character.name,
-      playerHp,
-      playerMaxHp: character.maxHp,
-    }));
+    // 🎮 Phase 1: 회피 성공 시 MP 10 회복
+    const manaRecovery = Math.min(10, maxMana - playerMana);
+    if (manaRecovery > 0) {
+      playerMana += manaRecovery;
+    }
+    
+    const { buildDodgeLog } = require('./combat-patterns');
+    battleLog.push(...buildDodgeLog(session.monsterName, character.name));
+    if (manaRecovery > 0) {
+      battleLog.push(`🔷 마나 ${manaRecovery} 회복!`);
+    }
   } else {
     battleLog.push(`👹 ${session.monsterName}의 반격!`);
+    
+    if (isMonsterEnraged) {
+      battleLog.push('💀 **광폭화 상태! 공격력 2배!**');
+    }
+    
     if (enemyStrike.isCritical) {
-      battleLog.push(CRITICAL_LOG_MESSAGE);
-      battleLog.push('');
-      battleLog.push('━━━━━━━━━━━━━━━━');
-      battleLog.push('💀💀 **적의 치명타!!** 💀💀');
-      battleLog.push('⚠️ CRITICAL DAMAGE ⚠️');
-      battleLog.push('━━━━━━━━━━━━━━━━');
-      battleLog.push('');
-    }
+      const { buildCriticalLog } = require('./combat-patterns');
+      battleLog.push(...buildCriticalLog(session.monsterName, character.name, enemyDamage));
+    } else {
+      if (playerDefending && enemyDamage > 0) {
+        battleLog.push('🛡️ 방어! 피해 50% 감소!');
+        
+        if (playerGotCounterChance) {
+          const expectedBonus = Math.floor(character.attack * 0.2);
+          const { buildCounterLog } = require('./combat-patterns');
+          battleLog.push(...buildCounterLog(expectedBonus));
+        }
+      }
 
-    if (playerDefending && enemyDamage > 0) {
-      battleLog.push('🛡️ 방어로 피해 감소!');
+      battleLog.push(`💔 **${enemyDamage}** 데미지를 받았습니다.`);
     }
-
-    battleLog.push(`💔 **${enemyDamage}** 데미지를 받았습니다.`);
   }
   
   if (playerHp > 0 && playerHp <= character.maxHp * 0.3) {
     battleLog.push('⚠️ 위험! 체력이 낮습니다!');
+  }
+
+  // 🎮 Phase 1: 몬스터 패턴 진행 + 경고
+  let nextPatternPhase = session.monsterPatternPhase || 0;
+  if (monsterHp > 0) {
+    const { advanceMonsterPattern, getPatternWarning } = require('./combat-patterns');
+    const patternResult = advanceMonsterPattern(session.monsterName, nextPatternPhase);
+    nextPatternPhase = patternResult.nextPhase;
+    
+    const warning = getPatternWarning(patternResult.pattern);
+    if (warning) {
+      battleLog.push('');
+      battleLog.push(warning);
+    }
+  }
+
+  // 🎮 Phase 1: 랜덤 전투 이벤트 (20% 확률)
+  let combatEvent = null;
+  if (monsterHp > 0 && session.turn >= 2) {
+    const { rollCombatEvent, buildEventLog } = require('./combat-patterns');
+    combatEvent = rollCombatEvent();
+    
+    if (combatEvent) {
+      battleLog.push(...buildEventLog(combatEvent));
+      
+      // 이벤트 효과는 다음 턴에 적용 (sessionUpdate에 저장)
+    }
   }
 
   if (playerHp <= 0) {
@@ -1844,6 +1958,9 @@ function resolveCombatTurn({
         potionsRemaining,
         playerDefending: false,
         turn: session.turn + 1,
+        monsterPatternPhase: 0,
+        playerCounterChance: false,
+        combatEventEffect: null,
       },
       characterUpdate: {
         ...streakReset,
@@ -1867,6 +1984,9 @@ function resolveCombatTurn({
       potionsRemaining,
       playerDefending: false,
       turn: session.turn + 1,
+      monsterPatternPhase: nextPatternPhase, // 🎮 Phase 1: 패턴 시스템
+      playerCounterChance: playerGotCounterChance, // 🎮 Phase 1: 반격 찬스
+      combatEventEffect: combatEvent?.effect || null, // 🎮 Phase 1: 랜덤 이벤트
     },
     characterUpdate: {
       hp: playerHp,
@@ -1876,6 +1996,7 @@ function resolveCombatTurn({
     meta: {
       skillUsed,
       consumedConsumableId,
+      combatEvent, // 🎮 Phase 1: 이벤트 로깅
     },
   };
 }

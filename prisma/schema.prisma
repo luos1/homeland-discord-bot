@@ -8,33 +8,33 @@ datasource db {
 }
 
 model User {
-  discordId String     @id
-  username  String
-  character Character?
+  discordId  String              @id
+  username   String
+  character  Character?
   onboarding OnboardingProgress?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 }
 
 model OnboardingProgress {
   userId String @id
   user   User   @relation(fields: [userId], references: [discordId], onDelete: Cascade)
 
-  tutorialStarted     Boolean  @default(false)
-  tutorialCompleted   Boolean  @default(false)
-  tutorialSkipped     Boolean  @default(false)
-  tutorialStep        Int      @default(1)
-  tutorialStep1Reward Boolean  @default(false)
-  tutorialStep2Reward Boolean  @default(false)
-  tutorialStep3Reward Boolean  @default(false)
-  tutorialStep4Reward Boolean  @default(false)
+  tutorialStarted     Boolean   @default(false)
+  tutorialCompleted   Boolean   @default(false)
+  tutorialSkipped     Boolean   @default(false)
+  tutorialStep        Int       @default(1)
+  tutorialStep1Reward Boolean   @default(false)
+  tutorialStep2Reward Boolean   @default(false)
+  tutorialStep3Reward Boolean   @default(false)
+  tutorialStep4Reward Boolean   @default(false)
   tutorialCompletedAt DateTime?
 
-  questChainStarted   Boolean  @default(false)
-  questChainCompleted Boolean  @default(false)
-  questStep           Int      @default(1)
-  questProgress       Int      @default(0)
-  questRewardClaimed  Boolean  @default(false)
+  questChainStarted   Boolean   @default(false)
+  questChainCompleted Boolean   @default(false)
+  questStep           Int       @default(1)
+  questProgress       Int       @default(0)
+  questRewardClaimed  Boolean   @default(false)
   questStartedAt      DateTime?
   questCompletedAt    DateTime?
 
@@ -54,76 +54,76 @@ model OnboardingProgress {
 }
 
 model Character {
-  id               Int                @id @default(autoincrement())
-  userId           String             @unique
-  user             User               @relation(fields: [userId], references: [discordId], onDelete: Cascade)
-  name             String
-  class                    String
-  advancedClass            String?
-  productionClass          String?
-  advancedProductionClass  String?
-  specialRole              String?  // druid, guard (전투/생산과 별개의 추가 역할)
-  level                    Int                @default(1)
-  xp               Int                @default(0)
-  hp               Int                @default(100)
-  maxHp            Int                @default(100)
-  mana             Int                @default(40)
-  maxMana          Int                @default(40)
-  attack           Int                @default(10)
-  defense          Int                @default(5)
-  gold             Int                @default(0)
-  gems             Int                @default(0)
-  winStreak        Int                @default(0)
-  maxWinStreak     Int                @default(0)
-  battleWins       Int                @default(0)
-  bossKills        Int                @default(0)
-  tradeVolume      Int                @default(0)
-  productionLevel  Int                @default(1)
-  productionXp     Int                @default(0)
-  warriorMastery   Int                @default(0)
-  rangerMastery    Int                @default(0)
-  mageMastery      Int                @default(0)
-  gathererMastery  Int                @default(0)
-  blacksmithMastery Int               @default(0)
-  alchemistMastery Int                @default(0)
-  combatSession    CombatSession?
-  equipment        Equipment[]
-  skills           Skill[]
-  resources        Resource[]
-  gatherSessions   GatherSession[]
-  craftingSessions CraftingSession[]
-  marketListings   MarketListing[]
-  auctionsAsSeller Auction[]           @relation("AuctionSeller")
-  auctionsAsHighestBidder Auction[]    @relation("AuctionHighestBidder")
-  auctionBids     AuctionBid[]
-  orderBookOrders  OrderBook[]
-  rankingEvents    RankingEvent[]
-  consumables      Consumable[]
-  wonFieldBosses   FieldBossEvent[]   @relation("FieldBossWinner")
-  guildWarContributions GuildWarContribution[]
-  fieldBossBids    FieldBossBid[]
-  attendanceRecords AttendanceRecord[]
-  dailyQuests      DailyQuest[]
-  dailyQuestProfile DailyQuestProfile?
-  hiddenQuests     HiddenQuestProgress[]
+  id                      Int                      @id @default(autoincrement())
+  userId                  String                   @unique
+  user                    User                     @relation(fields: [userId], references: [discordId], onDelete: Cascade)
+  name                    String
+  class                   String
+  advancedClass           String?
+  productionClass         String?
+  advancedProductionClass String?
+  specialRole             String? // druid, guard (전투/생산과 별개의 추가 역할)
+  level                   Int                      @default(1)
+  xp                      Int                      @default(0)
+  hp                      Int                      @default(100)
+  maxHp                   Int                      @default(100)
+  mana                    Int                      @default(40)
+  maxMana                 Int                      @default(40)
+  attack                  Int                      @default(10)
+  defense                 Int                      @default(5)
+  gold                    Int                      @default(0)
+  gems                    Int                      @default(0)
+  winStreak               Int                      @default(0)
+  maxWinStreak            Int                      @default(0)
+  battleWins              Int                      @default(0)
+  bossKills               Int                      @default(0)
+  tradeVolume             Int                      @default(0)
+  productionLevel         Int                      @default(1)
+  productionXp            Int                      @default(0)
+  warriorMastery          Int                      @default(0)
+  rangerMastery           Int                      @default(0)
+  mageMastery             Int                      @default(0)
+  gathererMastery         Int                      @default(0)
+  blacksmithMastery       Int                      @default(0)
+  alchemistMastery        Int                      @default(0)
+  combatSession           CombatSession?
+  equipment               Equipment[]
+  skills                  Skill[]
+  resources               Resource[]
+  gatherSessions          GatherSession[]
+  craftingSessions        CraftingSession[]
+  marketListings          MarketListing[]
+  auctionsAsSeller        Auction[]                @relation("AuctionSeller")
+  auctionsAsHighestBidder Auction[]                @relation("AuctionHighestBidder")
+  auctionBids             AuctionBid[]
+  orderBookOrders         OrderBook[]
+  rankingEvents           RankingEvent[]
+  consumables             Consumable[]
+  wonFieldBosses          FieldBossEvent[]         @relation("FieldBossWinner")
+  guildWarContributions   GuildWarContribution[]
+  fieldBossBids           FieldBossBid[]
+  attendanceRecords       AttendanceRecord[]
+  dailyQuests             DailyQuest[]
+  dailyQuestProfile       DailyQuestProfile?
+  hiddenQuests            HiddenQuestProgress[]
   hiddenQuestTriggerStats HiddenQuestTriggerStats?
-  premiumSubscription PremiumSubscription?
-  gemTransactions  GemTransaction[]
-  gemExchanges     GemExchange[]
-  priceAlerts      PriceAlert[]
-  npcShopSales     NpcShopSale[]
-  jobRespecHistories JobRespecHistory[]
-  npcContributions NPCContribution[]
-  ownedFields      FarmField[]
-  fieldRaids       FieldRaid[]        @relation("FieldRaider")
-  towerRuns        TowerRun[]
-  towerRecord      TowerRecord?
-  achievements     CharacterAchievement[]
-  stats            CharacterStats?
-  invitesSent      InviteRecord[]      @relation("InvitesSent")
-  invitesReceived  InviteRecord[]      @relation("InvitesReceived")
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  premiumSubscription     PremiumSubscription?
+  gemTransactions         GemTransaction[]
+  gemExchanges            GemExchange[]
+  priceAlerts             PriceAlert[]
+  npcShopSales            NpcShopSale[]
+  jobRespecHistories      JobRespecHistory[]
+  npcContributions        NPCContribution[]
+  ownedFields             FarmField[]
+  fieldRaids              FieldRaid[]              @relation("FieldRaider")
+  towerRuns               TowerRun[]
+  towerRecord             TowerRecord?
+  achievements            CharacterAchievement[]
+  stats                   CharacterStats?
+  invitesSent             InviteRecord[]           @relation("InvitesSent")
+  invitesReceived         InviteRecord[]           @relation("InvitesReceived")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 
   @@index([level])
   @@index([battleWins])
@@ -156,14 +156,14 @@ model Equipment {
 }
 
 model Skill {
-  id           Int       @id @default(autoincrement())
-  characterId  Int
-  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  skillKey     String
-  skillLevel   Int       @default(1)
-  equipped     Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  skillKey    String
+  skillLevel  Int       @default(1)
+  equipped    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@unique([characterId, skillKey])
   @@index([characterId])
@@ -189,10 +189,10 @@ model Consumable {
   characterId Int
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   name        String
-  type        String    // potion, food, scroll
-  effect      String    // heal_hp, heal_mp, buff_regen, etc
-  power       Int       // 효과 수치
-  duration    Int?      // 지속 시간 (초, 버프용)
+  type        String // potion, food, scroll
+  effect      String // heal_hp, heal_mp, buff_regen, etc
+  power       Int // 효과 수치
+  duration    Int? // 지속 시간 (초, 버프용)
   quantity    Int       @default(1)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -201,17 +201,16 @@ model Consumable {
   @@index([characterId])
 }
 
-
 model GatherSession {
-  id             String    @id @default(cuid())
-  characterId    Int       @unique
-  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  resourceType   String
-  startedAt      DateTime  @default(now())
-  completesAt    DateTime
-  quantity       Int
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  characterId  Int       @unique
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  resourceType String
+  startedAt    DateTime  @default(now())
+  completesAt  DateTime
+  quantity     Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model CraftingSession {
@@ -227,21 +226,21 @@ model CraftingSession {
 }
 
 model MarketListing {
-  id          Int       @id @default(autoincrement())
-  sellerId    Int
-  seller      Character @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  itemType    String    // resource or equipment
-  itemKey     String    // resource type or equipment id
-  itemName    String
-  quantity    Int       @default(1)
+  id           Int       @id @default(autoincrement())
+  sellerId     Int
+  seller       Character @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  itemType     String // resource or equipment
+  itemKey      String // resource type or equipment id
+  itemName     String
+  quantity     Int       @default(1)
   pricePerUnit Int
-  totalPrice  Int
-  itemData    Json?     // equipment snapshot JSON
-  status      String    @default("active") // active, sold, cancelled
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  soldAt      DateTime?
-  buyerId     Int?
+  totalPrice   Int
+  itemData     Json? // equipment snapshot JSON
+  status       String    @default("active") // active, sold, cancelled
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  soldAt       DateTime?
+  buyerId      Int?
 
   @@index([sellerId])
   @@index([status])
@@ -265,15 +264,15 @@ model DynamicPrice {
 }
 
 model NpcShopSale {
-  id         Int       @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   characterId Int
-  character  Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  saleType   String
-  itemKey    String
-  itemName   String
-  quantity   Int       @default(1)
-  totalPrice Int
-  createdAt  DateTime  @default(now())
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  saleType    String
+  itemKey     String
+  itemName    String
+  quantity    Int       @default(1)
+  totalPrice  Int
+  createdAt   DateTime  @default(now())
 
   @@index([characterId, createdAt])
   @@index([saleType, createdAt])
@@ -281,9 +280,9 @@ model NpcShopSale {
 }
 
 model Auction {
-  id              Int        @id @default(autoincrement())
+  id              Int          @id @default(autoincrement())
   sellerId        Int
-  seller          Character  @relation("AuctionSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  seller          Character    @relation("AuctionSeller", fields: [sellerId], references: [id], onDelete: Cascade)
   itemType        String
   itemKey         String
   itemName        String
@@ -292,11 +291,11 @@ model Auction {
   currentPrice    Int
   reservePrice    Int?
   duration        Int
-  status          String     @default("active")
+  status          String       @default("active")
   highestBidderId Int?
-  highestBidder   Character? @relation("AuctionHighestBidder", fields: [highestBidderId], references: [id], onDelete: SetNull)
-  bidCount        Int        @default(0)
-  createdAt       DateTime   @default(now())
+  highestBidder   Character?   @relation("AuctionHighestBidder", fields: [highestBidderId], references: [id], onDelete: SetNull)
+  bidCount        Int          @default(0)
+  createdAt       DateTime     @default(now())
   expiresAt       DateTime
   completedAt     DateTime?
   bids            AuctionBid[]
@@ -322,7 +321,7 @@ model AuctionBid {
 
 model OrderBook {
   id          Int       @id @default(autoincrement())
-  type        String    // buy or sell
+  type        String // buy or sell
   itemType    String    @default("resource")
   itemKey     String
   itemName    String
@@ -342,16 +341,16 @@ model OrderBook {
 }
 
 model TradeHistory {
-  id          Int      @id @default(autoincrement())
-  sellerId    Int
-  buyerId     Int
-  itemType    String
-  itemKey     String
-  itemName    String
-  quantity    Int
-  price       Int
-  fee         Int
-  createdAt   DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  sellerId  Int
+  buyerId   Int
+  itemType  String
+  itemKey   String
+  itemName  String
+  quantity  Int
+  price     Int
+  fee       Int
+  createdAt DateTime @default(now())
 
   @@index([sellerId])
   @@index([buyerId])
@@ -389,19 +388,19 @@ model PremiumSubscription {
 }
 
 model PremiumHistory {
-  id          Int          @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   userId      String
   tier        PremiumTier
-  amount      Float        // USD
-  type        String       // subscription, one_time
-  purchasedAt DateTime     @default(now())
+  amount      Float // USD
+  type        String // subscription, one_time
+  purchasedAt DateTime    @default(now())
   expiresAt   DateTime?
-  
+
   stripeInvoiceId      String?
   stripeSubscriptionId String?
   stripePriceId        String?
-  
-  createdAt   DateTime     @default(now())
+
+  createdAt DateTime @default(now())
 
   @@index([userId, purchasedAt])
   @@index([tier, purchasedAt])
@@ -411,31 +410,31 @@ model PremiumHistory {
 model Coupon {
   id              Int       @id @default(autoincrement())
   code            String    @unique
-  discountPercent Int       // 10, 30, 50 etc
-  discountAmount  Float?    // 고정 할인 금액 (USD)
-  maxUses         Int?      // null = 무제한
+  discountPercent Int // 10, 30, 50 etc
+  discountAmount  Float? // 고정 할인 금액 (USD)
+  maxUses         Int? // null = 무제한
   usageCount      Int       @default(0)
   expiresAt       DateTime?
   active          Boolean   @default(true)
-  
-  applicableTiers String    @default("all") // all, bronze,silver,gold
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+
+  applicableTiers String @default("all") // all, bronze,silver,gold
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([code, active])
   @@index([expiresAt])
 }
 
 model GemTransaction {
-  id         Int       @id @default(autoincrement())
-  userId     String
-  character  Character @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  type       String
-  amount     Int
-  rate       Int
-  note       String?
-  createdAt  DateTime  @default(now())
+  id        Int       @id @default(autoincrement())
+  userId    String
+  character Character @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  type      String
+  amount    Int
+  rate      Int
+  note      String?
+  createdAt DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@index([type, createdAt])
@@ -514,12 +513,12 @@ model ItemPriceHistory {
 }
 
 model EconomyAlert {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   alertType  String // inflation, abnormal_trade
   severity   String // warn, critical
   message    String
   metadata   Json?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
   resolvedAt DateTime?
 
   @@index([alertType, createdAt])
@@ -528,7 +527,7 @@ model EconomyAlert {
 }
 
 model PriceAlert {
-  id            Int       @id @default(autoincrement())
+  id            Int        @id @default(autoincrement())
   userId        String
   characterId   Int?
   character     Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
@@ -536,10 +535,10 @@ model PriceAlert {
   itemKey       String
   alertType     String // price_drop, price_rise, auction_ending
   targetPrice   Int?
-  isActive      Boolean   @default(true)
+  isActive      Boolean    @default(true)
   lastTriggered DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   @@index([userId, isActive])
   @@index([itemType, itemKey, alertType])
@@ -623,16 +622,30 @@ model CombatSession {
   bossId             String?
   monsterFirstStrike Boolean   @default(false)
   monsterImageUrl    String?
+  monsterPatternPhase Int      @default(0) // 현재 패턴 단계
+  playerCounterChance Boolean  @default(false) // 반격 찬스 버프
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+}
+
+model CombatEvent {
+  id          Int      @id @default(autoincrement())
+  characterId Int
+  sessionId   String
+  eventType   String // lightning, critical_moment, crisis, lucky
+  eventData   Json? // 이벤트 추가 데이터
+  createdAt   DateTime @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([sessionId])
 }
 
 model BossEncounter {
   id             Int       @id @default(autoincrement())
   bossId         String    @unique
   lastDefeatedAt DateTime?
-  defeatedBy     String?   // character name
-  defeatedById   Int?      // character id
+  defeatedBy     String? // character name
+  defeatedById   Int? // character id
   respawnAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -678,7 +691,7 @@ model AttendanceRecord {
   id          Int       @id @default(autoincrement())
   characterId Int
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  date        String    // YYYY-MM-DD (KST)
+  date        String // YYYY-MM-DD (KST)
   streak      Int
   claimed     Boolean   @default(true)
   createdAt   DateTime  @default(now())
@@ -694,23 +707,23 @@ model HiddenQuestProgress {
   id          Int       @id @default(autoincrement())
   characterId Int
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  
-  questKey    String    // 퀘스트 식별자 (예: "ancient_warrior", "dark_secret")
-  discovered  Boolean   @default(false) // 퀘스트 발견 여부
-  accepted    Boolean   @default(false) // 퀘스트 수락 여부
-  completed   Boolean   @default(false) // 퀘스트 완료 여부
-  claimed     Boolean   @default(false) // 보상 수령 여부
-  
-  progress    Int       @default(0)     // 현재 진행도
-  
+
+  questKey   String // 퀘스트 식별자 (예: "ancient_warrior", "dark_secret")
+  discovered Boolean @default(false) // 퀘스트 발견 여부
+  accepted   Boolean @default(false) // 퀘스트 수락 여부
+  completed  Boolean @default(false) // 퀘스트 완료 여부
+  claimed    Boolean @default(false) // 보상 수령 여부
+
+  progress Int @default(0) // 현재 진행도
+
   discoveredAt DateTime?
   acceptedAt   DateTime?
   completedAt  DateTime?
   claimedAt    DateTime?
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([characterId, questKey])
   @@index([characterId])
   @@index([questKey])
@@ -721,45 +734,45 @@ model HiddenQuestTriggerStats {
   id          Int       @id @default(autoincrement())
   characterId Int
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  
+
   // 처치 통계
-  totalMonsterKills    Int @default(0)
-  skeletonKills        Int @default(0)
-  direWolfKills        Int @default(0)
-  undeadKnightKills    Int @default(0)
-  goblinShamanKills    Int @default(0)
-  ancientDragonKills   Int @default(0)
-  
+  totalMonsterKills  Int @default(0)
+  skeletonKills      Int @default(0)
+  direWolfKills      Int @default(0)
+  undeadKnightKills  Int @default(0)
+  goblinShamanKills  Int @default(0)
+  ancientDragonKills Int @default(0)
+
   // 존 방문 통계
-  zone1Visits          Int @default(0)
-  zone2Visits          Int @default(0)
-  zone3Visits          Int @default(0)
-  
+  zone1Visits Int @default(0)
+  zone2Visits Int @default(0)
+  zone3Visits Int @default(0)
+
   // 연속 출석
-  maxAttendanceStreak  Int @default(0)
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+  maxAttendanceStreak Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([characterId])
   @@index([characterId])
 }
 
 // 랜덤 NPC 시스템
 model RandomNpcSpawn {
-  id          Int       @id @default(autoincrement())
-  
-  npcType     String    // 'wandering_merchant', 'mysterious_elder', 'gambler'
-  spawnedAt   DateTime  @default(now())
-  expiresAt   DateTime  // 소멸 시간
-  isActive    Boolean   @default(true)
-  
+  id Int @id @default(autoincrement())
+
+  npcType   String // 'wandering_merchant', 'mysterious_elder', 'gambler'
+  spawnedAt DateTime @default(now())
+  expiresAt DateTime // 소멸 시간
+  isActive  Boolean  @default(true)
+
   // 상호작용한 플레이어 추적
   interactedUserIds String @default("")
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([npcType])
   @@index([isActive])
   @@index([expiresAt])
@@ -767,34 +780,34 @@ model RandomNpcSpawn {
 
 // 파티 시스템
 model Party {
-  id          Int       @id @default(autoincrement())
-  
-  leaderId    String    // 파티장 Discord ID
-  name        String?   // 파티 이름 (선택)
-  maxSize     Int       @default(4) // 최대 인원 (기본 4명)
-  
-  isActive    Boolean   @default(true)
-  
-  members     PartyMember[]
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+  id Int @id @default(autoincrement())
+
+  leaderId String // 파티장 Discord ID
+  name     String? // 파티 이름 (선택)
+  maxSize  Int     @default(4) // 최대 인원 (기본 4명)
+
+  isActive Boolean @default(true)
+
+  members PartyMember[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([leaderId])
   @@index([isActive])
 }
 
 model PartyMember {
-  id          Int       @id @default(autoincrement())
-  
-  partyId     Int
-  party       Party     @relation(fields: [partyId], references: [id], onDelete: Cascade)
-  
-  userId      String    // Discord ID
-  characterId Int       // Character ID
-  
-  joinedAt    DateTime  @default(now())
-  
+  id Int @id @default(autoincrement())
+
+  partyId Int
+  party   Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  userId      String // Discord ID
+  characterId Int // Character ID
+
+  joinedAt DateTime @default(now())
+
   @@unique([partyId, userId])
   @@index([userId])
   @@index([characterId])
@@ -805,54 +818,54 @@ model PartyMember {
 // ==========================================
 
 model Guild {
-  id            Int       @id @default(autoincrement())
-  
-  name          String    @unique // 길드 이름 (유니크)
-  tag           String?   @unique // 길드 태그 [TAG] (선택, 유니크)
-  description   String?   // 길드 설명
-  
-  masterId      String    // 길드 마스터 Discord ID
-  
-  level         Int       @default(1) // 길드 레벨
-  xp            Int       @default(0) // 길드 경험치
-  gold          Int       @default(0) // 길드 자금
-  
-  maxMembers    Int       @default(10) // 최대 인원 (레벨업으로 증가)
-  memberCount   Int       @default(0) // 현재 멤버 수
-  
-  isRecruiting  Boolean   @default(true) // 모집 중 여부
-  minLevel      Int       @default(1) // 가입 최소 레벨
-  
-  members       GuildMember[]
-  storage       GuildStorage[]
-  buffs         GuildBuff[]
-  npcs          GuildNPC[]
+  id Int @id @default(autoincrement())
+
+  name        String  @unique // 길드 이름 (유니크)
+  tag         String? @unique // 길드 태그 [TAG] (선택, 유니크)
+  description String? // 길드 설명
+
+  masterId String // 길드 마스터 Discord ID
+
+  level Int @default(1) // 길드 레벨
+  xp    Int @default(0) // 길드 경험치
+  gold  Int @default(0) // 길드 자금
+
+  maxMembers  Int @default(10) // 최대 인원 (레벨업으로 증가)
+  memberCount Int @default(0) // 현재 멤버 수
+
+  isRecruiting Boolean @default(true) // 모집 중 여부
+  minLevel     Int     @default(1) // 가입 최소 레벨
+
+  members           GuildMember[]
+  storage           GuildStorage[]
+  buffs             GuildBuff[]
+  npcs              GuildNPC[]
   warParticipations GuildWarParticipant[]
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([masterId])
   @@index([isRecruiting])
   @@index([level])
 }
 
 model GuildMember {
-  id            Int       @id @default(autoincrement())
-  
-  guildId       Int
-  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  
-  userId        String    // Discord ID
-  characterId   Int       // Character ID
-  
-  rank          String    @default("MEMBER") // MASTER/OFFICER/MEMBER
-  
-  contributedXp Int       @default(0) // 기여 경험치
-  contributedGold Int     @default(0) // 기여 골드
-  
-  joinedAt      DateTime  @default(now())
-  
+  id Int @id @default(autoincrement())
+
+  guildId Int
+  guild   Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  userId      String // Discord ID
+  characterId Int // Character ID
+
+  rank String @default("MEMBER") // MASTER/OFFICER/MEMBER
+
+  contributedXp   Int @default(0) // 기여 경험치
+  contributedGold Int @default(0) // 기여 골드
+
+  joinedAt DateTime @default(now())
+
   @@unique([guildId, userId])
   @@index([userId])
   @@index([characterId])
@@ -860,85 +873,85 @@ model GuildMember {
 }
 
 model GuildStorage {
-  id            Int       @id @default(autoincrement())
-  
-  guildId       Int
-  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  
-  itemType      String    // 아이템 타입
-  itemName      String    // 아이템 이름
-  quantity      Int       @default(0) // 수량
-  
+  id Int @id @default(autoincrement())
+
+  guildId Int
+  guild   Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  itemType String // 아이템 타입
+  itemName String // 아이템 이름
+  quantity Int    @default(0) // 수량
+
   @@unique([guildId, itemType, itemName])
   @@index([guildId])
 }
 
 model GuildBuff {
-  id            Int       @id @default(autoincrement())
-  
-  guildId       Int
-  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  
-  buffType      String    // EXP_BOOST/GOLD_BOOST/COMBAT_BOOST 등
-  value         Float     // 버프 수치 (1.1 = +10%)
-  
-  isActive      Boolean   @default(true)
-  expiresAt     DateTime? // 만료 시간 (null = 영구)
-  
+  id Int @id @default(autoincrement())
+
+  guildId Int
+  guild   Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  buffType String // EXP_BOOST/GOLD_BOOST/COMBAT_BOOST 등
+  value    Float // 버프 수치 (1.1 = +10%)
+
+  isActive  Boolean   @default(true)
+  expiresAt DateTime? // 만료 시간 (null = 영구)
+
   @@index([guildId, isActive])
 }
 
 model GuildNPC {
-  id            Int       @id @default(autoincrement())
-  
-  guildId       Int
-  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  
-  npcType       String    @default("merchant") // merchant/blacksmith/elder
-  npcName       String    // NPC 이름
-  
-  hiredAt       DateTime  @default(now())
-  expiresAt     DateTime  // 임대 만료일
-  weeklyFee     Int       @default(10000) // 주간 임대비
-  weeklyCut     Float     @default(0.0) // 이번 주 수익
-  
+  id Int @id @default(autoincrement())
+
+  guildId Int
+  guild   Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  npcType String @default("merchant") // merchant/blacksmith/elder
+  npcName String // NPC 이름
+
+  hiredAt   DateTime @default(now())
+  expiresAt DateTime // 임대 만료일
+  weeklyFee Int      @default(10000) // 주간 임대비
+  weeklyCut Float    @default(0.0) // 이번 주 수익
+
   shopItems     NPCShopItem[]
   contributions NPCContribution[]
-  
+
   @@unique([guildId, npcType])
   @@index([guildId])
   @@index([expiresAt])
 }
 
 model NPCShopItem {
-  id            Int       @id @default(autoincrement())
-  
-  npcId         Int
-  npc           GuildNPC  @relation(fields: [npcId], references: [id], onDelete: Cascade)
-  
-  itemType      String    // potion/equipment/skill
-  itemKey       String    // mega_hp_potion
-  stock         Int       @default(0)
-  
+  id Int @id @default(autoincrement())
+
+  npcId Int
+  npc   GuildNPC @relation(fields: [npcId], references: [id], onDelete: Cascade)
+
+  itemType String // potion/equipment/skill
+  itemKey  String // mega_hp_potion
+  stock    Int    @default(0)
+
   @@unique([npcId, itemType, itemKey])
   @@index([npcId])
 }
 
 model NPCContribution {
-  id            Int       @id @default(autoincrement())
-  
-  npcId         Int
-  npc           GuildNPC  @relation(fields: [npcId], references: [id], onDelete: Cascade)
-  
-  characterId   Int
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  
-  itemKey       String    // mega_hp_potion
-  materialsUsed String    // JSON: [{type:"wood",qty:50}]
-  quantity      Int       // 생성된 상품 수
-  
-  contributedAt DateTime  @default(now())
-  
+  id Int @id @default(autoincrement())
+
+  npcId Int
+  npc   GuildNPC @relation(fields: [npcId], references: [id], onDelete: Cascade)
+
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  itemKey       String // mega_hp_potion
+  materialsUsed String // JSON: [{type:"wood",qty:50}]
+  quantity      Int // 생성된 상품 수
+
+  contributedAt DateTime @default(now())
+
   @@index([npcId])
   @@index([characterId])
   @@index([contributedAt])
@@ -949,24 +962,24 @@ model NPCContribution {
 // ==========================================
 
 model ArenaBattle {
-  id            Int       @id @default(autoincrement())
-  
-  player1Id     String    // Discord ID
-  player2Id     String    // Discord ID
-  
-  player1Elo    Int       // 전투 전 ELO
-  player2Elo    Int
-  
-  winnerId      String?   // 승자 Discord ID
-  
-  entryFee      Int       @default(100) // 입장료
-  reward        Int       @default(200) // 보상 (입장료 x2)
-  
-  battleData    Json?     // 전투 로그
-  
-  createdAt     DateTime  @default(now())
-  completedAt   DateTime?
-  
+  id Int @id @default(autoincrement())
+
+  player1Id String // Discord ID
+  player2Id String // Discord ID
+
+  player1Elo Int // 전투 전 ELO
+  player2Elo Int
+
+  winnerId String? // 승자 Discord ID
+
+  entryFee Int @default(100) // 입장료
+  reward   Int @default(200) // 보상 (입장료 x2)
+
+  battleData Json? // 전투 로그
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
   @@index([player1Id])
   @@index([player2Id])
   @@index([winnerId])
@@ -974,54 +987,54 @@ model ArenaBattle {
 }
 
 model PlayerElo {
-  id            Int       @id @default(autoincrement())
-  
-  userId        String    @unique // Discord ID
-  
-  elo           Int       @default(1000) // 시작 ELO
-  wins          Int       @default(0)
-  losses        Int       @default(0)
-  
-  lastBattleAt  DateTime?
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  id Int @id @default(autoincrement())
+
+  userId String @unique // Discord ID
+
+  elo    Int @default(1000) // 시작 ELO
+  wins   Int @default(0)
+  losses Int @default(0)
+
+  lastBattleAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([elo])
   @@index([wins])
 }
 
 model TheftAttempt {
-  id            Int       @id @default(autoincrement())
-  
-  thiefId       String    // 도둑 Discord ID
-  targetId      String    // 타겟 Discord ID
-  
-  success       Boolean   // 성공 여부
-  amount        Int       // 훔친/벌금 골드
-  
-  createdAt     DateTime  @default(now())
-  
+  id Int @id @default(autoincrement())
+
+  thiefId  String // 도둑 Discord ID
+  targetId String // 타겟 Discord ID
+
+  success Boolean // 성공 여부
+  amount  Int // 훔친/벌금 골드
+
+  createdAt DateTime @default(now())
+
   @@index([thiefId])
   @@index([targetId])
   @@index([createdAt])
 }
 
 model WeeklyRanking {
-  id            Int       @id @default(autoincrement())
-  
-  userId        String
-  week          String    // YYYY-WW 형식
-  
-  category      String    // pvp_wins/boss_kills/gold_earned/trades
-  score         Int       @default(0)
-  rank          Int?
-  
-  rewardClaimed Boolean   @default(false)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  id Int @id @default(autoincrement())
+
+  userId String
+  week   String // YYYY-WW 형식
+
+  category String // pvp_wins/boss_kills/gold_earned/trades
+  score    Int    @default(0)
+  rank     Int?
+
+  rewardClaimed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([userId, week, category])
   @@index([week, category, score])
 }
@@ -1037,93 +1050,90 @@ model DailyQuestProgress {
   @@unique([userId, date], name: "userId_date")
 }
 
-
 model PaymentHistory {
-  id                    Int       @id @default(autoincrement())
-  stripeInvoiceId       String    @unique
-  stripeSubscriptionId  String
-  amount                Float
-  currency              String
-  status                String    // succeeded, failed
-  paidAt                DateTime?
-  failedAt              DateTime?
-  createdAt             DateTime  @default(now())
+  id                   Int       @id @default(autoincrement())
+  stripeInvoiceId      String    @unique
+  stripeSubscriptionId String
+  amount               Float
+  currency             String
+  status               String // succeeded, failed
+  paidAt               DateTime?
+  failedAt             DateTime?
+  createdAt            DateTime  @default(now())
 }
 
 model FieldBossEvent {
-  id          Int      @id @default(autoincrement())
-  bossName    String
-  bossLevel   Int
-  bossHp      Int
-  bossAttack  Int
-  minBid      Int
-  biddingEnd  DateTime
-  status      String   // BIDDING, FIGHTING, COMPLETED, CANCELLED
-  winnerId    Int?
-  winner      Character?  @relation("FieldBossWinner", fields: [winnerId], references: [id])
-  winningBid  Int?
-  rewards     String   // JSON
-  bids        FieldBossBid[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         Int            @id @default(autoincrement())
+  bossName   String
+  bossLevel  Int
+  bossHp     Int
+  bossAttack Int
+  minBid     Int
+  biddingEnd DateTime
+  status     String // BIDDING, FIGHTING, COMPLETED, CANCELLED
+  winnerId   Int?
+  winner     Character?     @relation("FieldBossWinner", fields: [winnerId], references: [id])
+  winningBid Int?
+  rewards    String // JSON
+  bids       FieldBossBid[]
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   @@index([status])
 }
 
 model FieldBossBid {
-  id        Int              @id @default(autoincrement())
+  id        Int            @id @default(autoincrement())
   eventId   Int
-  event     FieldBossEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event     FieldBossEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   playerId  Int
-  player    Character           @relation(fields: [playerId], references: [id])
+  player    Character      @relation(fields: [playerId], references: [id])
   amount    Int
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
   @@unique([eventId, playerId])
   @@index([eventId, amount])
 }
 
-
-
 model GuildWar {
-  id           Int      @id @default(autoincrement())
-  season       String   @unique
+  id           Int                   @id @default(autoincrement())
+  season       String                @unique
   startTime    DateTime
   endTime      DateTime
-  status       String   // ACTIVE, COMPLETED
+  status       String // ACTIVE, COMPLETED
   participants GuildWarParticipant[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
 
   @@index([status])
 }
 
 model GuildWarParticipant {
-  id            Int      @id @default(autoincrement())
+  id            Int                    @id @default(autoincrement())
   warId         Int
-  war           GuildWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+  war           GuildWar               @relation(fields: [warId], references: [id], onDelete: Cascade)
   guildId       Int
-  guild         Guild    @relation(fields: [guildId], references: [id])
-  score         Int      @default(0)
+  guild         Guild                  @relation(fields: [guildId], references: [id])
+  score         Int                    @default(0)
   contributions GuildWarContribution[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
 
   @@unique([warId, guildId])
   @@index([warId, score])
 }
 
 model GuildWarContribution {
-  id            Int      @id @default(autoincrement())
+  id            Int                 @id @default(autoincrement())
   participantId Int
   participant   GuildWarParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   characterId   Int
-  character     Character @relation(fields: [characterId], references: [id])
-  type          String   // MONSTER_KILL, BOSS_KILL, RESOURCE_GATHER, GOLD_DONATE, QUEST_COMPLETE
+  character     Character           @relation(fields: [characterId], references: [id])
+  type          String // MONSTER_KILL, BOSS_KILL, RESOURCE_GATHER, GOLD_DONATE, QUEST_COMPLETE
   value         Int
   points        Int
-  createdAt     DateTime @default(now())
+  createdAt     DateTime            @default(now())
 
   @@index([participantId])
   @@index([characterId])
@@ -1131,7 +1141,7 @@ model GuildWarContribution {
 
 model ServerEvent {
   id         Int      @id @default(autoincrement())
-  type       String   // xp_boost, gold_boost, drop_boost, all_boost
+  type       String // xp_boost, gold_boost, drop_boost, all_boost
   name       String
   multiplier Float
   startTime  DateTime
@@ -1147,47 +1157,47 @@ model ServerEvent {
 // ==========================================
 
 model FarmField {
-  id          Int       @id @default(autoincrement())
-  
-  zone        String    // zone3, zone4, zone5
-  fieldType   String    // wheat, carrot, herb, grape, mine, magic
-  fieldIndex  Int       // 1-10 (필드 번호)
-  
-  ownerId     Int?      // 점유자 Character ID
-  owner       Character? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  
-  claimedAt   DateTime?
-  lastPaid    DateTime? // 마지막 유지비 지불
-  
+  id Int @id @default(autoincrement())
+
+  zone       String // zone3, zone4, zone5
+  fieldType  String // wheat, carrot, herb, grape, mine, magic
+  fieldIndex Int // 1-10 (필드 번호)
+
+  ownerId Int? // 점유자 Character ID
+  owner   Character? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  claimedAt DateTime?
+  lastPaid  DateTime? // 마지막 유지비 지불
+
   // 작물 상태
-  cropType    String?   // 심은 작물
-  plantedAt   DateTime?
-  harvestAt   DateTime?
-  waterCount  Int       @default(0) // 물 준 횟수
-  
-  createdAt   DateTime  @default(now())
-  
-  raids       FieldRaid[]
-  
+  cropType   String? // 심은 작물
+  plantedAt  DateTime?
+  harvestAt  DateTime?
+  waterCount Int       @default(0) // 물 준 횟수
+
+  createdAt DateTime @default(now())
+
+  raids FieldRaid[]
+
   @@unique([zone, fieldType, fieldIndex])
   @@index([ownerId])
   @@index([zone])
 }
 
 model FieldRaid {
-  id          Int       @id @default(autoincrement())
-  
-  fieldId     Int
-  field       FarmField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  
-  raiderId    Int?      // null이면 NPC 도적
-  raider      Character? @relation("FieldRaider", fields: [raiderId], references: [id], onDelete: SetNull)
-  
-  success     Boolean   // 성공 여부
-  stolenAmount Int      @default(0)
-  
-  raidedAt    DateTime  @default(now())
-  
+  id Int @id @default(autoincrement())
+
+  fieldId Int
+  field   FarmField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  raiderId Int? // null이면 NPC 도적
+  raider   Character? @relation("FieldRaider", fields: [raiderId], references: [id], onDelete: SetNull)
+
+  success      Boolean // 성공 여부
+  stolenAmount Int     @default(0)
+
+  raidedAt DateTime @default(now())
+
   @@index([fieldId])
   @@index([raiderId])
 }
@@ -1197,69 +1207,106 @@ model FieldRaid {
 // ==========================================
 
 model TowerRun {
-  id          Int       @id @default(autoincrement())
-  
+  id Int @id @default(autoincrement())
+
   characterId Int
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  
-  startFloor  Int
+
+  startFloor   Int
   currentFloor Int
-  endFloor    Int?
-  
-  active      Boolean   @default(true)
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+  endFloor     Int?
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([characterId])
   @@index([active])
 }
 
 model TowerRecord {
-  id          Int       @id @default(autoincrement())
-  
+  id Int @id @default(autoincrement())
+
   characterId Int       @unique
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  
-  highestFloor Int      @default(0)
-  totalClears  Int      @default(0)
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+
+  highestFloor Int @default(0)
+  totalClears  Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([highestFloor, totalClears])
 }
 
 model CharacterAchievement {
-  id            Int       @id @default(autoincrement())
-  
-  characterId   Int
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  
+  id Int @id @default(autoincrement())
+
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
   achievementId String
-  unlockedAt    DateTime  @default(now())
-  
+  unlockedAt    DateTime @default(now())
+
   @@unique([characterId, achievementId])
   @@index([characterId])
   @@index([achievementId])
 }
 
 model CharacterStats {
-  id            Int       @id @default(autoincrement())
-  
-  characterId   Int       @unique
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  
-  battlesWon    Int       @default(0)
-  bossesKilled  Int       @default(0)
-  goldEarned    Int       @default(0)
-  goldSpent     Int       @default(0)
-  gamblesPlayed Int       @default(0)
-  gamblesWon    Int       @default(0)
-  jackpotsWon   Int       @default(0)
-  maxWinStreak  Int       @default(0)
+  id Int @id @default(autoincrement())
+
+  characterId Int       @unique
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  battlesWon          Int @default(0)
+  bossesKilled        Int @default(0)
+  goldEarned          Int @default(0)
+  goldSpent           Int @default(0)
+  gamblesPlayed       Int @default(0)
+  gamblesWon          Int @default(0)
+  jackpotsWon         Int @default(0)
+  maxWinStreak        Int @default(0)
   maxAttendanceStreak Int @default(0)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 🎰 Daily Spin System (Lucky Roulette)
+// ==========================================
+
+model DailySpin {
+  id Int @id @default(autoincrement())
+
+  userId      String
+  characterId Int
+
+  date       String // YYYY-MM-DD (KST)
+  spinCount  Int      @default(0) // 오늘 스핀 횟수
+  lastSpinAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+}
+
+model SpinHistory {
+  id Int @id @default(autoincrement())
+
+  userId      String
+  characterId Int
+
+  rewardType   String // gold, gems, rare_box, epic_box, legendary_box
+  rewardAmount Int // 획득 수량
+
+  spunAt DateTime @default(now())
+
+  @@index([userId, spunAt])
+  @@index([spunAt])
 }

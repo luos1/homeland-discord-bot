@@ -9,6 +9,7 @@ const PREMIUM_PLAN = {
   dailyGemBonus: 10,
   skillSlotBonus: 1, // 스킬 슬롯 +1 (기본 3 → 4)
   autoFight: true, // 자동 사냥 활성화
+  dailySpins: 3, // 하루 3회 무료 스핀
 };
 
 const PREMIUM_STRIPE_REQUIRED_ENV = [
@@ -44,6 +45,7 @@ function resolvePremiumBenefits(subscription, now = new Date()) {
       dailyGemBonus: 0,
       skillSlotBonus: 0,
       autoFight: false,
+      dailySpins: 1,
     };
   }
 
@@ -54,6 +56,7 @@ function resolvePremiumBenefits(subscription, now = new Date()) {
     dailyGemBonus: PREMIUM_PLAN.dailyGemBonus,
     skillSlotBonus: PREMIUM_PLAN.skillSlotBonus,
     autoFight: PREMIUM_PLAN.autoFight,
+    dailySpins: PREMIUM_PLAN.dailySpins,
   };
 }
 
