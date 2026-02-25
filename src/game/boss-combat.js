@@ -10,6 +10,7 @@ const { applyExperience } = require('./leveling');
 const { calculateEquipmentStats } = require('./equipment');
 const { getAvailableSkills, canUseSkill } = require('./skills');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests');
+const { checkInviteLevelRewards } = require('./invite-rewards');
 const { resolvePremiumBenefits } = require('./premium');
 const { EMBED_COLORS, createDivider, createHPBar } = require('../utils/ui');
 const { RARITIES } = require('./equipment');
@@ -286,6 +287,7 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
 
   // 보스 인카운터 업데이트 (리스폰 타이머 시작)
   const respawnAt = new Date(Date.now() + boss.respawnMinutes * 60 * 1000);
+  let inviteRewardResult = null;
 
   // 트랜잭션으로 모든 업데이트를 원자적으로 처리
   await prisma.$transaction(async (tx) => {
@@ -316,6 +318,14 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
         bossKills: (character.bossKills || 0) + 1,
       },
     });
+
+    if (leveling.levelsGained > 0) {
+      inviteRewardResult = await checkInviteLevelRewards(
+        tx,
+        character.id,
+        leveling.characterUpdate.level,
+      );
+    }
 
     await tx.rankingEvent.createMany({
       data: [
@@ -363,6 +373,12 @@ async function handleBossVictory({ interaction, prisma, session, character, boss
           : '',
         leveling.levelsGained > 0
           ? `🎉 **레벨 업!** ${character.level} → ${leveling.characterUpdate.level}`
+          : '',
+        (inviteRewardResult?.inviterGemReward || 0) > 0
+          ? `🤝 초대한 사람 보석 +${inviteRewardResult.inviterGemReward}`
+          : '',
+        (inviteRewardResult?.inviteeGemReward || 0) > 0
+          ? `💠 친구 초대 보상: 내 보석 +${inviteRewardResult.inviteeGemReward}`
           : '',
         '',
         '📦 **보상**',

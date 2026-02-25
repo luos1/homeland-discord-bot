@@ -120,6 +120,8 @@ model Character {
   towerRecord      TowerRecord?
   achievements     CharacterAchievement[]
   stats            CharacterStats?
+  invitesSent      InviteRecord[]      @relation("InvitesSent")
+  invitesReceived  InviteRecord[]      @relation("InvitesReceived")
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -518,6 +520,22 @@ model JobRespecHistory {
   @@index([characterId, createdAt])
   @@index([jobType, toClass, createdAt])
   @@index([createdAt])
+}
+
+model InviteRecord {
+  id             Int       @id @default(autoincrement())
+  inviterId      Int
+  inviter        Character @relation("InvitesSent", fields: [inviterId], references: [id], onDelete: Cascade)
+  inviteeId      Int       @unique
+  invitee        Character @relation("InvitesReceived", fields: [inviteeId], references: [id], onDelete: Cascade)
+  inviteCode     String
+  inviteeLevel   Int       @default(1)
+  rewardsClaimed Json
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([inviteCode])
+  @@index([inviterId, createdAt])
 }
 
 model JobRespecDemand {

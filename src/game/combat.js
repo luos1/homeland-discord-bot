@@ -12,6 +12,7 @@ const { shouldDropEquipment, generateEquipment } = require('./equipment');
 const { calculateStreakBonus, updateWinStreak, resetWinStreak } = require('./streak');
 const { getAdvancedSkillByKey } = require('./advanced-skills');
 const { DAILY_QUEST_EVENTS, recordDailyQuestProgress } = require('./daily-quests');
+const { checkInviteLevelRewards } = require('./invite-rewards');
 const { resolvePremiumBenefits } = require('./premium');
 const { calculateCombatGoldReward, applyCombatEconomyAdjustments } = require('./economy');
 const { recordSkillUse, checkCombo, clearCombo, calculateComboDamage, getComboVisual } = require('./skill-combo');
@@ -2028,6 +2029,7 @@ async function handleCombatButton({ interaction, prisma }) {
     skillKey: parsed.skillKey,
     selectedConsumable,
   });
+  let inviteRewardResult = null;
 
   // 캐릭터/세션 상태는 항상 함께 갱신되어야 하므로 트랜잭션으로 처리한다.
   await prisma.$transaction(async (tx) => {
@@ -2037,6 +2039,14 @@ async function handleCombatButton({ interaction, prisma }) {
       },
       data: outcome.characterUpdate,
     });
+
+    if ((outcome.rewards?.levelsGained ?? 0) > 0) {
+      inviteRewardResult = await checkInviteLevelRewards(
+        tx,
+        session.characterId,
+        outcome.characterUpdate.level,
+      );
+    }
 
     if (outcome.meta?.consumedConsumableId) {
       const usedConsumable = await tx.consumable.findUnique({
@@ -2157,6 +2167,22 @@ async function handleCombatButton({ interaction, prisma }) {
       },
     });
   });
+
+  if (inviteRewardResult?.inviteeGemReward > 0) {
+    const baseGems = outcome.characterUpdate.gems ?? session.character.gems ?? 0;
+    outcome.characterUpdate.gems = baseGems + inviteRewardResult.inviteeGemReward;
+  }
+
+  if ((inviteRewardResult?.inviterGemReward || 0) > 0 || (inviteRewardResult?.inviteeGemReward || 0) > 0) {
+    outcome.battleLog.push('');
+    outcome.battleLog.push('🎟️ 친구 초대 마일스톤 보상 지급!');
+    if (inviteRewardResult.inviterGemReward > 0) {
+      outcome.battleLog.push(`🤝 초대한 사람 보석 +${inviteRewardResult.inviterGemReward}`);
+    }
+    if (inviteRewardResult.inviteeGemReward > 0) {
+      outcome.battleLog.push(`💠 내 보석 +${inviteRewardResult.inviteeGemReward}`);
+    }
+  }
 
   const refreshedCharacter = {
     ...session.character,

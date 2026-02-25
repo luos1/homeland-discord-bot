@@ -1,4 +1,5 @@
 const { applyExperience } = require('./leveling');
+const { checkInviteLevelRewards } = require('./invite-rewards');
 
 const QUEST_TIMEZONE_OFFSET_HOURS = 9; // KST 기준 자정 리셋
 const QUEST_TIMEZONE_OFFSET_MS = QUEST_TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000;
@@ -452,6 +453,7 @@ async function awardCharacterRewards(tx, characterId, rewardGold, rewardXp) {
 
   let characterUpdate = {};
   let levelsGained = 0;
+  let inviteRewardResult = null;
 
   if (rewardXp > 0) {
     const leveling = applyExperience(
@@ -475,8 +477,17 @@ async function awardCharacterRewards(tx, characterId, rewardGold, rewardXp) {
     },
   });
 
+  if (levelsGained > 0) {
+    inviteRewardResult = await checkInviteLevelRewards(
+      tx,
+      characterId,
+      characterUpdate.level,
+    );
+  }
+
   return {
     levelsGained,
+    inviteRewardResult,
   };
 }
 

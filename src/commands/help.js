@@ -5,7 +5,7 @@ const { EMBED_COLORS, createDivider } = require('../utils/ui');
 const COMMAND_GROUPS = [
   {
     title: '🎮 기본',
-    names: ['play', 'create', 'profile', 'tutorial', 'help'],
+    names: ['play', 'create', 'profile', 'tutorial', 'invite', 'help'],
   },
   {
     title: '⚔️ 전투/성장',
