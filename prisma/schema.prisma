@@ -73,6 +73,10 @@ model Character {
   defense                 Int                      @default(5)
   gold                    Int                      @default(0)
   gems                    Int                      @default(0)
+  lastLoginDate           DateTime?
+  loginStreak             Int                      @default(0)
+  longestStreak           Int                      @default(0)
+  lastDailyRewardClaimed  DateTime?
   winStreak               Int                      @default(0)
   maxWinStreak            Int                      @default(0)
   battleWins              Int                      @default(0)
