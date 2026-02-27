@@ -77,6 +77,11 @@ client.once(Events.ClientReady, async (readyClient) => {
   // 로거 초기화
   logger.init(readyClient);
   
+  // 봇 상태 메시지 설정 (프리미엄 홍보)
+  readyClient.user.setActivity('💎 Premium: ko-fi.com/homeland92226 | /create to start!', { 
+    type: 0 // PLAYING
+  });
+  
   // 시작 알림
   await logger.logEvent('startup', {
     bot: readyClient.user.tag,

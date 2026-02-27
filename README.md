@@ -199,7 +199,9 @@ If you enjoy Homeland:
 - 🐛 Report bugs and suggest features
 - 💬 Join our Discord community
 - 🔀 Contribute code or documentation
-- 💎 Consider premium to support development
+- 💎 **[Support on Ko-fi](https://ko-fi.com/homeland92226)** - Get premium perks ($5/month)
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/homeland92226)
 
 ---
 
