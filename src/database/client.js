@@ -24,12 +24,12 @@ function getDatabaseUrl() {
 }
 
 // 기존 인스턴스 재사용 (모든 환경에서)
+const enableQueryLog = process.env.PRISMA_LOG_QUERIES === 'true';
+
 const prisma =
   globalForPrisma.prisma ||
   new PrismaClient({
-    log: process.env.NODE_ENV === 'development' 
-      ? ['query', 'warn', 'error'] 
-      : ['warn', 'error'],
+    log: enableQueryLog ? ['query', 'warn', 'error'] : ['warn', 'error'],
     datasources: {
       db: {
         url: getDatabaseUrl(),
