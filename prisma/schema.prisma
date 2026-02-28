@@ -49,6 +49,9 @@ model OnboardingProgress {
   productionActions Int @default(0)
   tradeActions      Int @default(0)
 
+  giftSent   Boolean   @default(false)
+  giftSentAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -126,6 +129,7 @@ model Character {
   stats                   CharacterStats?
   invitesSent             InviteRecord[]           @relation("InvitesSent")
   invitesReceived         InviteRecord[]           @relation("InvitesReceived")
+  pets                    Pet[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -1314,4 +1318,49 @@ model SpinHistory {
 
   @@index([userId, spunAt])
   @@index([spunAt])
+}
+
+// ==========================================
+// 🐾 Pet System (Daily Reward 7-day)
+// ==========================================
+
+model Pet {
+  id Int @id @default(autoincrement())
+
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  petKey   String
+  petName  String
+  petType  String // legendary, companion, mount
+  rarity   String // legendary, epic, rare
+  level    Int    @default(1)
+
+  obtainedAt DateTime @default(now())
+
+  @@unique([characterId, petKey])
+  @@index([characterId])
+}
+
+// ==========================================
+// 🎁 Server Invite Rewards
+// ==========================================
+
+model ServerInviteReward {
+  id Int @id @default(autoincrement())
+
+  userId    String
+  guildId   String
+  guildName String
+
+  rewardClaimed Boolean @default(true)
+  rewardGold    Int     @default(0)
+  rewardGems    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, guildId])
+  @@index([userId])
+  @@index([guildId])
 }

@@ -9,7 +9,7 @@
  * - 거래 타임아웃 (5분)
  */
 
-
+const { prisma } = require('../database/client');
 
 // 진행 중인 거래 (메모리)
 const activeTrades = new Map();
@@ -268,15 +268,15 @@ class TradingSystem {
           }
         }
 
-        // 골드 교환
+        // 골드 교환 (순증/순감 계산)
         await tx.character.update({
           where: { userId: trade.user1.userId },
-          data: { gold: { decrement: trade.user1.gold, increment: trade.user2.gold } }
+          data: { gold: { increment: trade.user2.gold - trade.user1.gold } }
         });
 
         await tx.character.update({
           where: { userId: trade.user2.userId },
-          data: { gold: { decrement: trade.user2.gold, increment: trade.user1.gold } }
+          data: { gold: { increment: trade.user1.gold - trade.user2.gold } }
         });
 
         // 아이템 교환
@@ -291,6 +291,33 @@ class TradingSystem {
           await tx.equipment.update({
             where: { id: item.id },
             data: { characterId: char1.id }
+          });
+        }
+
+        // 온보딩 퀘스트(선물하기) 완료 처리
+        if (trade.user1.items.length > 0 || trade.user1.gold > 0) {
+          await tx.onboardingProgress.updateMany({
+            where: {
+              userId: trade.user1.userId,
+              giftSent: false,
+            },
+            data: {
+              giftSent: true,
+              giftSentAt: new Date(),
+            },
+          });
+        }
+
+        if (trade.user2.items.length > 0 || trade.user2.gold > 0) {
+          await tx.onboardingProgress.updateMany({
+            where: {
+              userId: trade.user2.userId,
+              giftSent: false,
+            },
+            data: {
+              giftSent: true,
+              giftSentAt: new Date(),
+            },
           });
         }
       });

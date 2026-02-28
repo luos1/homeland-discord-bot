@@ -2,6 +2,8 @@ const INVITE_CODE_PREFIX = 'HM-';
 
 const INVITE_REWARD_AMOUNTS = Object.freeze({
   inviterOnJoinGems: 100,        // 30 → 100 (3배 증가!)
+  inviterOnJoinGold: 1000,       // 🆕 바이럴 메커니즘: 골드 1,000
+  inviterOnJoinEquipmentRarity: 'rare', // 🆕 바이럴 메커니즘: 레어 장비
   inviterOnLevel10Gems: 200,     // 50 → 200 (4배 증가!)
   inviterOnLevel30Gems: 500,     // 100 → 500 (5배 증가!)
   inviteeOnJoinGold: 2000,       // 500 → 2000 (4배 증가!)
@@ -100,8 +102,8 @@ async function applyInviteUseRewards(prisma, { inviterCharacterId, inviteeCharac
   const normalizedCode = normalizeInviteCode(inviteCode);
   const initialRewardState = createInitialRewardState();
 
-  const [record] = await prisma.$transaction([
-    prisma.inviteRecord.create({
+  const result = await prisma.$transaction(async (tx) => {
+    const record = await tx.inviteRecord.create({
       data: {
         inviterId: inviterCharacterId,
         inviteeId: inviteeCharacterId,
@@ -109,33 +111,63 @@ async function applyInviteUseRewards(prisma, { inviterCharacterId, inviteeCharac
         inviteeLevel: Math.max(1, Math.floor(inviteeLevel || 1)),
         rewardsClaimed: initialRewardState,
       },
-    }),
-    prisma.character.update({
-      where: {
-        id: inviterCharacterId,
-      },
+    });
+
+    // 초대한 사람: 젬 + 골드
+    await tx.character.update({
+      where: { id: inviterCharacterId },
       data: {
-        gems: {
-          increment: INVITE_REWARD_AMOUNTS.inviterOnJoinGems,
+        gems: { increment: INVITE_REWARD_AMOUNTS.inviterOnJoinGems },
+        gold: { increment: INVITE_REWARD_AMOUNTS.inviterOnJoinGold },
+      },
+    });
+
+    // 초대한 사람: 레어 장비
+    let grantedEquipment = null;
+    if (INVITE_REWARD_AMOUNTS.inviterOnJoinEquipmentRarity) {
+      const { generateEquipment } = require('./equipment');
+      const inviter = await tx.character.findUnique({
+        where: { id: inviterCharacterId },
+        select: { level: true },
+      });
+
+      const equipment = generateEquipment(inviter?.level || 1, {
+        rarity: INVITE_REWARD_AMOUNTS.inviterOnJoinEquipmentRarity,
+      });
+
+      grantedEquipment = await tx.equipment.create({
+        data: {
+          characterId: inviterCharacterId,
+          name: equipment.name,
+          type: equipment.type,
+          rarity: equipment.rarity,
+          attack: equipment.attack,
+          defense: equipment.defense,
+          hp: equipment.hp,
+          mana: equipment.mana,
+          effect: equipment.effect,
+          equipped: false,
         },
-      },
-    }),
-    prisma.character.update({
-      where: {
-        id: inviteeCharacterId,
-      },
+      });
+    }
+
+    // 초대받은 사람: 골드
+    await tx.character.update({
+      where: { id: inviteeCharacterId },
       data: {
-        gold: {
-          increment: INVITE_REWARD_AMOUNTS.inviteeOnJoinGold,
-        },
+        gold: { increment: INVITE_REWARD_AMOUNTS.inviteeOnJoinGold },
       },
-    }),
-  ]);
+    });
+
+    return { record, grantedEquipment };
+  });
 
   return {
-    record,
+    record: result.record,
+    grantedEquipment: result.grantedEquipment,
     rewards: {
       inviterGems: INVITE_REWARD_AMOUNTS.inviterOnJoinGems,
+      inviterGold: INVITE_REWARD_AMOUNTS.inviterOnJoinGold,
       inviteeGold: INVITE_REWARD_AMOUNTS.inviteeOnJoinGold,
     },
     rewardState: initialRewardState,

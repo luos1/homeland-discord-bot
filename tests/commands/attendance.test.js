@@ -106,7 +106,7 @@ describe('attendance command', () => {
     expect(payload.embeds[0].data.description).toContain('이미 완료');
   });
 
-  test('3일차 출석: 300G와 출석 포션을 지급한다', async () => {
+  test('3일차 출석: 300G와 레어 장비를 지급한다', async () => {
     const interaction = createMockInteraction();
     const character = createCharacter({
       id: 12,
@@ -144,32 +144,17 @@ describe('attendance command', () => {
         },
       },
     });
-    expect(tx.consumable.upsert).toHaveBeenCalledWith({
-      where: {
-        characterId_type_effect: {
+    expect(tx.consumable.upsert).not.toHaveBeenCalled();
+    expect(tx.equipment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
           characterId: character.id,
-          type: 'attendance_potion',
-          effect: 'heal_hp',
-        },
-      },
-      update: {
-        quantity: {
-          increment: 1,
-        },
-      },
-      create: {
-        characterId: character.id,
-        name: '출석 포션',
-        type: 'attendance_potion',
-        effect: 'heal_hp',
-        power: 60,
-        duration: null,
-        quantity: 1,
-      },
-    });
+          rarity: 'rare',
+        }),
+      }),
+    );
 
-    const payload = interaction.reply.mock.calls[0][0];
-    expect(payload.embeds[0].data.description).toContain('출석 포션');
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
   });
 
   test('결석 후 출석: 스트릭이 1로 리셋된다', async () => {

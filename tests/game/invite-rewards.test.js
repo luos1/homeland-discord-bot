@@ -24,10 +24,12 @@ describe('invite rewards', () => {
     expect(decodeInviteCode('INVALID')).toBeNull();
   });
 
-  test('초대 등록 보상: 초대자 보석 +30, 피초대자 골드 +500을 지급한다', async () => {
+  test('초대 등록 보상: 초대자 보석+골드+레어장비, 피초대자 골드를 지급한다', async () => {
     prisma.inviteRecord.create.mockResolvedValue({ id: 11 });
     prisma.character.update.mockResolvedValue({});
-    prisma.$transaction.mockImplementation(async (queries) => Promise.all(queries));
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+    prisma.character.findUnique.mockResolvedValue({ id: 7, level: 10 });
+    prisma.equipment.create.mockResolvedValue({ id: 88, rarity: 'rare' });
 
     const result = await applyInviteUseRewards(prisma, {
       inviterCharacterId: 7,
@@ -57,6 +59,9 @@ describe('invite rewards', () => {
           gems: {
             increment: INVITE_REWARD_AMOUNTS.inviterOnJoinGems,
           },
+          gold: {
+            increment: INVITE_REWARD_AMOUNTS.inviterOnJoinGold,
+          },
         },
       }),
     );
@@ -72,9 +77,19 @@ describe('invite rewards', () => {
       }),
     );
 
+    expect(prisma.equipment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          characterId: 7,
+          rarity: 'rare',
+        }),
+      }),
+    );
+
     expect(result.rewards).toEqual({
-      inviterGems: 100,  // Updated: 30 → 100
-      inviteeGold: 2000,  // Updated: 500 → 2000
+      inviterGems: 100,
+      inviterGold: 1000,
+      inviteeGold: 2000,
     });
   });
 

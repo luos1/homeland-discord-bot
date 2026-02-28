@@ -173,11 +173,15 @@ describe('invite command', () => {
 
     prisma.character.findUnique.mockImplementation(async (args) => {
       const userId = args?.where?.userId;
+      const id = args?.where?.id;
       if (userId === interaction.user.id) {
         return invitee;
       }
       if (userId === inviterUserId) {
         return inviter;
+      }
+      if (id === inviter.id) {
+        return { level: inviter.level };
       }
       return null;
     });
@@ -189,7 +193,8 @@ describe('invite command', () => {
       inviteeId: invitee.id,
     });
     prisma.character.update.mockResolvedValue({});
-    prisma.$transaction.mockImplementation(async (queries) => Promise.all(queries));
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+    prisma.equipment.create.mockResolvedValue({ id: 501, rarity: 'rare' });
 
     await inviteCommand.execute(interaction, { prisma });
 

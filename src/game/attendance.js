@@ -6,51 +6,39 @@ const ATTENDANCE_REWARDS = {
     gold: 100,
     consumables: [],
     equipmentRarity: null,
+    petKey: null,
+    premiumDays: null,
   },
   3: {
     gold: 300,
-    consumables: [
-      {
-        name: '출석 포션',
-        type: 'attendance_potion',
-        effect: 'heal_hp',
-        power: 60,
-        duration: null,
-        quantity: 1,
-        displayName: '🧪 출석 포션 x1',
-      },
-    ],
-    equipmentRarity: null,
+    consumables: [],
+    equipmentRarity: 'rare', // 변경: 레어 장비
+    petKey: null,
+    premiumDays: null,
   },
   7: {
     gold: 1000,
     gems: 30,
-    consumables: [
-      {
-        name: '장비 가챠 티켓',
-        type: 'attendance_ticket',
-        effect: 'attendance_ticket',
-        power: 1,
-        duration: null,
-        quantity: 1,
-        displayName: '🎟️ 장비 가챠 티켓 x1',
-      },
-    ],
-    equipmentRarity: 'rare',
-    title: null,
+    consumables: [],
+    equipmentRarity: null,
+    petKey: 'legendary_phoenix', // 변경: 레전더리 펫
+    premiumDays: null,
   },
   14: {
     gold: 3000,
     gems: 50,
     consumables: [],
     equipmentRarity: 'epic',
-    title: null,
+    petKey: null,
+    premiumDays: null,
   },
   30: {
     gold: 10000,
     gems: 100,
     consumables: [],
     equipmentRarity: 'legendary',
+    petKey: null,
+    premiumDays: 30, // 변경: 프리미엄 1개월
     title: '개근상',
   },
 };
@@ -159,8 +147,10 @@ function getAttendanceReward(streak) {
       isMilestone: true,
       gold: milestoneReward.gold,
       gems: milestoneReward.gems || 0,
-      consumables: milestoneReward.consumables,
-      equipmentRarity: milestoneReward.equipmentRarity,
+      consumables: milestoneReward.consumables || [],
+      equipmentRarity: milestoneReward.equipmentRarity || null,
+      petKey: milestoneReward.petKey || null,
+      premiumDays: milestoneReward.premiumDays || null,
       title: milestoneReward.title || null,
     };
   }
@@ -172,6 +162,8 @@ function getAttendanceReward(streak) {
     gems: 0,
     consumables: [],
     equipmentRarity: null,
+    petKey: null,
+    premiumDays: null,
     title: null,
   };
 }

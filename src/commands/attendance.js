@@ -1,6 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 const { generateEquipment, RARITIES } = require('../game/equipment');
+const { grantPet, PETS } = require('../game/pets');
 const {
   ATTENDANCE_TIMEZONE,
   calculateNextAttendanceStreak,
@@ -18,7 +19,7 @@ const { createVillageNavigationRow, VILLAGE_MENU_KEYS } = require('../utils/vill
 const { resolvePremiumBenefits } = require('../game/premium');
 const { requireCharacter } = require('../utils/response-helpers');
 
-function createRewardLines({ rewardPlan, grantedEquipment, premiumDailyGems = 0 }) {
+function createRewardLines({ rewardPlan, grantedEquipment, grantedPet, premiumDailyGems = 0 }) {
   const lines = [`💰 골드 +${formatNumber(rewardPlan.gold)}G`];
 
   if (rewardPlan.gems > 0) {
@@ -29,14 +30,26 @@ function createRewardLines({ rewardPlan, grantedEquipment, premiumDailyGems = 0 
     lines.push(`💠 프리미엄 일일 젬 +${formatNumber(premiumDailyGems)}`);
   }
 
-  rewardPlan.consumables.forEach((item) => {
-    lines.push(item.displayName);
-  });
+  if (rewardPlan.consumables && rewardPlan.consumables.length > 0) {
+    rewardPlan.consumables.forEach((item) => {
+      lines.push(item.displayName);
+    });
+  }
 
   if (grantedEquipment) {
     const rarity = RARITIES[grantedEquipment.rarity];
     const rarityLabel = rarity ? `${rarity.emoji} ${rarity.name}` : grantedEquipment.rarity;
     lines.push(`${rarityLabel} 장비: **${grantedEquipment.name}**`);
+  }
+
+  if (grantedPet) {
+    const petData = PETS[grantedPet.petKey];
+    const emoji = petData?.emoji || '🐾';
+    lines.push(`${emoji} 레전더리 펫: **${grantedPet.petName}** Lv.${grantedPet.level}`);
+  }
+
+  if (rewardPlan.premiumDays) {
+    lines.push(`👑 프리미엄 +${rewardPlan.premiumDays}일`);
   }
 
   if (rewardPlan.title) {
@@ -207,33 +220,36 @@ module.exports = {
             data: updateData,
           });
 
-          for (const consumable of rewardPlan.consumables) {
-            await tx.consumable.upsert({
-              where: {
-                characterId_type_effect: {
+          if (rewardPlan.consumables && rewardPlan.consumables.length > 0) {
+            for (const consumable of rewardPlan.consumables) {
+              await tx.consumable.upsert({
+                where: {
+                  characterId_type_effect: {
+                    characterId: character.id,
+                    type: consumable.type,
+                    effect: consumable.effect,
+                  },
+                },
+                update: {
+                  quantity: {
+                    increment: consumable.quantity,
+                  },
+                },
+                create: {
                   characterId: character.id,
+                  name: consumable.name,
                   type: consumable.type,
                   effect: consumable.effect,
+                  power: consumable.power,
+                  duration: consumable.duration,
+                  quantity: consumable.quantity,
                 },
-              },
-              update: {
-                quantity: {
-                  increment: consumable.quantity,
-                },
-              },
-              create: {
-                characterId: character.id,
-                name: consumable.name,
-                type: consumable.type,
-                effect: consumable.effect,
-                power: consumable.power,
-                duration: consumable.duration,
-                quantity: consumable.quantity,
-              },
-            });
+              });
+            }
           }
 
           let grantedEquipment = null;
+          let grantedPet = null;
 
           if (rewardPlan.equipmentRarity) {
             const rolledEquipment = generateEquipment(character.level, {
@@ -256,14 +272,47 @@ module.exports = {
             });
           }
 
+          if (rewardPlan.petKey) {
+            grantedPet = await grantPet(tx, character.id, rewardPlan.petKey);
+          }
+
+          if (rewardPlan.premiumDays) {
+            const now = new Date();
+            const existingSub = await tx.premiumSubscription.findUnique({
+              where: { userId: interaction.user.id },
+            });
+
+            if (existingSub) {
+              const currentEnd = new Date(existingSub.endDate);
+              const newEnd = new Date(Math.max(currentEnd.getTime(), now.getTime()) + rewardPlan.premiumDays * 24 * 60 * 60 * 1000);
+              await tx.premiumSubscription.update({
+                where: { userId: interaction.user.id },
+                data: { endDate: newEnd },
+              });
+            } else {
+              const endDate = new Date(now.getTime() + rewardPlan.premiumDays * 24 * 60 * 60 * 1000);
+              await tx.premiumSubscription.create({
+                data: {
+                  userId: interaction.user.id,
+                  planId: 'attendance_30day',
+                  tier: 'bronze',
+                  startDate: now,
+                  endDate,
+                },
+              });
+            }
+          }
+
           return {
             grantedEquipment,
+            grantedPet,
           };
         });
 
         rewardLines = createRewardLines({
           rewardPlan,
           grantedEquipment: claimResult.grantedEquipment,
+          grantedPet: claimResult.grantedPet,
           premiumDailyGems: premiumBenefits.dailyGemBonus,
         });
       } catch (error) {
